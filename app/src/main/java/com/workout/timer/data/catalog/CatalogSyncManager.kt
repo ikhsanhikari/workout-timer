@@ -39,10 +39,13 @@ class CatalogSyncManager @Inject constructor(
 
         /**
          * URL default GitHub Raw ke file workout_catalog.json di repository.
-         * Pengguna/developer dapat mengubah URL ini kapan saja via preferensi.
+         * Mendukung otomatis branch master atau main.
          */
         const val DEFAULT_CATALOG_URL =
-            "https://raw.githubusercontent.com/Nurikhsan/workout-v2/main/workout_catalog.json"
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/master/workout_catalog.json"
+
+        const val FALLBACK_CATALOG_URL =
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/main/workout_catalog.json"
 
         private const val TIMEOUT_MS = 10_000
     }
@@ -61,9 +64,6 @@ class CatalogSyncManager @Inject constructor(
 
     /**
      * Melakukan pengecekan dan sinkronisasi katalog dari server GitHub.
-     *
-     * @param force Jika true, paksa update meskipun nomor versi sama.
-     * @param overrideUrl URL opsional untuk testing atau custom source.
      */
     suspend fun sync(
         force: Boolean = false,
@@ -81,26 +81,17 @@ class CatalogSyncManager @Inject constructor(
         Log.d(TAG, "Memulai sinkronisasi katalog dari: $targetUrl")
 
         try {
-            val url = URL(targetUrl)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = TIMEOUT_MS
-                readTimeout = TIMEOUT_MS
-                requestMethod = "GET"
-                setRequestProperty("Accept", "application/json")
-                setRequestProperty("User-Agent", "WorkoutTimer-Android")
+            var jsonString: String? = fetchJsonString(targetUrl)
+
+            // Jika URL default mengembalikan null/404, coba fallback ke branch main
+            if (jsonString == null && overrideUrl == null && userPreferences.getCatalogUrl() == null) {
+                Log.d(TAG, "Mencoba fallback branch main: $FALLBACK_CATALOG_URL")
+                jsonString = fetchJsonString(FALLBACK_CATALOG_URL)
             }
 
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                val errorMsg = "Server merespons kode HTTP $responseCode"
-                Log.w(TAG, errorMsg)
-                return@withContext SyncResult.Error(errorMsg)
+            if (jsonString == null) {
+                return@withContext SyncResult.Error("File katalog belum ditemukan di server GitHub.")
             }
-
-            val jsonString = BufferedReader(InputStreamReader(connection.inputStream)).use {
-                it.readText()
-            }
-            connection.disconnect()
 
             val remoteCatalog = CatalogImporter.parseCatalogJson(jsonString)
                 ?: return@withContext SyncResult.Error("Gagal membaca format JSON dari server.")
@@ -132,6 +123,31 @@ class CatalogSyncManager @Inject constructor(
             val errorMsg = "Koneksi gagal: ${e.localizedMessage ?: e.message}"
             Log.e(TAG, errorMsg, e)
             SyncResult.Error(errorMsg)
+        }
+    }
+
+    private fun fetchJsonString(urlString: String): String? {
+        return try {
+            val url = URL(urlString)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("User-Agent", "WorkoutTimer-Android")
+            }
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val content = BufferedReader(InputStreamReader(connection.inputStream)).use {
+                    it.readText()
+                }
+                connection.disconnect()
+                content
+            } else {
+                connection.disconnect()
+                null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }
