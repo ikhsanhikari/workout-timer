@@ -42,10 +42,10 @@ class CatalogSyncManager @Inject constructor(
          * Mendukung otomatis branch master atau main.
          */
         const val DEFAULT_CATALOG_URL =
-            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/master/workout_catalog.json"
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/main/workout_catalog.json"
 
         const val FALLBACK_CATALOG_URL =
-            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/main/workout_catalog.json"
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/master/workout_catalog.json"
 
         private const val TIMEOUT_MS = 10_000
     }
