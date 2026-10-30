@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <!-- Flame Aura -->
+    <path
+        android:fillColor="#33FA114F"
+        android:pathData="M36,6 C26,18 20,28 20,40 C20,54 28,64 38,65 C34,58 35,50 39,44 C41,41 44,38 45,34 C46,30 44,26 42,22 C48,27 52,35 52,44 C52,48 50,53 48,56 C53,51 56,43 56,36 C56,22 46,12 36,6 Z" />
+    <!-- Dynamic Lightning Bolt -->
+    <path
+        android:fillColor="#FF9500"
+        android:pathData="M40,12 L24,38 L34,38 L30,62 L50,32 L38,32 Z" />
+    <!-- Speed streaks -->
+    <path
+        android:strokeColor="#FA114F"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M14,24 L22,24 M10,34 L18,34 M12,44 L20,44" />
+</vector>

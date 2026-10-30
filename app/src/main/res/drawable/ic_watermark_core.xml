@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <!-- Abdominal Hex Shield -->
+    <path
+        android:strokeColor="#25A4FF00"
+        android:strokeWidth="2"
+        android:fillColor="#10A4FF00"
+        android:pathData="M36,6 L58,16 L54,52 L36,66 L18,52 L14,16 Z" />
+    <!-- 6-Pack Grid Power Contours -->
+    <!-- Top row -->
+    <path
+        android:fillColor="#A4FF00"
+        android:pathData="M24,20 L33,20 C34,20 35,21 35,22 L35,28 C35,29 34,30 33,30 L24,30 C23,30 22,29 22,28 L22,22 C22,21 23,20 24,20 Z" />
+    <path
+        android:fillColor="#A4FF00"
+        android:pathData="M39,20 L48,20 C49,20 50,21 50,22 L50,28 C50,29 49,30 48,30 L39,30 C38,30 37,29 37,28 L37,22 C37,21 38,20 39,20 Z" />
+    <!-- Middle row -->
+    <path
+        android:fillColor="#80E000"
+        android:pathData="M23,33 L33,33 C34,33 35,34 35,35 L35,41 C35,42 34,43 33,43 L23,43 C22,43 21,42 21,41 L21,35 C21,34 22,33 23,33 Z" />
+    <path
+        android:fillColor="#80E000"
+        android:pathData="M39,33 L49,33 C50,33 51,34 51,35 L51,41 C51,42 50,43 49,43 L39,43 C38,43 37,42 37,41 L37,35 C37,34 38,33 39,33 Z" />
+    <!-- Bottom row -->
+    <path
+        android:fillColor="#5EA000"
+        android:pathData="M26,46 L33,46 C34,46 35,47 35,48 L35,54 C35,55 34,56 33,56 L26,56 C25,56 24,55 24,54 L24,48 C24,47 25,46 26,46 Z" />
+    <path
+        android:fillColor="#5EA000"
+        android:pathData="M39,46 L46,46 C47,46 48,47 48,48 L48,54 C48,55 47,56 46,56 L39,56 C38,56 37,55 37,54 L37,48 C37,47 38,46 39,46 Z" />
+</vector>

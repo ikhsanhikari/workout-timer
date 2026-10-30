@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="camera_cache" path="camera_videos" />
+    <cache-path name="cache_root" path="." />
+    <files-path name="workout_media" path="workout_media" />
+    <files-path name="files_root" path="." />
+    <external-cache-path name="ext_cache" path="." />
+    <external-files-path name="ext_files" path="." />
+</paths>

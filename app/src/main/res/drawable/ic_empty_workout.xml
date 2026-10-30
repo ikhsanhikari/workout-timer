@@ -1,0 +1,64 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Ambient Aura -->
+    <path
+        android:fillColor="#15A4FF00"
+        android:pathData="M60,10 A50,50 0 1,1 59.9,10" />
+    <path
+        android:strokeColor="#25A4FF00"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M60,18 A42,42 0 1,1 59.9,18" />
+
+    <!-- Big Center Kettlebell -->
+    <!-- Handle -->
+    <path
+        android:strokeColor="#A4FF00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M48,46 C48,34 72,34 72,46" />
+    <!-- Bell Body -->
+    <path
+        android:fillColor="#1E232A"
+        android:strokeColor="#A4FF00"
+        android:strokeWidth="4"
+        android:pathData="M44,48 L76,48 C84,54 86,74 76,84 C70,88 50,88 44,84 C34,74 36,54 44,48 Z" />
+    <!-- Core Lightning on Kettlebell -->
+    <path
+        android:fillColor="#A4FF00"
+        android:pathData="M62,54 L54,66 L60,66 L56,76 L66,64 L60,64 Z" />
+
+    <!-- Overlapping Neon Stopwatch (Right) -->
+    <path
+        android:fillColor="#151A22"
+        android:strokeColor="#00F5EA"
+        android:strokeWidth="3.5"
+        android:pathData="M84,66 A18,18 0 1,1 83.9,66" />
+    <path
+        android:strokeColor="#00F5EA"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M84,58 L84,66 L90,66" />
+    <path
+        android:strokeColor="#00F5EA"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M81,45 L87,45 M84,45 L84,48" />
+
+    <!-- Energy sparks -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M32,32 L34,26 L36,32 L42,34 L36,36 L34,42 L32,36 L26,34 Z" />
+    <path
+        android:fillColor="#FF5252"
+        android:pathData="M24,70 L25,66 L26,70 L30,71 L26,72 L25,76 L24,72 L20,71 Z" />
+    <path
+        android:fillColor="#00F5EA"
+        android:pathData="M96,36 L97,33 L98,36 L101,37 L98,38 L97,41 L96,38 L93,37 Z" />
+</vector>

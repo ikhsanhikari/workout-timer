@@ -1,0 +1,63 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Ambient circular glow backdrop -->
+    <path
+        android:fillColor="#15FF9100"
+        android:pathData="M60,60m-50,0a50,50 0 1,1 100,0a50,50 0 1,1 -100,0" />
+
+    <!-- Floor Line -->
+    <path
+        android:strokeColor="#25FF9100"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M25,100 L95,100" />
+
+    <!-- Head -->
+    <path
+        android:fillColor="#FF9100"
+        android:pathData="M52,28m-6.5,0a6.5,6.5 0 1,1 13,0a6.5,6.5 0 1,1 -13,0" />
+
+    <!-- Spine / Torso (Proud Chest, Angled Back) -->
+    <path
+        android:strokeColor="#FF9100"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M52,36 L44,60" />
+
+    <!-- Arms Counterbalance (Reaching Forward) -->
+    <path
+        android:strokeColor="#FFD180"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M51,42 L72,44 L86,46" />
+
+    <!-- Femur / Thigh (Deep Parallel Squat 90 deg) -->
+    <path
+        android:strokeColor="#FF9100"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M44,60 L68,64" />
+
+    <!-- Shin / Lower Leg (Driving to Ground) -->
+    <path
+        android:strokeColor="#FF9100"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M68,64 L62,98 L74,98" />
+
+    <!-- Glute & Quad Load Power Curves -->
+    <path
+        android:strokeColor="#40FF9100"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M38,62 C34,68 34,74 40,78" />
+
+</vector>

@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <!-- Fluid Harmony Ring -->
+    <path
+        android:strokeColor="#25AF52DE"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M36,8 A28,28 0 1,1 35.9,8" />
+    <!-- Spine Flow / Flexibility Wave -->
+    <path
+        android:strokeColor="#AF52DE"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M36,18 C28,26 44,32 36,40 C28,48 44,52 36,56" />
+    <!-- Lotus alignment petals -->
+    <path
+        android:fillColor="#BF5AF2"
+        android:pathData="M36,24 C31,28 31,35 36,38 C41,35 41,28 36,24 Z" />
+    <path
+        android:fillColor="#55AF52DE"
+        android:pathData="M26,34 C24,38 27,42 32,41 C31,37 28,34 26,34 Z" />
+    <path
+        android:fillColor="#55AF52DE"
+        android:pathData="M46,34 C48,38 45,42 40,41 C41,37 44,34 46,34 Z" />
+</vector>

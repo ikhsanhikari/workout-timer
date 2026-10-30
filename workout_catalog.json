@@ -1,0 +1,1755 @@
+{
+  "catalogVersion": 1,
+  "lastUpdated": "2026-10-30T20:00:00Z",
+  "templates": [
+    {
+      "name": "Jumping Jacks",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Wall Sit",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Abdominal Crunch",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Step-Up onto Chair",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Bodyweight Squat",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Triceps Dip",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank Hold",
+      "defaultDuration": 45
+    },
+    {
+      "name": "High Knees",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Alternating Lunges",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push-Up and Rotation",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Plank",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Burpees",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Mountain Climbers",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jump Squats",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Bicycle Crunches",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Russian Twist",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Leg Raise",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank Shoulder Taps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Hollow Body Hold",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Skater Jumps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Glute Bridge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Cat-Cow Stretch",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Downward Dog to Cobra",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Child's Pose",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Deep Breathing",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Istirahat",
+      "defaultDuration": 15
+    },
+    {
+      "name": "Diamond Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Pike Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Flutter Kicks",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Wide Arm Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Calf Raises",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Single-Leg Glute Bridge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jump Lunge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Bird-Dog Hold",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Side Bridge / Side Plank",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Modified Curl-Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Shadow Boxing Combo",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Duck and Weave",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jump Rope Hops",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Sprint All-Out",
+      "defaultDuration": 20
+    },
+    {
+      "name": "Pemulihan Ringan",
+      "defaultDuration": 60
+    },
+    {
+      "name": "Chin Tucks & Neck Rolls",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Shoulder Rolls & Squeeze",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Chest Opener Stretch",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Thoracic Spine Twist",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Seated Spinal Twist",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Standing Quad Stretch",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Plank to Push-Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Sprint VO2 Max",
+      "defaultDuration": 240
+    },
+    {
+      "name": "Active Recovery Jog",
+      "defaultDuration": 180
+    },
+    {
+      "name": "Jumping Jacks Ringan",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push Up Ringan",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Squat Jump",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Crunches",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Lunges",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Swimmer",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Squats",
+      "defaultDuration": 30
+    },
+    {
+      "name": "High Rows",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Standing Crunch",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Plank (Kiri)",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Plank (Kanan)",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Shoulder Taps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Back Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Scissors",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Close Grip Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Knees Up",
+      "defaultDuration": 30
+    }
+  ],
+  "routines": [
+    {
+      "id": "acsm-scientific-7-minute",
+      "name": "ACSM Scientific 7-Minute",
+      "category": "HIIT",
+      "accentColor": "#FA114F",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "ACSM Circuit",
+          "exercises": [
+            {
+              "title": "Jumping Jacks",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Wall Sit",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Push Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Abdominal Crunch",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Step-Up onto Chair",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Bodyweight Squat",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Triceps Dip",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Plank Hold",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "High Knees",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Alternating Lunges",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Push-Up and Rotation",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Side Plank",
+              "durationSeconds": 30,
+              "type": "WORK"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tabata-extreme-4-menit",
+      "name": "Tabata Extreme 4-Menit",
+      "category": "HIIT",
+      "accentColor": "#FF9500",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b2Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 2,
+          "label": "Tabata Round",
+          "exercises": [
+            {
+              "title": "Burpees",
+              "durationSeconds": 20,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 20,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Jump Squats",
+              "durationSeconds": 20,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "High Knees",
+              "durationSeconds": 20,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b2Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 30,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "iron-core-10-menit",
+      "name": "Iron Core 10-Menit",
+      "category": "Core",
+      "accentColor": "#A4FF00",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b3Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 2,
+          "label": "Core Set",
+          "exercises": [
+            {
+              "title": "Plank Hold",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Bicycle Crunches",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Russian Twist",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Leg Raise",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Plank Shoulder Taps",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b3Cooldown",
+              "title": "Child's Pose",
+              "durationSeconds": 30,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "full-body-hiit-blast-15-menit",
+      "name": "Full Body HIIT Blast 15-Menit",
+      "category": "HIIT",
+      "accentColor": "#00E5FF",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b4Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            },
+            {
+              "block_var": "b4Warmup",
+              "title": "High Knees",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 3,
+          "label": "HIIT Set",
+          "exercises": [
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Push Up",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Jump Squats",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b4Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 30,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "daily-morning-mobility-stretch",
+      "name": "Daily Morning Mobility & Stretch",
+      "category": "Mobility",
+      "accentColor": "#BF5AF2",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Mobility Flow",
+          "exercises": [
+            {
+              "title": "Cat-Cow Stretch",
+              "durationSeconds": 45,
+              "type": "WARMUP"
+            },
+            {
+              "title": "Downward Dog to Cobra",
+              "durationSeconds": 45,
+              "type": "WARMUP"
+            },
+            {
+              "title": "Alternating Lunges",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Glute Bridge",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Child's Pose",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            },
+            {
+              "title": "Deep Breathing",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gibala-10-minute-sprint-hiit",
+      "name": "Gibala 10-Minute Sprint HIIT",
+      "category": "HIIT",
+      "accentColor": "#FF3B30",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup Ringan",
+          "exercises": [
+            {
+              "block_var": "b6Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 120,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 3,
+          "label": "SIT Interval",
+          "exercises": [
+            {
+              "block_var": "b6Main",
+              "title": "Sprint All-Out",
+              "durationSeconds": 20,
+              "type": "WORK"
+            },
+            {
+              "block_var": "b6Main",
+              "title": "Pemulihan Ringan",
+              "durationSeconds": 120,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b6Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 120,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mcgill-big-3-spine-core",
+      "name": "McGill Big 3 Spine & Core",
+      "category": "Core",
+      "accentColor": "#30D158",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup Tulang Belakang",
+          "exercises": [
+            {
+              "block_var": "b7Warmup",
+              "title": "Cat-Cow Stretch",
+              "durationSeconds": 60,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 3,
+          "label": "Big 3 Stability Set",
+          "exercises": [
+            {
+              "title": "Modified Curl-Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Side Plank",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Bird-Dog",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b7Cooldown",
+              "title": "Child's Pose",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "navy-seal-upper-body-pt",
+      "name": "Navy SEAL Upper Body PT",
+      "category": "Strength",
+      "accentColor": "#0A84FF",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b8Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            },
+            {
+              "block_var": "b8Warmup",
+              "title": "Push Up Ringan",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 3,
+          "label": "Upper Body Push",
+          "exercises": [
+            {
+              "title": "Push Up",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Diamond Push Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Pike Push Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Triceps Dip",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Plank Shoulder Taps",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 30,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b8Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 30,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lower-body-glutes-inferno",
+      "name": "Lower Body & Glutes Inferno",
+      "category": "Strength",
+      "accentColor": "#FF9F0A",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup Kaki",
+          "exercises": [
+            {
+              "block_var": "b9Warmup",
+              "title": "Bodyweight Squat",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            },
+            {
+              "block_var": "b9Warmup",
+              "title": "Alternating Lunges",
+              "durationSeconds": 30,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 3,
+          "label": "Legs & Glutes Set",
+          "exercises": [
+            {
+              "title": "Bodyweight Squat",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Jump Squats",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Curtsy Lunges",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Wall Sit",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Glute Bridge",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Calf Raises",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 25,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b9Cooldown",
+              "title": "Child's Pose",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cardio-boxing-3-rounds",
+      "name": "Cardio Boxing 3-Rounds",
+      "category": "Cardio",
+      "accentColor": "#FF2D55",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup Lompat Tali",
+          "exercises": [
+            {
+              "block_var": "b10Warmup",
+              "title": "Jump Rope Hops",
+              "durationSeconds": 60,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 1,
+          "label": "Round 1 - Speed & Agility",
+          "exercises": [
+            {
+              "title": "Shadow Boxing Combo",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Duck and Weave",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "High Knees",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 60,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Round 2 - Power & Combinations",
+          "exercises": [
+            {
+              "title": "Shadow Boxing Combo",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Burpees",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 60,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 3,
+          "repeatCount": 1,
+          "label": "Round 3 - All Out Burnout",
+          "exercises": [
+            {
+              "title": "Shadow Boxing Combo",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Duck and Weave",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 60,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 4,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b10Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 60,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "norwegian-4x4-vo2-max",
+      "name": "Norwegian 4x4 VO2 Max",
+      "category": "HIIT",
+      "accentColor": "#FF5722",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup Aerobik",
+          "exercises": [
+            {
+              "block_var": "b11Warmup",
+              "title": "Jumping Jacks Ringan",
+              "durationSeconds": 300,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 4,
+          "label": "4x4 VO2 Max Round",
+          "exercises": [
+            {
+              "title": "High Knees",
+              "durationSeconds": 60,
+              "type": "WORK"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 60,
+              "type": "WORK"
+            },
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 60,
+              "type": "WORK"
+            },
+            {
+              "title": "Burpees",
+              "durationSeconds": 60,
+              "type": "WORK"
+            },
+            {
+              "title": "Pemulihan Ringan",
+              "durationSeconds": 180,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b11Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 180,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acsm-advanced-hict-power",
+      "name": "ACSM Advanced HICT Power",
+      "category": "HIIT",
+      "accentColor": "#FF6D00",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Advanced HICT Circuit",
+          "exercises": [
+            {
+              "title": "Jump Squats",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Push Up",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Burpee Tuck Jumps",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Plank to Push-Up",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Lunge with Twist",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Side Plank",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Sprint In Place",
+              "durationSeconds": 45,
+              "type": "WORK"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "desk-worker-posture-spine-relief",
+      "name": "Desk Worker Posture & Spine Relief",
+      "category": "Mobility",
+      "accentColor": "#00BFA5",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Posture Alignment Flow",
+          "exercises": [
+            {
+              "title": "Chin Tucks & Neck Rolls",
+              "durationSeconds": 45,
+              "type": "WARMUP"
+            },
+            {
+              "title": "Shoulder Rolls & Squeeze",
+              "durationSeconds": 45,
+              "type": "WARMUP"
+            },
+            {
+              "title": "Chest Opener Stretch",
+              "durationSeconds": 45,
+              "type": "WARMUP"
+            },
+            {
+              "title": "Cat-Cow Stretch",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Thoracic Spine Twist",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Bird-Dog",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Glute Bridge",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Child's Pose",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            },
+            {
+              "title": "Deep Breathing",
+              "durationSeconds": 45,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "emom-10-calisthenics-triple-burn",
+      "name": "EMOM 10: Calisthenics Triple Burn",
+      "category": "Strength",
+      "accentColor": "#2979FF",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b14Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 60,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 2,
+          "label": "EMOM Round",
+          "exercises": [
+            {
+              "title": "Push Up",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Bodyweight Squat",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Bicycle Crunches",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Burpees",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            },
+            {
+              "title": "Alternating Lunges",
+              "durationSeconds": 40,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 20,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b14Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 60,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cardio-pyramids-15-menit",
+      "name": "Cardio Pyramids 15-Menit",
+      "category": "Cardio",
+      "accentColor": "#FF5252",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Warmup",
+          "exercises": [
+            {
+              "block_var": "b15Warmup",
+              "title": "Jumping Jacks",
+              "durationSeconds": 60,
+              "type": "WARMUP"
+            }
+          ]
+        },
+        {
+          "orderIndex": 1,
+          "repeatCount": 1,
+          "label": "Pyramid Ladder",
+          "exercises": [
+            {
+              "title": "High Knees",
+              "durationSeconds": 15,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            },
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 30,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 45,
+              "type": "REST"
+            },
+            {
+              "title": "Burpees",
+              "durationSeconds": 60,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 60,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 45,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 45,
+              "type": "REST"
+            },
+            {
+              "title": "Skater Jumps",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 30,
+              "type": "REST"
+            },
+            {
+              "title": "High Knees",
+              "durationSeconds": 15,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 15,
+              "type": "REST"
+            }
+          ]
+        },
+        {
+          "orderIndex": 2,
+          "repeatCount": 1,
+          "label": "Cooldown",
+          "exercises": [
+            {
+              "block_var": "b15Cooldown",
+              "title": "Deep Breathing",
+              "durationSeconds": 60,
+              "type": "COOLDOWN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hikari-workout",
+      "name": "Hikari Workout",
+      "category": "Full Body",
+      "accentColor": "#FFD600",
+      "blocks": [
+        {
+          "orderIndex": 0,
+          "repeatCount": 1,
+          "label": "Hikari Circuit",
+          "exercises": [
+            {
+              "title": "High Knees",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Push Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Lunges",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Plank",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Swimmer",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Squats",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "High Rows",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Standing Crunch",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Side Plank (Kiri)",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Side Plank (Kanan)",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Shoulder Taps",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Mountain Climbers",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Back Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Scissors",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Close Grip Push Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            },
+            {
+              "title": "Istirahat",
+              "durationSeconds": 10,
+              "type": "REST"
+            },
+            {
+              "title": "Knees Up",
+              "durationSeconds": 30,
+              "type": "WORK"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

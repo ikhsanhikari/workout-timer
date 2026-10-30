@@ -1,0 +1,81 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Ambient circular glow backdrop -->
+    <path
+        android:fillColor="#15CCFF00"
+        android:pathData="M60,60m-50,0a50,50 0 1,1 100,0a50,50 0 1,1 -100,0" />
+
+    <!-- Dynamic Motion Trail Arcs -->
+    <path
+        android:strokeColor="#40CCFF00"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M38,78 C34,68 36,54 44,45" />
+    <path
+        android:strokeColor="#25CCFF00"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M32,82 C28,70 30,52 40,40" />
+
+    <!-- Head -->
+    <path
+        android:fillColor="#CCFF00"
+        android:pathData="M64,24m-7,0a7,7 0 1,1 14,0a7,7 0 1,1 -14,0" />
+
+    <!-- Torso (Athletic lean forward) -->
+    <path
+        android:strokeColor="#CCFF00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M62,33 L58,58" />
+
+    <!-- Arms (Sprinter action) -->
+    <!-- Front Arm pumped up -->
+    <path
+        android:strokeColor="#CCFF00"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M61,38 L76,46 L82,34" />
+    <!-- Back Arm driven back -->
+    <path
+        android:strokeColor="#80CCFF00"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M61,38 L46,48 L38,60" />
+
+    <!-- High Knee Leg (Lifted high 90 degrees) -->
+    <path
+        android:strokeColor="#CCFF00"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M58,58 L76,58 L78,82" />
+
+    <!-- Support Leg (Extending down driving into ground) -->
+    <path
+        android:strokeColor="#80CCFF00"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M58,58 L52,78 L54,98" />
+
+    <!-- Ground Impact Speed Ripples -->
+    <path
+        android:strokeColor="#40CCFF00"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M46,102 L62,102" />
+    <path
+        android:strokeColor="#20CCFF00"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M42,106 L66,106" />
+
+</vector>

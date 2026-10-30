@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <!-- Outer Cardio Heart Background -->
+    <path
+        android:fillColor="#15FF5252"
+        android:pathData="M36,60 C36,60 12,45 12,26 C12,16 19,10 28,10 C33,10 36,13 36,13 C36,13 39,10 44,10 C53,10 60,16 60,26 C60,45 36,60 36,60 Z" />
+    <!-- Dynamic ECG Pulse Wave -->
+    <path
+        android:strokeColor="#FF5252"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M8,36 L24,36 L28,24 L34,48 L40,18 L46,42 L50,36 L64,36" />
+    <!-- Aerodynamic Speed lines -->
+    <path
+        android:strokeColor="#FF8A80"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M22,54 L50,54 M30,60 L42,60" />
+</vector>
