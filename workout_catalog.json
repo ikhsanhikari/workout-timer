@@ -1,5 +1,5 @@
 {
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "lastUpdated": "2026-10-30T20:00:00Z",
   "templates": [
     {
@@ -1583,7 +1583,7 @@
     },
     {
       "id": "hikari-workout",
-      "name": "Hikari Workout",
+      "name": "Hikari Workout routine",
       "category": "Full Body",
       "accentColor": "#FFD600",
       "blocks": [
