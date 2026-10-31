@@ -262,16 +262,17 @@ class WorkoutBuilderViewModel @Inject constructor(
         recalculateStats()
     }
 
-    fun addExerciseFromTemplate(blockIndex: Int, template: ExerciseTemplate, type: IntervalType = IntervalType.WORK) {
+    fun addExerciseFromTemplate(blockIndex: Int, template: ExerciseTemplate, type: IntervalType? = null) {
         val blocks = _uiState.value.blocks.toMutableList()
         val block = blocks[blockIndex]
+        val resolvedType = type ?: template.resolveIntervalType()
         val newExercise = UiExercise(
             exercise = WorkoutExercise(
                 blockId = block.block.id,
                 orderIndex = block.exercises.size,
                 title = template.name,
                 durationSeconds = template.defaultDuration,
-                type = type,
+                type = resolvedType,
                 templateId = template.id
             ),
             resolvedMediaUri = template.mediaUri,
@@ -325,8 +326,14 @@ class WorkoutBuilderViewModel @Inject constructor(
     }
 
     fun updateExerciseTitle(blockIndex: Int, exerciseIndex: Int, title: String) {
+        val inferredType = resolveIntervalTypeFromTitle(title)
         updateExercise(blockIndex, exerciseIndex) { ex ->
-            ex.copy(exercise = ex.exercise.copy(title = title))
+            val updatedExercise = if (inferredType != null && inferredType != ex.exercise.type) {
+                ex.exercise.copy(title = title, type = inferredType)
+            } else {
+                ex.exercise.copy(title = title)
+            }
+            ex.copy(exercise = updatedExercise)
         }
         searchAutocomplete(title)
     }
@@ -360,6 +367,7 @@ class WorkoutBuilderViewModel @Inject constructor(
                 exercise = ex.exercise.copy(
                     title = template.name,
                     durationSeconds = template.defaultDuration,
+                    type = template.resolveIntervalType(),
                     templateId = template.id
                 ),
                 resolvedMediaUri = template.mediaUri,
