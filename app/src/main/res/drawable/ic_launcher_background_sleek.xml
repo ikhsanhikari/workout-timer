@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Deep Obsidian Dark Base -->
+    <path
+        android:fillColor="#0D0E12"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+
+    <!-- Outer Ambient Athletic Energy Glow (Volt Green Glow) -->
+    <path
+        android:fillColor="#15A4FF00"
+        android:pathData="M54,16 C74.98,16 92,33.02 92,54 C92,74.98 74.98,92 54,92 C33.02,92 16,74.98 16,54 C16,33.02 33.02,16 54,16 Z" />
+
+    <!-- Inner Ambient Activity Ring Glow (Electric Cyan Glow) -->
+    <path
+        android:fillColor="#1200F5EA"
+        android:pathData="M54,23 C71.12,23 85,36.88 85,54 C85,71.12 71.12,85 54,85 C36.88,85 23,71.12 23,54 C23,36.88 36.88,23 54,23 Z" />
+</vector>
