@@ -508,6 +508,18 @@ class WorkoutBuilderViewModel @Inject constructor(
         }
     }
 
+    fun deleteRoutine(onSuccess: () -> Unit) {
+        val id = routineId ?: return
+        viewModelScope.launch {
+            try {
+                repository.deleteRoutine(id)
+                onSuccess()
+            } catch (e: Exception) {
+                showSnackbar("Gagal menghapus: ${e.message}")
+            }
+        }
+    }
+
     fun clearNavigation() = _uiState.update { it.copy(navigateToPlayer = null) }
 
     fun dismissSnackbar() = _uiState.update { it.copy(snackbarMessage = null) }
