@@ -9,6 +9,7 @@ import com.workout.timer.data.media.MediaFileManager
 import com.workout.timer.data.model.*
 import com.workout.timer.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -81,7 +82,7 @@ class WorkoutBuilderViewModel @Inject constructor(
     val uiState: StateFlow<BuilderUiState> = _uiState.asStateFlow()
 
     val allTemplates: StateFlow<List<ExerciseTemplate>> = repository.observeAllTemplates()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
         if (routineId != null) {
@@ -103,9 +104,26 @@ class WorkoutBuilderViewModel @Inject constructor(
     }
 
     private fun loadExistingRoutine(id: Long) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val routine = repository.getRoutineById(id) ?: return@launch
             val blocksFlow = repository.observeBlocksWithExercises(id).first()
+
+            val sortedBlocks = blocksFlow.sortedBy { it.block.orderIndex }.map { blockWithEx ->
+                UiBlock(
+                    block = blockWithEx.block,
+                    exercises = blockWithEx.exercises.sortedBy { it.orderIndex }.map { ex ->
+                        UiExercise(
+                            exercise = ex,
+                            resolvedMediaUri = ex.customMediaUri,
+                            resolvedMediaType = ex.customMediaType
+                        )
+                    }
+                )
+            }
+            val totalDuration = sortedBlocks.sumOf { block ->
+                block.exercises.sumOf { it.exercise.durationSeconds } * block.block.repeatCount
+            }
+            val totalExercises = sortedBlocks.sumOf { it.exercises.size }
 
             _uiState.update { state ->
                 state.copy(
@@ -113,21 +131,11 @@ class WorkoutBuilderViewModel @Inject constructor(
                     routineName = routine.name,
                     category = routine.category,
                     accentColor = routine.accentColor,
-                    blocks = blocksFlow.sortedBy { it.block.orderIndex }.map { blockWithEx ->
-                        UiBlock(
-                            block = blockWithEx.block,
-                            exercises = blockWithEx.exercises.sortedBy { it.orderIndex }.map { ex ->
-                                UiExercise(
-                                    exercise = ex,
-                                    resolvedMediaUri = ex.customMediaUri,
-                                    resolvedMediaType = ex.customMediaType
-                                )
-                            }
-                        )
-                    }
+                    blocks = sortedBlocks,
+                    totalDurationSec = totalDuration,
+                    totalExercises = totalExercises
                 )
             }
-            recalculateStats()
         }
     }
 

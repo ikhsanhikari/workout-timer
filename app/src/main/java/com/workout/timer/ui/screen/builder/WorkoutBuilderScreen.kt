@@ -67,7 +67,6 @@ fun WorkoutBuilderScreen(
     viewModel: WorkoutBuilderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val allTemplates by viewModel.allTemplates.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
@@ -75,6 +74,7 @@ fun WorkoutBuilderScreen(
 
     // Master Library Picker state: Pair(blockIndex, exerciseIndex?)
     var libraryPickerTarget by remember { mutableStateOf<Pair<Int, Int?>?>(null) }
+    var focusedExerciseTarget by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     // Media picker & Camera recording state
     var pendingMediaBlockIndex by remember { mutableIntStateOf(-1) }
@@ -176,13 +176,27 @@ fun WorkoutBuilderScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = AccentWork,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
             // ── Routine Metadata Card ────────────────────────────────────────
             item {
                 RoutineMetadataCard(
@@ -219,55 +233,96 @@ fun WorkoutBuilderScreen(
 
             // ── Blocks ───────────────────────────────────────────────────────
             uiState.blocks.forEachIndexed { blockIndex, uiBlock ->
-                item(key = "block_${blockIndex}_${uiBlock.block.id}") {
-                    BlockCard(
+                item(key = "block_header_${blockIndex}_${uiBlock.block.id}") {
+                    BlockHeaderCard(
                         uiBlock = uiBlock,
                         blockIndex = blockIndex,
                         totalBlocks = uiState.blocks.size,
-                        autocompleteSuggestions = uiState.autocompleteSuggestions,
                         onToggleExpand = { viewModel.toggleBlockExpanded(blockIndex) },
                         onLabelChange = { viewModel.updateBlockLabel(blockIndex, it) },
                         onRepeatCountChange = { viewModel.updateBlockRepeatCount(blockIndex, it) },
                         onMoveUp = { viewModel.moveBlockUp(blockIndex) },
                         onMoveDown = { viewModel.moveBlockDown(blockIndex) },
                         onDuplicate = { viewModel.duplicateBlock(blockIndex) },
-                        onDelete = { viewModel.removeBlock(blockIndex) },
-                        onAddExercise = { type -> viewModel.addExercise(blockIndex, type) },
-                        onExerciseFocus = { exIdx -> viewModel.onExerciseFocused(blockIndex, exIdx) },
-                        onOpenLibraryPicker = { exIdx -> libraryPickerTarget = blockIndex to exIdx },
-                        onExerciseTitleChange = { exIdx, title ->
-                            viewModel.updateExerciseTitle(blockIndex, exIdx, title)
-                        },
-                        onExerciseDurationChange = { exIdx, sec ->
-                            viewModel.updateExerciseDuration(blockIndex, exIdx, sec)
-                        },
-                        onExerciseDurationAdd = { exIdx, addSec ->
-                            viewModel.addDurationPreset(blockIndex, exIdx, addSec)
-                        },
-                        onExerciseDurationSet = { exIdx, sec ->
-                            viewModel.setDurationPreset(blockIndex, exIdx, sec)
-                        },
-                        onExerciseTypeChange = { exIdx, type ->
-                            viewModel.updateExerciseType(blockIndex, exIdx, type)
-                        },
-                        onExerciseDuplicate = { exIdx -> viewModel.duplicateExercise(blockIndex, exIdx) },
-                        onExerciseDelete = { exIdx -> viewModel.removeExercise(blockIndex, exIdx) },
-                        onApplyTemplate = { exIdx, template ->
-                            viewModel.applyTemplate(blockIndex, exIdx, template)
-                        },
-                        onClearAutocomplete = viewModel::clearAutocomplete,
-                        onExercisePickMedia = { exIdx ->
-                            pendingMediaBlockIndex = blockIndex
-                            pendingMediaExerciseIndex = exIdx
-                            val currentEx = uiBlock.exercises.getOrNull(exIdx)
-                            targetExerciseHasMedia = currentEx?.resolvedMediaUri != null
-                            showMediaSourceSheet = true
-                        },
-                        onExerciseRemoveMedia = { exIdx ->
-                            viewModel.removeMediaFromExercise(blockIndex, exIdx)
-                        },
-                        modifier = Modifier.animateItem()
+                        onDelete = { viewModel.removeBlock(blockIndex) }
                     )
+                }
+
+                if (uiBlock.isExpanded) {
+                    itemsIndexed(
+                        items = uiBlock.exercises,
+                        key = { exIdx, uiEx -> "block_${uiBlock.block.id}_ex_${uiEx.exercise.id}_${exIdx}" }
+                    ) { exIdx, uiExercise ->
+                        val isFocused = focusedExerciseTarget == (blockIndex to exIdx)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            color = SurfaceCard
+                        ) {
+                            Column {
+                                ExerciseRow(
+                                    uiExercise = uiExercise,
+                                    exerciseIndex = exIdx,
+                                    isActive = isFocused,
+                                    autocompleteSuggestions = if (isFocused) uiState.autocompleteSuggestions else emptyList(),
+                                    onFocus = {
+                                        focusedExerciseTarget = blockIndex to exIdx
+                                        viewModel.onExerciseFocused(blockIndex, exIdx)
+                                    },
+                                    onOpenLibraryPicker = { libraryPickerTarget = blockIndex to exIdx },
+                                    onTitleChange = { title -> viewModel.updateExerciseTitle(blockIndex, exIdx, title) },
+                                    onDurationChange = { sec -> viewModel.updateExerciseDuration(blockIndex, exIdx, sec) },
+                                    onDurationAdd = { addSec -> viewModel.addDurationPreset(blockIndex, exIdx, addSec) },
+                                    onDurationSet = { sec -> viewModel.setDurationPreset(blockIndex, exIdx, sec) },
+                                    onTypeChange = { type -> viewModel.updateExerciseType(blockIndex, exIdx, type) },
+                                    onDuplicate = { viewModel.duplicateExercise(blockIndex, exIdx) },
+                                    onDelete = { viewModel.removeExercise(blockIndex, exIdx) },
+                                    onApplyTemplate = { template ->
+                                        viewModel.applyTemplate(blockIndex, exIdx, template)
+                                        focusedExerciseTarget = null
+                                    },
+                                    onClearAutocomplete = {
+                                        viewModel.clearAutocomplete()
+                                        focusedExerciseTarget = null
+                                    },
+                                    onPickMedia = {
+                                        pendingMediaBlockIndex = blockIndex
+                                        pendingMediaExerciseIndex = exIdx
+                                        val currentEx = uiBlock.exercises.getOrNull(exIdx)
+                                        targetExerciseHasMedia = currentEx?.resolvedMediaUri != null
+                                        showMediaSourceSheet = true
+                                    },
+                                    onRemoveMedia = {
+                                        viewModel.removeMediaFromExercise(blockIndex, exIdx)
+                                    }
+                                )
+                                if (exIdx < uiBlock.exercises.size - 1) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color = SurfaceElevated,
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item(key = "block_footer_${blockIndex}_${uiBlock.block.id}") {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 10.dp),
+                            shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp, topStart = 0.dp, topEnd = 0.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+                        ) {
+                            AddExerciseRow(
+                                onAddExercise = { type -> viewModel.addExercise(blockIndex, type) },
+                                onOpenLibraryPicker = { libraryPickerTarget = blockIndex to null }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -289,6 +344,7 @@ fun WorkoutBuilderScreen(
                     Text("Tambah Blok / Set Baru", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 }
             }
+        }
         }
 
         // ── Media Source Selector Bottom Sheet (Rekam Langsung / Galeri) ──
@@ -317,6 +373,7 @@ fun WorkoutBuilderScreen(
 
         // ── Exercise Library Picker Bottom Sheet (Kamus Gerakan Master 73 Gerakan) ──
         libraryPickerTarget?.let { (targetBlockIndex, targetExerciseIndex) ->
+            val allTemplates by viewModel.allTemplates.collectAsStateWithLifecycle()
             ExerciseLibraryPickerBottomSheet(
                 templates = allTemplates,
                 onDismiss = { libraryPickerTarget = null },
@@ -483,16 +540,18 @@ private fun RoutineMetadataCard(
                         colors = builderTextFieldColors(),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    DropdownMenu(
-                        expanded = showCategoryMenu,
-                        onDismissRequest = { showCategoryMenu = false },
-                        containerColor = SurfaceCard
-                    ) {
-                        PRESET_CATEGORIES.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { Text(cat, color = if (cat == category) AccentWork else TextPrimary) },
-                                onClick = { onCategoryChange(cat); showCategoryMenu = false }
-                            )
+                    if (showCategoryMenu) {
+                        DropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { showCategoryMenu = false },
+                            containerColor = SurfaceCard
+                        ) {
+                            PRESET_CATEGORIES.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat, color = if (cat == category) AccentWork else TextPrimary) },
+                                    onClick = { onCategoryChange(cat); showCategoryMenu = false }
+                                )
+                            }
                         }
                     }
                 }
@@ -532,15 +591,13 @@ private fun RoutineMetadataCard(
     }
 }
 
-// ── Block Card ───────────────────────────────────────────────────────────────
+// ── Block Header Card ────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BlockCard(
+private fun BlockHeaderCard(
     uiBlock: UiBlock,
     blockIndex: Int,
     totalBlocks: Int,
-    autocompleteSuggestions: List<ExerciseTemplate>,
     onToggleExpand: () -> Unit,
     onLabelChange: (String) -> Unit,
     onRepeatCountChange: (Int) -> Unit,
@@ -548,33 +605,23 @@ private fun BlockCard(
     onMoveDown: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
-    onAddExercise: (IntervalType) -> Unit,
-    onExerciseFocus: (Int) -> Unit,
-    onOpenLibraryPicker: (Int?) -> Unit,
-    onExerciseTitleChange: (Int, String) -> Unit,
-    onExerciseDurationChange: (Int, Int) -> Unit,
-    onExerciseDurationAdd: (Int, Int) -> Unit,
-    onExerciseDurationSet: (Int, Int) -> Unit,
-    onExerciseTypeChange: (Int, IntervalType) -> Unit,
-    onExerciseDuplicate: (Int) -> Unit,
-    onExerciseDelete: (Int) -> Unit,
-    onApplyTemplate: (Int, ExerciseTemplate) -> Unit,
-    onClearAutocomplete: () -> Unit,
-    onExercisePickMedia: (Int) -> Unit,
-    onExerciseRemoveMedia: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showBlockMenu by remember { mutableStateOf(false) }
-    var focusedExerciseIndex by remember { mutableStateOf<Int?>(null) }
-
     val isLoop = uiBlock.block.repeatCount > 1
+    val isExpanded = uiBlock.isExpanded
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(20.dp),
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = if (isExpanded) 0.dp else 8.dp),
+        shape = if (isExpanded) {
+            RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
+        } else {
+            RoundedCornerShape(20.dp)
+        },
         colors = CardDefaults.cardColors(containerColor = SurfaceCard)
     ) {
         Column {
@@ -626,41 +673,45 @@ private fun BlockCard(
                     IconButton(onClick = { showBlockMenu = true }, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Default.MoreVert, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
                     }
-                    DropdownMenu(
-                        expanded = showBlockMenu,
-                        onDismissRequest = { showBlockMenu = false },
-                        containerColor = SurfaceCard
-                    ) {
-                        if (blockIndex > 0) {
+                    if (showBlockMenu) {
+                        DropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { showBlockMenu = false },
+                            containerColor = SurfaceCard
+                        ) {
+                            if (blockIndex > 0) {
+                                DropdownMenuItem(
+                                    text = { Text("Pindah ke Atas", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Default.KeyboardArrowUp, null, tint = TextSecondary) },
+                                    onClick = { onMoveUp(); showBlockMenu = false }
+                                )
+                            }
+                            if (blockIndex < totalBlocks - 1) {
+                                DropdownMenuItem(
+                                    text = { Text("Pindah ke Bawah", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary) },
+                                    onClick = { onMoveDown(); showBlockMenu = false }
+                                )
+                            }
                             DropdownMenuItem(
-                                text = { Text("Pindah ke Atas", color = TextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.KeyboardArrowUp, null, tint = TextSecondary) },
-                                onClick = { onMoveUp(); showBlockMenu = false }
+                                text = { Text("Duplikasi Blok", color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
+                                onClick = { onDuplicate(); showBlockMenu = false }
                             )
+                            if (totalBlocks > 1) {
+                                DropdownMenuItem(
+                                    text = { Text("Hapus Blok", color = ColorDanger) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
+                                    onClick = { showDeleteConfirm = true; showBlockMenu = false }
+                                )
+                            }
                         }
-                        if (blockIndex < totalBlocks - 1) {
-                            DropdownMenuItem(
-                                text = { Text("Pindah ke Bawah", color = TextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary) },
-                                onClick = { onMoveDown(); showBlockMenu = false }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("Duplikasi Blok", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
-                            onClick = { onDuplicate(); showBlockMenu = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Hapus Blok", color = ColorDanger) },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
-                            onClick = { showDeleteConfirm = true; showBlockMenu = false }
-                        )
                     }
                 }
 
                 // Expand arrow
                 Icon(
-                    imageVector = if (uiBlock.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,
                     tint = TextTertiary,
                     modifier = Modifier.size(20.dp)
@@ -668,105 +719,56 @@ private fun BlockCard(
             }
 
             // ── Block Settings (Set Looping) ─────────────────────────────────
-            AnimatedVisibility(visible = uiBlock.isExpanded) {
-                Column {
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
+            if (isExpanded) {
+                HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
 
-                    // Label editor
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = uiBlock.block.label ?: "",
-                            onValueChange = onLabelChange,
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Label blok (opsional)...", color = TextTertiary, style = MaterialTheme.typography.bodySmall) },
-                            colors = builderTextFieldColors(),
-                            shape = RoundedCornerShape(10.dp),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary)
-                        )
+                // Label editor
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = uiBlock.block.label ?: "",
+                        onValueChange = onLabelChange,
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Label blok (opsional)...", color = TextTertiary, style = MaterialTheme.typography.bodySmall) },
+                        colors = builderTextFieldColors(),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary)
+                    )
 
-                        // Set count stepper
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Set", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = { onRepeatCountChange(uiBlock.block.repeatCount - 1) },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = uiBlock.block.repeatCount > 1
-                                ) {
-                                    Icon(Icons.Default.Remove, null, tint = if (uiBlock.block.repeatCount > 1) AccentWork else TextTertiary, modifier = Modifier.size(18.dp))
-                                }
-                                Text(
-                                    text = "${uiBlock.block.repeatCount}×",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (isLoop) AccentWork else TextPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.widthIn(min = 32.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                                IconButton(
-                                    onClick = { onRepeatCountChange(uiBlock.block.repeatCount + 1) },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = uiBlock.block.repeatCount < 20
-                                ) {
-                                    Icon(Icons.Default.Add, null, tint = AccentWork, modifier = Modifier.size(18.dp))
-                                }
+                    // Set count stepper
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Set", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { onRepeatCountChange(uiBlock.block.repeatCount - 1) },
+                                modifier = Modifier.size(32.dp),
+                                enabled = uiBlock.block.repeatCount > 1
+                            ) {
+                                Icon(Icons.Default.Remove, null, tint = if (uiBlock.block.repeatCount > 1) AccentWork else TextTertiary, modifier = Modifier.size(18.dp))
+                            }
+                            Text(
+                                text = "${uiBlock.block.repeatCount}×",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isLoop) AccentWork else TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.widthIn(min = 32.dp),
+                                textAlign = TextAlign.Center
+                            )
+                            IconButton(
+                                onClick = { onRepeatCountChange(uiBlock.block.repeatCount + 1) },
+                                modifier = Modifier.size(32.dp),
+                                enabled = uiBlock.block.repeatCount < 20
+                            ) {
+                                Icon(Icons.Default.Add, null, tint = AccentWork, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
-
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
-
-                    // ── Exercises ─────────────────────────────────────────────
-                    uiBlock.exercises.forEachIndexed { exIndex, uiExercise ->
-                        ExerciseRow(
-                            uiExercise = uiExercise,
-                            exerciseIndex = exIndex,
-                            isActive = focusedExerciseIndex == exIndex,
-                            autocompleteSuggestions = if (focusedExerciseIndex == exIndex) autocompleteSuggestions else emptyList(),
-                            onFocus = {
-                                focusedExerciseIndex = exIndex
-                                onExerciseFocus(exIndex)
-                            },
-                            onOpenLibraryPicker = { onOpenLibraryPicker(exIndex) },
-                            onTitleChange = { onExerciseTitleChange(exIndex, it) },
-                            onDurationChange = { onExerciseDurationChange(exIndex, it) },
-                            onDurationAdd = { onExerciseDurationAdd(exIndex, it) },
-                            onDurationSet = { onExerciseDurationSet(exIndex, it) },
-                            onTypeChange = { onExerciseTypeChange(exIndex, it) },
-                            onDuplicate = { onExerciseDuplicate(exIndex) },
-                            onDelete = { onExerciseDelete(exIndex) },
-                            onApplyTemplate = { template ->
-                                onApplyTemplate(exIndex, template)
-                                focusedExerciseIndex = null
-                            },
-                            onClearAutocomplete = {
-                                onClearAutocomplete()
-                                focusedExerciseIndex = null
-                            },
-                            onPickMedia = { onExercisePickMedia(exIndex) },
-                            onRemoveMedia = { onExerciseRemoveMedia(exIndex) }
-                        )
-                        if (exIndex < uiBlock.exercises.size - 1) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                color = SurfaceElevated,
-                                thickness = 0.5.dp
-                            )
-                        }
-                    }
-
-                    // ── Add Exercise Buttons ──────────────────────────────────
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
-                    AddExerciseRow(
-                        onAddExercise = onAddExercise,
-                        onOpenLibraryPicker = { onOpenLibraryPicker(null) }
-                    )
                 }
+                HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
             }
         }
     }
@@ -924,11 +926,12 @@ private fun ExerciseRow(
                 IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.MoreVert, null, tint = TextTertiary, modifier = Modifier.size(18.dp))
                 }
-                DropdownMenu(
-                    expanded = showExerciseMenu,
-                    onDismissRequest = { showExerciseMenu = false },
-                    containerColor = SurfaceCard
-                ) {
+                if (showExerciseMenu) {
+                    DropdownMenu(
+                        expanded = true,
+                        onDismissRequest = { showExerciseMenu = false },
+                        containerColor = SurfaceCard
+                    ) {
                     DropdownMenuItem(
                         text = { Text(if (hasMedia) "Ganti GIF / Video" else "Pasang GIF / Video", color = TextPrimary) },
                         leadingIcon = { Icon(Icons.Default.AttachFile, null, tint = AccentRest) },
@@ -953,15 +956,18 @@ private fun ExerciseRow(
                     )
                 }
             }
+            }
         }
 
         // Type picker row
-        AnimatedVisibility(visible = showTypeMenu) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+        if (showTypeMenu) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(IntervalType.entries, key = { it.name }) { type ->
+                IntervalType.entries.forEach { type ->
                     val typeColor = type.toAccentColor()
                     val isSelected = exercise.type == type
                     FilterChip(
@@ -994,7 +1000,7 @@ private fun ExerciseRow(
         }
 
         // Quick time presets (PRD 4.1.3) + Autocomplete Suggestions
-        AnimatedVisibility(visible = isActive) {
+        if (isActive) {
             Column {
                 // Autocomplete Suggestions (Kamus Master)
                 if (autocompleteSuggestions.isNotEmpty()) {
