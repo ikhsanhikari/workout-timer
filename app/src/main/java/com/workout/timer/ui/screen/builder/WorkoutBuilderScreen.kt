@@ -146,6 +146,13 @@ fun WorkoutBuilderScreen(
         }
     }
 
+    // Handle smooth back navigation on successful save
+    LaunchedEffect(uiState.isSaved) {
+        if (uiState.isSaved) {
+            onNavigateBack()
+        }
+    }
+
     // Handle snackbar
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->

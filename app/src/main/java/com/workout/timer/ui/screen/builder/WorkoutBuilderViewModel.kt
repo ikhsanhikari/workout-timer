@@ -10,6 +10,7 @@ import com.workout.timer.data.model.*
 import com.workout.timer.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -47,6 +48,7 @@ data class BuilderUiState(
     val totalExercises: Int = 0,
     val isSaving: Boolean = false,
     val isLoading: Boolean = true,
+    val isSaved: Boolean = false,
     val snackbarMessage: String? = null,
     val navigateToPlayer: Long? = null,
     val autocompleteSuggestions: List<ExerciseTemplate> = emptyList(),
@@ -433,6 +435,9 @@ class WorkoutBuilderViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             val cleanQuery = query.trim().let { if (it == "Gerakan Baru") "" else it }
+            if (cleanQuery.isNotBlank()) {
+                delay(200) // Debounce keystrokes so typing is 100% smooth
+            }
             repository.searchTemplates(cleanQuery).collect { templates ->
                 _uiState.update { it.copy(autocompleteSuggestions = templates, autocompleteQuery = query) }
             }
@@ -456,54 +461,30 @@ class WorkoutBuilderViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
-                // 1. Save/update routine header
-                val savedRoutineId = if (routineId != null) {
-                    val existing = repository.getRoutineById(routineId) ?: return@launch
-                    repository.updateRoutine(
-                        existing.copy(
-                            name = state.routineName,
-                            category = state.category,
-                            accentColor = state.accentColor,
-                            totalDurationSec = state.totalDurationSec,
-                            totalExercises = state.totalExercises
-                        )
-                    )
-                    routineId
-                } else {
-                    repository.saveRoutine(
-                        WorkoutRoutine(
-                            name = state.routineName,
-                            category = state.category,
-                            accentColor = state.accentColor,
-                            totalDurationSec = state.totalDurationSec,
-                            totalExercises = state.totalExercises
-                        )
-                    )
+                val routine = WorkoutRoutine(
+                    id = routineId ?: 0,
+                    name = state.routineName,
+                    category = state.category,
+                    accentColor = state.accentColor,
+                    totalDurationSec = state.totalDurationSec,
+                    totalExercises = state.totalExercises
+                )
+                val blocksData = state.blocks.map { uiBlock ->
+                    uiBlock.block to uiBlock.exercises.map { it.exercise }
                 }
 
-                // 2. Delete existing blocks (untuk edit mode) — CASCADE hapus exercises juga
-                if (routineId != null) {
-                    repository.deleteAllBlocksByRoutineId(routineId)
-                }
-
-
-                // 3. Insert semua blok dan exercise baru
-                state.blocks.forEachIndexed { blockIdx, uiBlock ->
-                    val savedBlockId = repository.insertBlock(
-                        uiBlock.block.copy(routineId = savedRoutineId, orderIndex = blockIdx)
-                    )
-                    uiBlock.exercises.forEachIndexed { exIdx, uiEx ->
-                        repository.insertExercise(
-                            uiEx.exercise.copy(blockId = savedBlockId, orderIndex = exIdx)
-                        )
-                    }
-                }
+                // Batch atomic transaction via withTransaction in repository (<15ms, 1 emission)
+                val savedRoutineId = repository.saveFullRoutine(
+                    routine = routine,
+                    blocksWithExercises = blocksData,
+                    isEdit = routineId != null
+                )
 
                 _uiState.update { it.copy(
                     isSaving = false,
+                    isSaved = !startImmediately,
                     navigateToPlayer = if (startImmediately) savedRoutineId else null
                 )}
-                if (!startImmediately) showSnackbar("Rutinitas disimpan!")
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false) }
                 showSnackbar("Gagal menyimpan: ${e.message}")

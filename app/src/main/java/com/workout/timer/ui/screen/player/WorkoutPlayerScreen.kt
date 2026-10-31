@@ -410,7 +410,9 @@ private fun DynamicExerciseIllustrationCard(
                         tint = Color.Unspecified,
                         modifier = Modifier
                             .size(105.dp)
-                            .offset(y = floatY.dp)
+                            .graphicsLayer {
+                                translationY = floatY.dp.toPx()
+                            }
                     )
                 }
 
@@ -1447,7 +1449,7 @@ private fun CircularProgressRing(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 80, easing = LinearEasing),
+        animationSpec = tween(durationMillis = 50, easing = LinearEasing),
         label = "RingProgressAnimation"
     )
 
