@@ -33,6 +33,7 @@ import com.workout.timer.data.model.BlockWithExercises
 import com.workout.timer.data.model.IntervalType
 import com.workout.timer.data.model.WorkoutExercise
 import com.workout.timer.data.model.WorkoutRoutine
+import com.workout.timer.ui.component.*
 import com.workout.timer.ui.theme.*
 
 /**
@@ -430,11 +431,22 @@ private fun DetailBlockCard(
                             }
                         }
                     }
-                    Text(
-                        text = "${exercises.size} gerakan · ${formatDuration(blockDurationSec)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${exercises.size} gerakan",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                        StatSlashDivider()
+                        Text(
+                            text = formatDuration(blockDurationSec),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
                 }
 
                 Icon(
@@ -479,7 +491,15 @@ private fun DetailBlockCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Diulang ${block.repeatCount}× · Total ${formatDuration(blockDurationSec)}",
+                                text = "Diulang ${block.repeatCount}×",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AccentWork
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            StatSlashDivider(tint = AccentWork.copy(alpha = 0.5f))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Total ${formatDuration(blockDurationSec)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = AccentWork
                             )
@@ -507,28 +527,20 @@ private fun DetailExerciseRow(exercise: WorkoutExercise) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Color dot indicator
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(accentColor)
+        // Athletic micro-pill with custom SVG
+        IntervalTypePill(
+            type = exercise.type,
+            isCompact = true
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = exercise.title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextPrimary,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = typeLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = accentColor.copy(alpha = 0.8f)
-            )
-        }
+        Text(
+            text = exercise.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
 
         // Duration badge
         Surface(

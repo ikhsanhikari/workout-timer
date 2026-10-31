@@ -37,6 +37,7 @@ import com.workout.timer.R
 import com.workout.timer.data.model.WorkoutRoutine
 import com.workout.timer.data.repository.SortOption
 import com.workout.timer.ui.theme.*
+import com.workout.timer.ui.component.*
 
 /**
  * Layar Home Dashboard (F-02) — Apple Fitness Aesthetic.
@@ -582,11 +583,7 @@ private fun SpotlightBanner(
                             text = formatDuration(featuredRoutine.totalDurationSec),
                             tint = Color.White.copy(alpha = 0.9f)
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(3.dp)
-                                .background(Color.White.copy(alpha = 0.5f), CircleShape)
-                        )
+                        StatSlashDivider()
                         StatChip(
                             iconRes = R.drawable.ic_intensity_lightning,
                             text = featuredRoutine.category.uppercase(),
@@ -704,14 +701,13 @@ private fun SearchBar(
                 modifier = Modifier.size(22.dp)
             )
 
-            // Active badge dot indicator
+            // Active filter counter indicator
             if (hasActiveFilters) {
-                Box(
+                FilterActiveCounter(
+                    count = 1,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 8.dp, end = 8.dp)
-                        .size(8.dp)
-                        .background(AccentWork, CircleShape)
+                        .padding(top = 4.dp, end = 4.dp)
                 )
             }
         }
@@ -1194,31 +1190,11 @@ private fun WorkoutCard(
                     verticalAlignment = Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        // Category badge with glowing dot
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = accentColor.copy(alpha = 0.16f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(accentColor)
-                                )
-                                Text(
-                                    text = routine.category.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = accentColor,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp
-                                )
-                            }
-                        }
+                        // Modern athletic category badge with custom SVG
+                        AthleticCategoryBadge(
+                            category = routine.category,
+                            accentColor = accentColor
+                        )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = routine.name,

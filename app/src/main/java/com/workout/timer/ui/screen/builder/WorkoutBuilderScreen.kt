@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workout.timer.data.model.*
 import com.workout.timer.ui.theme.*
+import com.workout.timer.ui.component.*
 
 /**
  * Layar Workout Builder (F-04) — Implementasi Milestone 2.
@@ -820,16 +821,14 @@ private fun ExerciseRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Type indicator dot
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(accentColor)
-                    .clickable { showTypeMenu = true }
+            // Athletic Interval Type Pill (Work, Rest, Warmup, Cooldown)
+            IntervalTypePill(
+                type = exercise.type,
+                isCompact = true,
+                onClick = { showTypeMenu = !showTypeMenu }
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             // Title field
             Box(modifier = Modifier.weight(1f)) {
@@ -1093,7 +1092,7 @@ private fun ExerciseRow(
                                             }
                                             template.targetMuscle?.let { muscle ->
                                                 Text(
-                                                    text = "🎯 $muscle · ${template.defaultDuration}s",
+                                                    text = "🎯 $muscle  /  ${template.defaultDuration}s",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = TextSecondary,
                                                     maxLines = 1,
@@ -1316,24 +1315,10 @@ private fun MediaSourceBottomSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(AccentWork, CircleShape)
-                )
-                Text(
-                    text = "PANDUAN GERAKAN LATIHAN",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AccentWork,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-            }
+            // Header with custom MediaGuideHeaderBadge
+            MediaGuideHeaderBadge(
+                title = "PANDUAN GERAKAN LATIHAN"
+            )
 
             Text(
                 text = "Pilih Sumber Video & Media",
@@ -1835,12 +1820,12 @@ private fun ExerciseLibraryPickerBottomSheet(
                                             )
                                         }
                                         Text(
-                                            text = "· ${template.defaultDuration}s",
+                                            text = "/  ${template.defaultDuration}s",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = TextTertiary
                                         )
                                         Text(
-                                            text = "· ${template.equipment ?: "Bodyweight"}",
+                                            text = "/  ${template.equipment ?: "Bodyweight"}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = TextTertiary
                                         )

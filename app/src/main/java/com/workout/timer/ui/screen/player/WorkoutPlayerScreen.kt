@@ -252,27 +252,27 @@ private fun getExerciseGuide(title: String, type: IntervalType): ExerciseVisualG
     return when {
         lower.contains("push up") || lower.contains("dip") || lower.contains("row") -> ExerciseVisualGuide(
             iconRes = R.drawable.ic_pose_push_up,
-            targetMuscles = "Dada • Bahu • Trisep • Punggung",
+            targetMuscles = "Dada / Bahu / Trisep / Punggung",
             coachTip = "Kunci otot inti, turunkan tubuh perlahan dan dorong kuat."
         )
         lower.contains("squat") || lower.contains("lunge") -> ExerciseVisualGuide(
             iconRes = R.drawable.ic_pose_squats,
-            targetMuscles = "Paha Depan • Glutes • Betis",
+            targetMuscles = "Paha Depan / Glutes / Betis",
             coachTip = "Beban pada tumit, jaga dada tegak dan lutut sejajar jari kaki."
         )
         lower.contains("plank") || lower.contains("crunch") || lower.contains("scissor") || lower.contains("back up") -> ExerciseVisualGuide(
             iconRes = R.drawable.ic_pose_plank,
-            targetMuscles = "Otot Perut • Inti Tubuh • Pinggang",
+            targetMuscles = "Otot Perut / Inti Tubuh / Pinggang",
             coachTip = "Pertahankan garis lurus dari bahu hingga tumit, jangan melengkung."
         )
         lower.contains("knee") || lower.contains("jump") || lower.contains("climber") || lower.contains("burpee") || lower.contains("swimmer") -> ExerciseVisualGuide(
             iconRes = R.drawable.ic_pose_high_knees,
-            targetMuscles = "Kardio • Kelincahan • Pembakaran Kalori",
+            targetMuscles = "Kardio / Kelincahan / Pembakaran Kalori",
             coachTip = "Angkat lutut setinggi pinggang, jaga ritme pernapasan konstan."
         )
         else -> ExerciseVisualGuide(
             iconRes = R.drawable.ic_pose_high_knees,
-            targetMuscles = "Seluruh Tubuh • Daya Tahan",
+            targetMuscles = "Seluruh Tubuh / Daya Tahan",
             coachTip = "Jaga postur tetap tegak dan pertahankan fokus penuh."
         )
     }
@@ -801,11 +801,11 @@ private fun WorkoutMediaContainer(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(accentColor)
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_media_guide_badge),
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -1734,7 +1734,7 @@ private fun PreparingView(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "${guide.targetMuscles} • ${firstEx.durationSeconds}s",
+                                    text = "${guide.targetMuscles}  /  ${firstEx.durationSeconds}s",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondary
                                 )
