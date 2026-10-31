@@ -184,9 +184,10 @@ class WorkoutTimerService : Service() {
                 val routine = workoutRepository.getRoutineById(routineId)
                 val routineName = routine?.name ?: "Workout"
                 val flatExercises = flattenRoutineUseCase(routineId)
+                val routineCategory = routine?.category ?: (flatExercises.firstOrNull()?.category ?: "Full Body")
 
                 if (flatExercises.isNotEmpty()) {
-                    timerEngine.startWorkout(routineId, routineName, flatExercises)
+                    timerEngine.startWorkout(routineId, routineName, flatExercises, routineCategory)
                 } else {
                     Log.w("WorkoutTimerService", "flatExercises is empty for routineId=$routineId")
                     stopWorkoutSession()

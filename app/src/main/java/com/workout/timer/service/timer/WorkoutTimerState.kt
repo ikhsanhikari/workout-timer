@@ -16,7 +16,8 @@ sealed interface WorkoutTimerState {
         val countdownSeconds: Int,
         val routineId: Long,
         val routineName: String,
-        val firstExercise: FlatExerciseItem?
+        val firstExercise: FlatExerciseItem?,
+        val category: String = "Full Body"
     ) : WorkoutTimerState
 
     /** Sedang melakukan gerakan (WARMUP, WORK, atau COOLDOWN) */

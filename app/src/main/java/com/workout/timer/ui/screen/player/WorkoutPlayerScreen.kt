@@ -1644,161 +1644,326 @@ private fun PreparingView(
         if (firstEx != null) getExerciseGuide(firstEx.title, firstEx.type) else null
     }
 
+    // Resolusi banner kategori atletik
+    val bannerRes = remember(state.category) {
+        getCategoryBannerRes(state.category)
+    }
+
+    // Warna aksen spesifik kategori untuk ambient glow & badge
+    val categoryColor = remember(state.category) {
+        when (state.category.lowercase().trim()) {
+            "cardio", "sprint" -> Color(0xFFFF9500) // Energetic Orange
+            "hiit", "tabata" -> AccentHighIntensity // Neon Crimson
+            "core", "abs" -> Color(0xFFFF375F) // Hot Coral / Core Red
+            "mobility", "stretch", "yoga" -> AccentCooldown // Electric Violet
+            "strength", "calisthenics" -> AccentWork // Volt Green
+            else -> AccentWork
+        }
+    }
+
+    // Subtle living zoom effect pada foto latar kategori
+    val infiniteTransition = rememberInfiniteTransition(label = "banner_zoom")
+    val bannerScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "banner_scale"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Ambient Amber Glow Canvas
+        // 1. FULL-BLEED CATEGORY ATHLETIC BACKGROUND BANNER
+        Image(
+            painter = painterResource(id = bannerRes),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = bannerScale
+                    scaleY = bannerScale
+                }
+        )
+
+        // 2. MULTI-LAYER CINEMATIC GRADIENT SCRIM (AMOLED CONTRAST)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Black.copy(alpha = 0.65f),
+                        0.30f to Color.Black.copy(alpha = 0.45f),
+                        0.60f to Color.Black.copy(alpha = 0.80f),
+                        1.0f to Color.Black.copy(alpha = 0.95f)
+                    )
+                )
+        )
+
+        // 3. AMBIENT RADIAL CATEGORY GLOW AROUND COUNTDOWN CIRCLE
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        AccentWarmup.copy(alpha = 0.22f),
+                        categoryColor.copy(alpha = 0.35f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width / 2f, size.height * 0.45f),
-                    radius = size.width * 0.75f
+                    center = Offset(size.width / 2f, size.height * 0.44f),
+                    radius = size.width * 0.70f
                 ),
-                radius = size.width * 0.75f,
-                center = Offset(size.width / 2f, size.height * 0.45f)
+                radius = size.width * 0.70f,
+                center = Offset(size.width / 2f, size.height * 0.44f)
             )
         }
 
+        // 4. MAIN CONTENT
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header
+            // Header Bar
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "GET READY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = AccentWarmup,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        text = state.routineName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                IconButton(
-                    onClick = onCancel,
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(SurfaceElevated, CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Batalkan", tint = TextPrimary)
-                }
-            }
-
-            // Center: Big Countdown + First Exercise Card
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Countdown circle
-                Box(
-                    modifier = Modifier.size(160.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawCircle(
-                            color = AccentWarmup.copy(alpha = 0.15f),
-                            radius = size.minDimension / 2f,
-                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-
-                    AnimatedContent(
-                        targetState = state.countdownSeconds,
-                        transitionSpec = {
-                            (scaleIn(initialScale = 0.4f) + fadeIn()) togetherWith (scaleOut(targetScale = 1.3f) + fadeOut())
-                        },
-                        label = "PreparingCountdown"
-                    ) { count ->
-                        Text(
-                            text = count.toString(),
-                            style = TextStyle(
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 92.sp,
-                                color = Color.White
-                            )
-                        )
-                    }
-                }
-
-                // First Exercise Preview Card with SVG pose
-                if (firstEx != null && guide != null) {
+                    // Category Tag Badge
                     Surface(
-                        shape = RoundedCornerShape(22.dp),
-                        color = SurfaceCard.copy(alpha = 0.9f),
-                        border = BorderStroke(1.dp, AccentWarmup.copy(alpha = 0.4f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        color = categoryColor.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.5f))
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(56.dp)
-                                    .background(AccentWarmup.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = guide.iconRes),
-                                    contentDescription = null,
-                                    tint = AccentWarmup,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "GERAKAN PERTAMA",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = AccentWarmup,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
-                                Text(
-                                    text = firstEx.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "${guide.targetMuscles}  /  ${firstEx.durationSeconds}s",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                            }
+                                    .size(6.dp)
+                                    .background(categoryColor, CircleShape)
+                            )
+                            Text(
+                                text = "${state.category.uppercase()} • GET READY",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = categoryColor,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.2.sp
+                            )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = state.routineName,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Batalkan",
+                        tint = Color.White
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // Center: Big High-Impact 3-2-1 Countdown Circle
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(190.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Outer decorative pulse halo
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawCircle(
+                            color = categoryColor.copy(alpha = 0.12f),
+                            radius = size.minDimension / 2f,
+                            style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        drawCircle(
+                            color = categoryColor.copy(alpha = 0.85f),
+                            radius = size.minDimension / 2f - 8.dp.toPx(),
+                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+
+                    // Inner frosted backdrop
+                    Box(
+                        modifier = Modifier
+                            .size(150.dp)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        Color.Black.copy(alpha = 0.7f),
+                                        Color.Black.copy(alpha = 0.4f)
+                                    )
+                                ),
+                                CircleShape
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = state.countdownSeconds,
+                            transitionSpec = {
+                                (scaleIn(initialScale = 0.3f, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(180))) togetherWith
+                                        (scaleOut(targetScale = 1.4f, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeOut(tween(180)))
+                            },
+                            label = "PreparingCountdown"
+                        ) { count ->
+                            Text(
+                                text = count.toString(),
+                                style = TextStyle(
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 96.sp,
+                                    color = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Subtitle tag under countdown
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.Black.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                ) {
+                    Text(
+                        text = "SIAPKAN POSISI",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            // Bottom: First Exercise Preview Card
+            if (firstEx != null) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = SurfaceCard.copy(alpha = 0.85f),
+                    border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Exercise icon / thumbnail container
+                        Box(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .background(categoryColor.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                                .border(1.dp, categoryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (guide != null) {
+                                Icon(
+                                    painter = painterResource(id = guide.iconRes),
+                                    contentDescription = null,
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(38.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_flame_streak),
+                                    contentDescription = null,
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "GERAKAN PERTAMA",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = categoryColor,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = "${firstEx.durationSeconds}s",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Text(
+                                text = firstEx.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            val subtitleText = when {
+                                !firstEx.targetMuscle.isNullOrBlank() -> firstEx.targetMuscle
+                                guide != null -> guide.targetMuscles
+                                else -> "Fokus pada teknik & postur tubuh"
+                            }
+                            Text(
+                                text = subtitleText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }
