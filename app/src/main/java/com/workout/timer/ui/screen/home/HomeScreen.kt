@@ -31,8 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.workout.timer.R
@@ -358,6 +362,144 @@ private fun HomeHeader(
 }
 
 @Composable
+private fun AestheticGridBackground(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+
+        // 1. Sleek Matte Dark Carbon / Slate Base Gradient
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color(0xFF141518),
+                    Color(0xFF16181D),
+                    Color(0xFF131417)
+                )
+            )
+        )
+
+        // 2. Blueprint Technical Grid Lines
+        val step = 22.dp.toPx()
+        val gridColor = Color(0xFF2A313E).copy(alpha = 0.28f)
+        val highlightGridColor = Color(0xFF384354).copy(alpha = 0.42f)
+
+        // Vertical blueprint lines
+        var x = 0f
+        var colIndex = 0
+        while (x <= width) {
+            val isMajor = colIndex % 4 == 0
+            drawLine(
+                color = if (isMajor) highlightGridColor else gridColor,
+                start = Offset(x, 0f),
+                end = Offset(x, height),
+                strokeWidth = if (isMajor) 1.2f else 0.8f
+            )
+            x += step
+            colIndex++
+        }
+
+        // Horizontal blueprint lines
+        var y = 0f
+        var rowIndex = 0
+        while (y <= height) {
+            val isMajor = rowIndex % 4 == 0
+            drawLine(
+                color = if (isMajor) highlightGridColor else gridColor,
+                start = Offset(0f, y),
+                end = Offset(width, y),
+                strokeWidth = if (isMajor) 1.2f else 0.8f
+            )
+            y += step
+            rowIndex++
+        }
+
+        // 3. Precision Technical Crosshairs (+)
+        val crossSize = 3.dp.toPx()
+        val crossColor = Color(0xFFFF6B35).copy(alpha = 0.40f)
+        val samplePoints = listOf(
+            Offset(step * 2, step * 1),
+            Offset(step * 2, height - step * 1),
+            Offset(step * 5, step * 2)
+        )
+        samplePoints.forEach { pt ->
+            drawLine(crossColor, Offset(pt.x - crossSize, pt.y), Offset(pt.x + crossSize, pt.y), 1.5f)
+            drawLine(crossColor, Offset(pt.x, pt.y - crossSize), Offset(pt.x, pt.y + crossSize), 1.5f)
+        }
+
+        // 4. Activity Ring Technical Radar & Stamina Amber Glow
+        // Ring is centered vertically, aligned 63.dp from the right edge
+        val ringCenterX = width - 63.dp.toPx()
+        val ringCenterY = height / 2f
+        val ringCenter = Offset(ringCenterX, ringCenterY)
+
+        // Ambient stamina ember radial glow behind the ring
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFFFF6B35).copy(alpha = 0.18f),
+                    Color(0xFFFF8C42).copy(alpha = 0.06f),
+                    Color.Transparent
+                ),
+                center = ringCenter,
+                radius = 75.dp.toPx()
+            ),
+            center = ringCenter,
+            radius = 75.dp.toPx()
+        )
+
+        // Concentric dashed radar circles
+        val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+        drawCircle(
+            color = Color(0xFF455062).copy(alpha = 0.42f),
+            center = ringCenter,
+            radius = 50.dp.toPx(),
+            style = Stroke(width = 1.dp.toPx(), pathEffect = dashedEffect)
+        )
+        drawCircle(
+            color = Color(0xFFFF6B35).copy(alpha = 0.22f),
+            center = ringCenter,
+            radius = 58.dp.toPx(),
+            style = Stroke(width = 0.8.dp.toPx())
+        )
+
+        // Technical corner brackets framing the ring area
+        val boxHalf = 44.dp.toPx()
+        val cornerLen = 7.dp.toPx()
+        val boxLeft = ringCenterX - boxHalf
+        val boxRight = ringCenterX + boxHalf
+        val boxTop = ringCenterY - boxHalf
+        val boxBottom = ringCenterY + boxHalf
+        val frameColor = Color(0xFF4A5568).copy(alpha = 0.38f)
+
+        // Top-left corner
+        drawLine(frameColor, Offset(boxLeft, boxTop), Offset(boxLeft + cornerLen, boxTop), 1.2f)
+        drawLine(frameColor, Offset(boxLeft, boxTop), Offset(boxLeft, boxTop + cornerLen), 1.2f)
+        // Top-right corner
+        drawLine(frameColor, Offset(boxRight, boxTop), Offset(boxRight - cornerLen, boxTop), 1.2f)
+        drawLine(frameColor, Offset(boxRight, boxTop), Offset(boxRight, boxTop + cornerLen), 1.2f)
+        // Bottom-left corner
+        drawLine(frameColor, Offset(boxLeft, boxBottom), Offset(boxLeft + cornerLen, boxBottom), 1.2f)
+        drawLine(frameColor, Offset(boxLeft, boxBottom), Offset(boxLeft, boxBottom - cornerLen), 1.2f)
+        // Bottom-right corner
+        drawLine(frameColor, Offset(boxRight, boxBottom), Offset(boxRight - cornerLen, boxBottom), 1.2f)
+        drawLine(frameColor, Offset(boxRight, boxBottom), Offset(boxRight, boxBottom - cornerLen), 1.2f)
+
+        // 5. Left-side gradient scrim to guarantee 100% crisp text readability
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color(0xFF141518).copy(alpha = 0.88f),
+                    Color(0xFF141518).copy(alpha = 0.55f),
+                    Color.Transparent
+                ),
+                startX = 0f,
+                endX = width * 0.65f
+            )
+        )
+    }
+}
+
+@Composable
 private fun WeeklyActivitySection(
     totalMinutes: Int,
     sessionCount: Int,
@@ -369,57 +511,21 @@ private fun WeeklyActivitySection(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF141518)),
         border = BorderStroke(
             width = 1.dp,
             brush = Brush.horizontalGradient(
                 listOf(
-                    AccentWork.copy(alpha = 0.50f),
-                    AccentRest.copy(alpha = 0.25f),
-                    Color.Transparent
+                    Color(0xFFFF6B35).copy(alpha = 0.45f),
+                    Color(0xFF384354).copy(alpha = 0.25f),
+                    Color(0xFF1E2129).copy(alpha = 0.15f)
                 )
             )
         )
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            // Background Athletic Workout Banner
-            Image(
-                painter = painterResource(id = R.drawable.banner_weekly_activity),
-                contentDescription = "Aktivitas Minggu Ini",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-
-            // Multi-Directional Scrim Gradients for text legibility & contrast
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.94f),
-                                Color.Black.copy(alpha = 0.82f),
-                                Color.Black.copy(alpha = 0.50f),
-                                Color.Black.copy(alpha = 0.20f)
-                            ),
-                            startX = 0f,
-                            endX = 850f
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.30f),
-                                Color.Black.copy(alpha = 0.65f)
-                            )
-                        )
-                    )
-            )
+            // Aesthetic Technical Blueprint Grid & Ambient Workout Glow
+            AestheticGridBackground(modifier = Modifier.matchParentSize())
 
             Row(
                 modifier = Modifier
@@ -431,8 +537,8 @@ private fun WeeklyActivitySection(
                 Column(modifier = Modifier.weight(1f)) {
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = AccentWork.copy(alpha = 0.16f),
-                        border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.50f))
+                        color = Color(0xFF221A16),
+                        border = BorderStroke(1.dp, Color(0xFFFF6B35).copy(alpha = 0.40f))
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -447,24 +553,26 @@ private fun WeeklyActivitySection(
                             Text(
                                 text = "AKTIVITAS MINGGU INI",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AccentWork,
+                                color = Color(0xFFFF8C42),
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp,
                                 fontSize = 10.sp
                             )
                         }
                     }
+
                     Spacer(modifier = Modifier.height(14.dp))
+
                     Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                         StatItem(
                             value = "$totalMinutes",
                             unit = "Menit Latihan",
-                            color = AccentWork
+                            color = Color.White
                         )
                         StatItem(
                             value = "$sessionCount",
                             unit = "Sesi Selesai",
-                            color = AccentRest
+                            color = Color(0xFFFF7A00)
                         )
                     }
                 }
@@ -473,16 +581,7 @@ private fun WeeklyActivitySection(
                 Box(
                     modifier = Modifier
                         .size(86.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.75f),
-                                    Color.Black.copy(alpha = 0.45f),
-                                    Color.Transparent
-                                )
-                            )
-                        ),
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
@@ -497,19 +596,28 @@ private fun WeeklyActivitySection(
 }
 
 @Composable
-private fun StatItem(value: String, unit: String, color: Color) {
+private fun StatItem(
+    value: String,
+    unit: String,
+    color: Color = Color.White,
+    unitColor: Color = Color(0xFFA6ABB8)
+) {
     Column {
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            color = color,
-            fontWeight = FontWeight.Black
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black
+            ),
+            color = color
         )
         Text(
             text = unit,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFFD1D1D6),
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = unitColor
         )
     }
 }
