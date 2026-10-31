@@ -778,18 +778,30 @@ private fun WorkoutMediaContainer(
                 mediaType == MediaType.GIF && !mediaUri.isNullOrBlank() -> {
                     val context = LocalContext.current
                     val imageRequest = remember(mediaUri) {
+                        val modelData = when {
+                            mediaUri.startsWith("file:///android_asset/") -> android.net.Uri.parse(mediaUri)
+                            mediaUri.startsWith("/") -> File(mediaUri)
+                            else -> mediaUri
+                        }
                         ImageRequest.Builder(context)
-                            .data(if (mediaUri.startsWith("/")) File(mediaUri) else mediaUri)
+                            .data(modelData)
                             .crossfade(true)
                             .build()
                     }
-                    AsyncImage(
-                        model = imageRequest,
-                        imageLoader = context.imageLoader,
-                        contentDescription = "Animasi Gerakan",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = imageRequest,
+                            imageLoader = context.imageLoader,
+                            contentDescription = "Animasi Gerakan",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 // Tidak ada media kustom: Tampilkan Apple Fitness+ Style Dynamic Motion Card

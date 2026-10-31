@@ -50,5 +50,11 @@ data class ExerciseLibraryItemDto(
     val coachTip: String? = null,
 
     @SerializedName("benefits")
-    val benefits: String? = null
+    val benefits: String? = null,
+
+    @SerializedName("gifUrl")
+    val gifUrl: String? = null,
+
+    @SerializedName("remoteGifUrl")
+    val remoteGifUrl: String? = null
 )

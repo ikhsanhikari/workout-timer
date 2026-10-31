@@ -7,6 +7,7 @@ import com.google.gson.Gson
 import com.workout.timer.data.database.WorkoutDatabase
 import com.workout.timer.data.model.ExerciseTemplate
 import com.workout.timer.data.model.IntervalType
+import com.workout.timer.data.model.MediaType
 import com.workout.timer.data.model.WorkoutBlock
 import com.workout.timer.data.model.WorkoutExercise
 import com.workout.timer.data.model.WorkoutRoutine
@@ -240,6 +241,22 @@ object CatalogImporter {
 
             for (item in library.exercises) {
                 val existing = templateDao.getByName(item.name)
+                val isCustomVideo = existing?.mediaType == MediaType.VIDEO && !existing.mediaUri.isNullOrBlank()
+                val targetMediaUri = if (isCustomVideo) {
+                    existing?.mediaUri
+                } else if (!item.gifUrl.isNullOrBlank()) {
+                    item.gifUrl
+                } else {
+                    existing?.mediaUri
+                }
+                val targetMediaType = if (isCustomVideo) {
+                    MediaType.VIDEO
+                } else if (!item.gifUrl.isNullOrBlank()) {
+                    MediaType.GIF
+                } else {
+                    existing?.mediaType ?: MediaType.NONE
+                }
+
                 if (existing != null) {
                     templateDao.update(
                         existing.copy(
@@ -250,7 +267,9 @@ object CatalogImporter {
                             difficulty = item.difficulty ?: existing.difficulty,
                             defaultDuration = if (existing.defaultDuration <= 0) item.defaultDuration else existing.defaultDuration,
                             coachTip = item.coachTip ?: existing.coachTip,
-                            benefits = item.benefits ?: existing.benefits
+                            benefits = item.benefits ?: existing.benefits,
+                            mediaUri = targetMediaUri,
+                            mediaType = targetMediaType
                         )
                     )
                 } else {
@@ -264,7 +283,9 @@ object CatalogImporter {
                             difficulty = item.difficulty,
                             defaultDuration = item.defaultDuration,
                             coachTip = item.coachTip,
-                            benefits = item.benefits
+                            benefits = item.benefits,
+                            mediaUri = targetMediaUri,
+                            mediaType = targetMediaType
                         )
                     )
                 }

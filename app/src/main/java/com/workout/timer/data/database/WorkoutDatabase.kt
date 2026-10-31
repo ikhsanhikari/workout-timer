@@ -120,5 +120,20 @@ abstract class WorkoutDatabase : RoomDatabase() {
                 }
             }
         }
+
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            super.onOpen(db)
+            INSTANCE?.let { database ->
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val templateDao = database.exerciseTemplateDao()
+                        val hasLocalMedia = templateDao.getAll().any { it.mediaUri?.startsWith("file:///android_asset/") == true }
+                        if (!hasLocalMedia) {
+                            CatalogImporter.importExerciseLibraryFromAsset(context, database, "exercise_library.json")
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+        }
     }
 }
