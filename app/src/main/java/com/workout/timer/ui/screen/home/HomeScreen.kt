@@ -368,78 +368,127 @@ private fun WeeklyActivitySection(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        border = androidx.compose.foundation.BorderStroke(
+        border = BorderStroke(
             width = 1.dp,
-            brush = Brush.verticalGradient(
+            brush = Brush.horizontalGradient(
                 listOf(
-                    AccentWork.copy(alpha = 0.25f),
-                    SurfaceElevated.copy(alpha = 0.2f),
+                    AccentWork.copy(alpha = 0.50f),
+                    AccentRest.copy(alpha = 0.25f),
                     Color.Transparent
                 )
             )
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_flame_streak),
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = "AKTIVITAS MINGGU INI",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                    StatItem(
-                        value = "$totalMinutes",
-                        unit = "Menit Latihan",
-                        color = AccentWork
-                    )
-                    StatItem(
-                        value = "$sessionCount",
-                        unit = "Sesi Selesai",
-                        color = AccentRest
-                    )
-                }
-            }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Background Athletic Workout Banner
+            Image(
+                painter = painterResource(id = R.drawable.banner_weekly_activity),
+                contentDescription = "Aktivitas Minggu Ini",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
 
-            // Production Multi-Ring Workout Activity Illustration
+            // Multi-Directional Scrim Gradients for text legibility & contrast
             Box(
                 modifier = Modifier
-                    .size(86.dp)
-                    .clip(CircleShape)
+                    .matchParentSize()
                     .background(
-                        Brush.radialGradient(
-                            listOf(
-                                AccentWork.copy(alpha = 0.18f),
-                                AccentRest.copy(alpha = 0.08f),
-                                Color.Transparent
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.94f),
+                                Color.Black.copy(alpha = 0.82f),
+                                Color.Black.copy(alpha = 0.50f),
+                                Color.Black.copy(alpha = 0.20f)
+                            ),
+                            startX = 0f,
+                            endX = 850f
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.30f),
+                                Color.Black.copy(alpha = 0.65f)
                             )
                         )
-                    ),
-                contentAlignment = Alignment.Center
+                    )
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_hero_activity_rings),
-                    contentDescription = "Workout Activity Rings",
-                    modifier = Modifier.size(80.dp)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = AccentWork.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.50f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_flame_streak),
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "AKTIVITAS MINGGU INI",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AccentWork,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                        StatItem(
+                            value = "$totalMinutes",
+                            unit = "Menit Latihan",
+                            color = AccentWork
+                        )
+                        StatItem(
+                            value = "$sessionCount",
+                            unit = "Sesi Selesai",
+                            color = AccentRest
+                        )
+                    }
+                }
+
+                // Production Multi-Ring Workout Activity Illustration
+                Box(
+                    modifier = Modifier
+                        .size(86.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.75f),
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Transparent
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_hero_activity_rings),
+                        contentDescription = "Workout Activity Rings",
+                        modifier = Modifier.size(80.dp)
+                    )
+                }
             }
         }
     }
@@ -457,7 +506,8 @@ private fun StatItem(value: String, unit: String, color: Color) {
         Text(
             text = unit,
             style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
+            color = Color(0xFFD1D1D6),
+            fontWeight = FontWeight.Medium
         )
     }
 }
