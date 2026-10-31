@@ -1295,10 +1295,10 @@ private fun WorkoutCard(
         colors = CardDefaults.cardColors(containerColor = SurfaceCard),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
-            brush = Brush.verticalGradient(
+            brush = Brush.horizontalGradient(
                 listOf(
-                    accentColor.copy(alpha = 0.35f),
-                    SurfaceElevated.copy(alpha = 0.25f),
+                    accentColor.copy(alpha = 0.45f),
+                    Color(0xFF384354).copy(alpha = 0.20f),
                     Color.Transparent
                 )
             )
@@ -1307,41 +1307,41 @@ private fun WorkoutCard(
         Box(modifier = Modifier.fillMaxWidth()) {
             val bannerRes = getCategoryBannerRes(routine.category)
 
-            // 1. Cinematic Background Image
+            // 1. Cinematic Background Image - Full Opacity (matches SpotlightBanner)
             Image(
                 painter = painterResource(id = bannerRes),
-                contentDescription = null,
+                contentDescription = routine.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .alpha(0.38f)
+                modifier = Modifier.matchParentSize()
             )
 
-            // 2. High-contrast Horizontal Scrim (heavy dark on left for text legibility, medium on right where athlete is)
+            // 2. High-contrast Horizontal Scrim (dark on left for text legibility, transparent on right for athlete)
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                SurfaceCard.copy(alpha = 0.98f),
-                                SurfaceCard.copy(alpha = 0.90f),
-                                SurfaceCard.copy(alpha = 0.68f),
-                                SurfaceCard.copy(alpha = 0.38f)
-                            )
+                                Color.Black.copy(alpha = 0.92f),
+                                Color.Black.copy(alpha = 0.78f),
+                                Color.Black.copy(alpha = 0.30f),
+                                Color.Transparent
+                            ),
+                            startX = 0f,
+                            endX = 820f
                         )
                     )
             )
 
-            // 3. Subtle vertical tint matching routine accent color
+            // 3. Subtle vertical gradient for bottom controls legibility
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                accentColor.copy(alpha = 0.08f),
-                                Color.Transparent
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.65f)
                             )
                         )
                     )
@@ -1363,13 +1363,17 @@ private fun WorkoutCard(
                         Text(
                             text = routine.name,
                             style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
+                            color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    IconButton(onClick = onFavoriteClick) {
+                    IconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             imageVector = if (routine.isFavorite) Icons.Filled.Favorite
                             else Icons.Outlined.FavoriteBorder,
@@ -1379,56 +1383,50 @@ private fun WorkoutCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Stats row with high-precision SVG icons
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatChip(
                         iconRes = R.drawable.ic_stat_timer,
-                        text = formatDuration(routine.totalDurationSec)
+                        text = formatDuration(routine.totalDurationSec),
+                        tint = Color.White.copy(alpha = 0.90f)
                     )
                     StatChip(
                         iconRes = R.drawable.ic_stat_exercises,
-                        text = "${routine.totalExercises} Gerakan"
+                        text = "${routine.totalExercises} Gerakan",
+                        tint = Color.White.copy(alpha = 0.90f)
                     )
                     routine.lastPerformedAt?.let {
                         StatChip(
                             iconRes = R.drawable.ic_stat_history,
-                            text = "Pernah dilakukan"
+                            text = "Pernah dilakukan",
+                            tint = Color.White.copy(alpha = 0.75f)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Start button: Compact Obsidian Action Pill (36dp)
-                Button(
+                // Play action button at bottom-left
+                Surface(
                     onClick = onStartClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF24242A),
-                        contentColor = TextPrimary
-                    ),
-                    border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    shape = CircleShape,
+                    color = accentColor,
+                    shadowElevation = 6.dp,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Mulai Latihan",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Mulai Latihan",
+                            tint = Color(0xFF101014),
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(start = 2.dp)
+                        )
+                    }
                 }
             }
         }
