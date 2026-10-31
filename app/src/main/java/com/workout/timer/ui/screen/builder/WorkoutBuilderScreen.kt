@@ -17,6 +17,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.onFocusChanged
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -64,10 +65,14 @@ fun WorkoutBuilderScreen(
     viewModel: WorkoutBuilderViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val allTemplates by viewModel.allTemplates.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Master Library Picker state: Pair(blockIndex, exerciseIndex?)
+    var libraryPickerTarget by remember { mutableStateOf<Pair<Int, Int?>?>(null) }
 
     // Media picker & Camera recording state
     var pendingMediaBlockIndex by remember { mutableIntStateOf(-1) }
@@ -219,6 +224,8 @@ fun WorkoutBuilderScreen(
                         onDuplicate = { viewModel.duplicateBlock(blockIndex) },
                         onDelete = { viewModel.removeBlock(blockIndex) },
                         onAddExercise = { type -> viewModel.addExercise(blockIndex, type) },
+                        onExerciseFocus = { exIdx -> viewModel.onExerciseFocused(blockIndex, exIdx) },
+                        onOpenLibraryPicker = { exIdx -> libraryPickerTarget = blockIndex to exIdx },
                         onExerciseTitleChange = { exIdx, title ->
                             viewModel.updateExerciseTitle(blockIndex, exIdx, title)
                         },
@@ -295,6 +302,22 @@ fun WorkoutBuilderScreen(
                     if (pendingMediaBlockIndex >= 0 && pendingMediaExerciseIndex >= 0) {
                         viewModel.removeMediaFromExercise(pendingMediaBlockIndex, pendingMediaExerciseIndex)
                     }
+                }
+            )
+        }
+
+        // ── Exercise Library Picker Bottom Sheet (Kamus Gerakan Master 73 Gerakan) ──
+        libraryPickerTarget?.let { (targetBlockIndex, targetExerciseIndex) ->
+            ExerciseLibraryPickerBottomSheet(
+                templates = allTemplates,
+                onDismiss = { libraryPickerTarget = null },
+                onSelectTemplate = { selectedTemplate ->
+                    if (targetExerciseIndex != null) {
+                        viewModel.applyTemplate(targetBlockIndex, targetExerciseIndex, selectedTemplate)
+                    } else {
+                        viewModel.addExerciseFromTemplate(targetBlockIndex, selectedTemplate)
+                    }
+                    libraryPickerTarget = null
                 }
             )
         }
@@ -517,6 +540,8 @@ private fun BlockCard(
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
     onAddExercise: (IntervalType) -> Unit,
+    onExerciseFocus: (Int) -> Unit,
+    onOpenLibraryPicker: (Int?) -> Unit,
     onExerciseTitleChange: (Int, String) -> Unit,
     onExerciseDurationChange: (Int, Int) -> Unit,
     onExerciseDurationAdd: (Int, Int) -> Unit,
@@ -694,7 +719,11 @@ private fun BlockCard(
                             exerciseIndex = exIndex,
                             isActive = focusedExerciseIndex == exIndex,
                             autocompleteSuggestions = if (focusedExerciseIndex == exIndex) autocompleteSuggestions else emptyList(),
-                            onFocus = { focusedExerciseIndex = exIndex },
+                            onFocus = {
+                                focusedExerciseIndex = exIndex
+                                onExerciseFocus(exIndex)
+                            },
+                            onOpenLibraryPicker = { onOpenLibraryPicker(exIndex) },
                             onTitleChange = { onExerciseTitleChange(exIndex, it) },
                             onDurationChange = { onExerciseDurationChange(exIndex, it) },
                             onDurationAdd = { onExerciseDurationAdd(exIndex, it) },
@@ -724,7 +753,10 @@ private fun BlockCard(
 
                     // ── Add Exercise Buttons ──────────────────────────────────
                     HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
-                    AddExerciseRow(onAddExercise = onAddExercise)
+                    AddExerciseRow(
+                        onAddExercise = onAddExercise,
+                        onOpenLibraryPicker = { onOpenLibraryPicker(null) }
+                    )
                 }
             }
         }
@@ -761,6 +793,7 @@ private fun ExerciseRow(
     isActive: Boolean,
     autocompleteSuggestions: List<ExerciseTemplate>,
     onFocus: () -> Unit,
+    onOpenLibraryPicker: () -> Unit,
     onTitleChange: (String) -> Unit,
     onDurationChange: (Int) -> Unit,
     onDurationAdd: (Int) -> Unit,
@@ -803,9 +836,21 @@ private fun ExerciseRow(
                 OutlinedTextField(
                     value = exercise.title,
                     onValueChange = onTitleChange,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { if (it.isFocused) onFocus() },
                     placeholder = {
                         Text("Nama gerakan...", color = TextTertiary, style = MaterialTheme.typography.bodyMedium)
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = onOpenLibraryPicker, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.MenuBook,
+                                contentDescription = "Pilih dari Kamus Master",
+                                tint = AccentWork.copy(alpha = 0.85f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     },
                     colors = builderTextFieldColors(),
                     shape = RoundedCornerShape(8.dp),
@@ -813,68 +858,6 @@ private fun ExerciseRow(
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
                 )
-                // Autocomplete dropdown
-                DropdownMenu(
-                    expanded = autocompleteSuggestions.isNotEmpty() && isActive,
-                    onDismissRequest = onClearAutocomplete,
-                    containerColor = SurfaceElevated
-                ) {
-                    autocompleteSuggestions.forEach { template ->
-                        DropdownMenuItem(
-                            text = {
-                                Column(modifier = Modifier.padding(vertical = 2.dp)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Text(
-                                            template.name,
-                                            color = TextPrimary,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        template.difficulty?.let { diff ->
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = when (diff.lowercase()) {
-                                                    "beginner" -> AccentWork.copy(alpha = 0.2f)
-                                                    "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
-                                                    else -> AccentRest.copy(alpha = 0.2f)
-                                                }
-                                            ) {
-                                                Text(
-                                                    text = diff,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = when (diff.lowercase()) {
-                                                        "beginner" -> AccentWork
-                                                        "intermediate" -> AccentWarmup
-                                                        else -> AccentRest
-                                                    },
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                    template.targetMuscle?.let { muscle ->
-                                        Text(
-                                            text = "🎯 $muscle",
-                                            color = TextSecondary,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    Text(
-                                        text = "${template.defaultDuration}s · ${template.equipment ?: "Bodyweight"}",
-                                        color = TextTertiary,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            },
-                            onClick = { onApplyTemplate(template) }
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -998,9 +981,140 @@ private fun ExerciseRow(
             }
         }
 
-        // Quick time presets (PRD 4.1.3)
+        // Quick time presets (PRD 4.1.3) + Autocomplete Suggestions
         AnimatedVisibility(visible = isActive) {
             Column {
+                // Autocomplete Suggestions (Kamus Master)
+                if (autocompleteSuggestions.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+                        border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.35f))
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = AccentWork,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Kamus Master (${autocompleteSuggestions.size})",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AccentWork,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onClearAutocomplete,
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, "Tutup", tint = TextTertiary, modifier = Modifier.size(13.dp))
+                                }
+                            }
+
+                            autocompleteSuggestions.take(4).forEach { template ->
+                                Surface(
+                                    onClick = { onApplyTemplate(template) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF1E1E24),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp),
+                                    border = BorderStroke(0.5.dp, SurfaceBorder.copy(alpha = 0.4f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(30.dp)
+                                                .background(AccentWork.copy(alpha = 0.15f), RoundedCornerShape(6.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (template.mediaUri != null) Icons.Default.PlayCircle else Icons.Default.FitnessCenter,
+                                                contentDescription = null,
+                                                tint = AccentWork,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = template.name,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = TextPrimary,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                template.difficulty?.let { diff ->
+                                                    Surface(
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        color = when (diff.lowercase()) {
+                                                            "beginner" -> AccentWork.copy(alpha = 0.2f)
+                                                            "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
+                                                            else -> AccentRest.copy(alpha = 0.2f)
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            text = diff,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = when (diff.lowercase()) {
+                                                                "beginner" -> AccentWork
+                                                                "intermediate" -> AccentWarmup
+                                                                else -> AccentRest
+                                                            },
+                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            template.targetMuscle?.let { muscle ->
+                                                Text(
+                                                    text = "🎯 $muscle · ${template.defaultDuration}s",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = TextSecondary,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.Default.AddCircleOutline,
+                                            contentDescription = "Pilih",
+                                            tint = AccentWork,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Presets row
                 Row(
                     modifier = Modifier.padding(start = 38.dp, end = 16.dp, bottom = 8.dp),
@@ -1067,31 +1181,62 @@ private fun ExerciseRow(
 // ── Add Exercise Row ─────────────────────────────────────────────────────────
 
 @Composable
-private fun AddExerciseRow(onAddExercise: (IntervalType) -> Unit) {
-    Row(
+private fun AddExerciseRow(
+    onAddExercise: (IntervalType) -> Unit,
+    onOpenLibraryPicker: () -> Unit
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        listOf(
-            IntervalType.WORK to "Gerakan",
-            IntervalType.REST to "Istirahat",
-            IntervalType.WARMUP to "Warmup",
-            IntervalType.COOLDOWN to "Cooldown"
-        ).forEach { (type, label) ->
-            val color = type.toAccentColor()
-            OutlinedButton(
-                onClick = { onAddExercise(type) },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = color)
-            ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        // Quick Browse from Master Library button
+        Button(
+            onClick = onOpenLibraryPicker,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentWork.copy(alpha = 0.15f),
+                contentColor = AccentWork
+            ),
+            border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.4f)),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+        ) {
+            Icon(Icons.Default.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "Pilih dari Kamus Master (Auto-Sync)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                IntervalType.WORK to "Manual",
+                IntervalType.REST to "Istirahat",
+                IntervalType.WARMUP to "Warmup",
+                IntervalType.COOLDOWN to "Cooldown"
+            ).forEach { (type, label) ->
+                val color = type.toAccentColor()
+                OutlinedButton(
+                    onClick = { onAddExercise(type) },
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
+                    border = BorderStroke(1.dp, color.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = color)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, fontSize = 11.sp)
+                }
             }
         }
     }
@@ -1432,3 +1577,288 @@ private fun MediaSourceBottomSheet(
         }
     }
 }
+
+// ── Exercise Library Picker Bottom Sheet (Master Data Kamus Gerakan) ────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExerciseLibraryPickerBottomSheet(
+    templates: List<ExerciseTemplate>,
+    onDismiss: () -> Unit,
+    onSelectTemplate: (ExerciseTemplate) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    val categories = remember(templates) {
+        listOf("Semua") + templates.mapNotNull { it.category }.distinct().sorted()
+    }
+
+    val filteredTemplates = remember(templates, searchQuery, selectedCategory) {
+        templates.filter { tmpl ->
+            val matchQuery = searchQuery.isBlank() ||
+                tmpl.name.contains(searchQuery, ignoreCase = true) ||
+                (tmpl.targetMuscle?.contains(searchQuery, ignoreCase = true) == true) ||
+                (tmpl.primaryMuscle?.contains(searchQuery, ignoreCase = true) == true) ||
+                (tmpl.equipment?.contains(searchQuery, ignoreCase = true) == true)
+            val matchCategory = selectedCategory == null || selectedCategory == "Semua" ||
+                tmpl.category.equals(selectedCategory, ignoreCase = true)
+            matchQuery && matchCategory
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceCard,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextTertiary) },
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Kamus Gerakan Master",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = AccentWork.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "${filteredTemplates.size} item",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AccentWork,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Pilih gerakan terstandarisasi untuk rutinitas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Tutup", tint = TextSecondary)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Cari gerakan, otot, alat...", color = TextTertiary) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = AccentWork) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, null, tint = TextTertiary)
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = builderTextFieldColors()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Category Chips
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(categories) { cat ->
+                    val isSelected = (selectedCategory == null && cat == "Semua") || selectedCategory == cat
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategory = if (cat == "Semua") null else cat },
+                        label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AccentWork,
+                            selectedLabelColor = Color.Black,
+                            containerColor = SurfaceElevated,
+                            labelColor = TextSecondary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Exercise List or Empty State
+            if (filteredTemplates.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SearchOff,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            text = "Tidak ada gerakan ditemukan",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "Coba kata kunci lain atau pilih kategori 'Semua'",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextTertiary
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    items(filteredTemplates, key = { it.id }) { template ->
+                        Surface(
+                            onClick = { onSelectTemplate(template) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = SurfaceElevated,
+                            border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Category Icon
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            when (template.category?.lowercase()) {
+                                                "cardio", "hiit" -> AccentWork.copy(alpha = 0.15f)
+                                                "core" -> AccentWarmup.copy(alpha = 0.15f)
+                                                else -> AccentRest.copy(alpha = 0.15f)
+                                            },
+                                            RoundedCornerShape(10.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (template.mediaUri != null) Icons.Default.PlayCircle else Icons.Default.FitnessCenter,
+                                        contentDescription = null,
+                                        tint = when (template.category?.lowercase()) {
+                                            "cardio", "hiit" -> AccentWork
+                                            "core" -> AccentWarmup
+                                            else -> AccentRest
+                                        },
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = template.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        template.difficulty?.let { diff ->
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = when (diff.lowercase()) {
+                                                    "beginner" -> AccentWork.copy(alpha = 0.2f)
+                                                    "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
+                                                    else -> AccentRest.copy(alpha = 0.2f)
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = diff,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = when (diff.lowercase()) {
+                                                        "beginner" -> AccentWork
+                                                        "intermediate" -> AccentWarmup
+                                                        else -> AccentRest
+                                                    },
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        template.targetMuscle?.let { muscle ->
+                                            Text(
+                                                text = "🎯 $muscle",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Text(
+                                            text = "· ${template.defaultDuration}s",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextTertiary
+                                        )
+                                        Text(
+                                            text = "· ${template.equipment ?: "Bodyweight"}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextTertiary
+                                        )
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.AddCircleOutline,
+                                    contentDescription = "Pilih",
+                                    tint = AccentWork,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

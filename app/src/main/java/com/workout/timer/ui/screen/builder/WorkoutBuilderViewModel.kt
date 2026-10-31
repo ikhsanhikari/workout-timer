@@ -9,6 +9,7 @@ import com.workout.timer.data.media.MediaFileManager
 import com.workout.timer.data.model.*
 import com.workout.timer.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -76,6 +77,9 @@ class WorkoutBuilderViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(BuilderUiState())
     val uiState: StateFlow<BuilderUiState> = _uiState.asStateFlow()
+
+    val allTemplates: StateFlow<List<ExerciseTemplate>> = repository.observeAllTemplates()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         if (routineId != null) {
@@ -248,6 +252,30 @@ class WorkoutBuilderViewModel @Inject constructor(
         recalculateStats()
     }
 
+    fun addExerciseFromTemplate(blockIndex: Int, template: ExerciseTemplate, type: IntervalType = IntervalType.WORK) {
+        val blocks = _uiState.value.blocks.toMutableList()
+        val block = blocks[blockIndex]
+        val newExercise = UiExercise(
+            exercise = WorkoutExercise(
+                blockId = block.block.id,
+                orderIndex = block.exercises.size,
+                title = template.name,
+                durationSeconds = template.defaultDuration,
+                type = type,
+                templateId = template.id
+            ),
+            resolvedMediaUri = template.mediaUri,
+            resolvedMediaType = template.mediaType,
+            thumbnailUri = template.thumbnailUri
+        )
+        blocks[blockIndex] = block.copy(exercises = block.exercises + newExercise)
+        _uiState.update { it.copy(blocks = blocks) }
+        recalculateStats()
+        viewModelScope.launch {
+            repository.incrementTemplateUsage(template.id)
+        }
+    }
+
     fun removeExercise(blockIndex: Int, exerciseIndex: Int) {
         val blocks = _uiState.value.blocks.toMutableList()
         val block = blocks[blockIndex]
@@ -279,15 +307,18 @@ class WorkoutBuilderViewModel @Inject constructor(
         recalculateStats()
     }
 
+    fun onExerciseFocused(blockIndex: Int, exerciseIndex: Int) {
+        val currentTitle = _uiState.value.blocks.getOrNull(blockIndex)
+            ?.exercises?.getOrNull(exerciseIndex)?.exercise?.title.orEmpty()
+        val query = if (currentTitle == "Gerakan Baru") "" else currentTitle
+        searchAutocomplete(query)
+    }
+
     fun updateExerciseTitle(blockIndex: Int, exerciseIndex: Int, title: String) {
         updateExercise(blockIndex, exerciseIndex) { ex ->
             ex.copy(exercise = ex.exercise.copy(title = title))
         }
-        if (title.length >= 2) {
-            searchAutocomplete(title)
-        } else {
-            clearAutocomplete()
-        }
+        searchAutocomplete(title)
     }
 
     fun updateExerciseDuration(blockIndex: Int, exerciseIndex: Int, seconds: Int) {
@@ -396,15 +427,20 @@ class WorkoutBuilderViewModel @Inject constructor(
 
     // ── Autocomplete ────────────────────────────────────────────────────────
 
-    private fun searchAutocomplete(query: String) {
-        viewModelScope.launch {
-            repository.searchTemplates(query).collect { templates ->
+    private var searchJob: Job? = null
+
+    fun searchAutocomplete(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            val cleanQuery = query.trim().let { if (it == "Gerakan Baru") "" else it }
+            repository.searchTemplates(cleanQuery).collect { templates ->
                 _uiState.update { it.copy(autocompleteSuggestions = templates, autocompleteQuery = query) }
             }
         }
     }
 
     fun clearAutocomplete() {
+        searchJob?.cancel()
         _uiState.update { it.copy(autocompleteSuggestions = emptyList(), autocompleteQuery = "") }
     }
 
