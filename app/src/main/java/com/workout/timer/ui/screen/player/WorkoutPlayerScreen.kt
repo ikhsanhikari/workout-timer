@@ -34,9 +34,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -479,9 +482,9 @@ private fun ActiveWorkoutView(
         currentExercise.mediaType
     }
 
-    // Ambient living background glow & watermark motion
+    // Ambient living background glow & watermark motion (isolated State to prevent recomposition storm)
     val infiniteTransition = rememberInfiniteTransition(label = "player_ambient")
-    val pulseGlow by infiniteTransition.animateFloat(
+    val pulseGlow = infiniteTransition.animateFloat(
         initialValue = 0.12f,
         targetValue = 0.28f,
         animationSpec = infiniteRepeatable(
@@ -490,7 +493,7 @@ private fun ActiveWorkoutView(
         ),
         label = "glow_alpha"
     )
-    val floatWatermarkY by infiniteTransition.animateFloat(
+    val floatWatermarkY = infiniteTransition.animateFloat(
         initialValue = -6f,
         targetValue = 6f,
         animationSpec = infiniteRepeatable(
@@ -500,13 +503,21 @@ private fun ActiveWorkoutView(
         label = "watermark_float"
     )
 
+    // Tactile haptic feedback for sweat-proof workout experience
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(remainingSeconds) {
+        if (remainingSeconds in 1..3 && !isPaused) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Living Ambient Radial Glow Canvas behind the entire workout
+        // Living Ambient Radial Glow Canvas behind the entire workout (read in DrawScope only)
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        accentColor.copy(alpha = pulseGlow),
+                        accentColor.copy(alpha = pulseGlow.value),
                         Color.Transparent
                     ),
                     center = center,
@@ -517,7 +528,7 @@ private fun ActiveWorkoutView(
             )
         }
 
-        // Faint stylized pose silhouette in background
+        // Faint stylized pose silhouette in background (graphicsLayer translation avoids recomposition)
         val bgGuide = getExerciseGuide(currentExercise.title, intervalType)
         Icon(
             painter = painterResource(id = bgGuide.iconRes),
@@ -526,7 +537,9 @@ private fun ActiveWorkoutView(
             modifier = Modifier
                 .size(340.dp)
                 .align(Alignment.Center)
-                .offset(y = floatWatermarkY.dp)
+                .graphicsLayer {
+                    translationY = floatWatermarkY.value.dp.toPx()
+                }
         )
 
         if (isLandscape) {
@@ -592,7 +605,10 @@ private fun ActiveWorkoutView(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                    onClick = onTogglePause
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTogglePause()
+                                    }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -672,7 +688,10 @@ private fun ActiveWorkoutView(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onTogglePause
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onTogglePause()
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1284,58 +1303,66 @@ private fun BottomPlaybackControls(
     onPrevious: () -> Unit,
     onAddRest: (() -> Unit)? = null
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Tombol khusus fase REST: +15 Detik dan Skip Rest (Compact Obsidian Pills)
+        // Tombol khusus fase REST: +15 Detik dan Skip Rest (Large Ergonomic Pills)
         if (intervalType == IntervalType.REST && onAddRest != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = onAddRest,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onAddRest()
+                    },
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp),
-                    shape = RoundedCornerShape(19.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        .height(46.dp),
+                    shape = RoundedCornerShape(23.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E1E22),
+                        containerColor = Color(0xFF1E1E24),
                         contentColor = TextPrimary
                     ),
-                    border = BorderStroke(1.dp, Color(0xFF383842))
+                    border = BorderStroke(1.2.dp, Color(0xFF383844))
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = AccentRest, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, tint = AccentRest, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("+15 Detik", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextPrimary)
+                    Text("+15 Detik", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
                 }
 
                 Button(
-                    onClick = onSkip,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSkip()
+                    },
                     modifier = Modifier
                         .weight(1f)
-                        .height(38.dp),
-                    shape = RoundedCornerShape(19.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        .height(46.dp),
+                    shape = RoundedCornerShape(23.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF222228),
+                        containerColor = Color(0xFF22222A),
                         contentColor = TextPrimary
                     ),
-                    border = BorderStroke(1.dp, AccentRest.copy(alpha = 0.45f))
+                    border = BorderStroke(1.2.dp, AccentRest.copy(alpha = 0.65f))
                 ) {
-                    Text("Mulai Sekarang", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
+                    Text("Mulai Sekarang", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Icon(Icons.Default.SkipNext, contentDescription = null, tint = AccentRest, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = null, tint = AccentRest, modifier = Modifier.size(18.dp))
                 }
             }
         }
 
         // Floating Control Bar (Compact & Sleek Obsidian Dock)
         Surface(
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(24.dp),
             color = Color(0xEE161618),
             border = BorderStroke(1.dp, Color(0x403A3A42)),
             modifier = Modifier.fillMaxWidth()
@@ -1343,55 +1370,64 @@ private fun BottomPlaybackControls(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                    .padding(horizontal = 22.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Previous Button
+                // Previous Button (48dp Touch Target)
                 IconButton(
-                    onClick = onPrevious,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onPrevious()
+                    },
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(Color(0xFF1F1F23), CircleShape)
+                        .size(48.dp)
+                        .background(Color(0xFF202026), CircleShape)
                 ) {
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Sebelumnya",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        tint = TextPrimary.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Primary Play/Pause Button (52dp Dark Titanium with Accent Border)
+                // Primary Play/Pause Button (60dp Dark Titanium with Accent Border)
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(60.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF24242A))
-                        .border(BorderStroke(1.5.dp, accentColor.copy(alpha = 0.85f)), CircleShape)
-                        .clickable(onClick = onTogglePause),
+                        .background(Color(0xFF262630))
+                        .border(BorderStroke(2.dp, accentColor), CircleShape)
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onTogglePause()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                         contentDescription = if (isPaused) "Lanjutkan" else "Jeda",
                         tint = accentColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
-                // Next / Skip Button
+                // Next / Skip Button (48dp Touch Target)
                 IconButton(
-                    onClick = onSkip,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSkip()
+                    },
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(Color(0xFF1F1F23), CircleShape)
+                        .size(48.dp)
+                        .background(Color(0xFF202026), CircleShape)
                 ) {
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Lewati",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        tint = TextPrimary.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -1517,17 +1553,20 @@ private fun CircularProgressRing(
 private fun HoldToStopButton(
     onStopConfirmed: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var holdProgress by remember { mutableFloatStateOf(0f) }
     var isHolding by remember { mutableStateOf(false) }
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             val startTime = System.currentTimeMillis()
             val holdDuration = 1500L
             while (isHolding) {
                 val elapsed = System.currentTimeMillis() - startTime
                 holdProgress = (elapsed.toFloat() / holdDuration).coerceIn(0f, 1f)
                 if (holdProgress >= 1f) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onStopConfirmed()
                     break
                 }
@@ -1540,9 +1579,10 @@ private fun HoldToStopButton(
 
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(44.dp)
             .clip(CircleShape)
-            .background(SurfaceElevated)
+            .background(Color(0xFF222228))
+            .border(BorderStroke(1.dp, if (isHolding) AccentHighIntensity.copy(alpha = 0.6f) else Color(0xFF32323A)), CircleShape)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -1556,7 +1596,7 @@ private fun HoldToStopButton(
     ) {
         if (holdProgress > 0f) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val stroke = 3.dp.toPx()
+                val stroke = 3.5.dp.toPx()
                 drawArc(
                     color = AccentHighIntensity,
                     startAngle = -90f,
@@ -1573,7 +1613,7 @@ private fun HoldToStopButton(
             Icons.Default.Stop,
             contentDescription = "Tahan untuk berhenti",
             tint = if (isHolding) AccentHighIntensity else TextSecondary,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(20.dp)
         )
     }
 }

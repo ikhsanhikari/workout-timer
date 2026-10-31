@@ -811,6 +811,7 @@ private fun ExerciseRow(
     val exercise = uiExercise.exercise
     val accentColor = exercise.type.toAccentColor()
     val hasMedia = uiExercise.resolvedMediaUri != null && uiExercise.resolvedMediaType != MediaType.NONE
+    val haptic = LocalHapticFeedback.current
     var showTypeMenu by remember { mutableStateOf(false) }
     var showExerciseMenu by remember { mutableStateOf(false) }
 
@@ -953,12 +954,16 @@ private fun ExerciseRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(IntervalType.entries) { type ->
+                items(IntervalType.entries, key = { it.name }) { type ->
                     val typeColor = type.toAccentColor()
                     val isSelected = exercise.type == type
                     FilterChip(
                         selected = isSelected,
-                        onClick = { onTypeChange(type); showTypeMenu = false },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onTypeChange(type)
+                            showTypeMenu = false
+                        },
                         label = {
                             Text(
                                 when (type) {
@@ -1573,6 +1578,7 @@ private fun ExerciseLibraryPickerBottomSheet(
     onDismiss: () -> Unit,
     onSelectTemplate: (ExerciseTemplate) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
 
@@ -1675,11 +1681,14 @@ private fun ExerciseLibraryPickerBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = PaddingValues(vertical = 4.dp)
             ) {
-                items(categories) { cat ->
+                items(categories, key = { "picker_cat_$it" }) { cat ->
                     val isSelected = (selectedCategory == null && cat == "Semua") || selectedCategory == cat
                     FilterChip(
                         selected = isSelected,
-                        onClick = { selectedCategory = if (cat == "Semua") null else cat },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            selectedCategory = if (cat == "Semua") null else cat
+                        },
                         label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AccentWork,
@@ -1733,7 +1742,10 @@ private fun ExerciseLibraryPickerBottomSheet(
                 ) {
                     items(filteredTemplates, key = { it.id }) { template ->
                         Surface(
-                            onClick = { onSelectTemplate(template) },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSelectTemplate(template)
+                            },
                             shape = RoundedCornerShape(14.dp),
                             color = SurfaceElevated,
                             border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f))

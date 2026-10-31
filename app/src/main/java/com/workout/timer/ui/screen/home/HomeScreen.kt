@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -782,7 +784,7 @@ private fun CategoryRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // "Semua" pill
-        item {
+        item(key = "cat_pill_all") {
             CategoryPill(
                 label = "Semua",
                 isSelected = selectedCategory == null,
@@ -791,7 +793,7 @@ private fun CategoryRow(
         }
 
         // Specific category pills
-        items(categories) { category ->
+        items(categories, key = { "cat_pill_$it" }) { category ->
             CategoryPill(
                 label = category,
                 isSelected = selectedCategory == category,
@@ -807,6 +809,7 @@ private fun CategoryPill(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -818,7 +821,10 @@ private fun CategoryPill(
                 ),
                 RoundedCornerShape(20.dp)
             )
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(horizontal = 14.dp, vertical = 7.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -851,7 +857,7 @@ private fun ActiveFilterRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (selectedDuration != DurationFilter.ALL) {
-            item {
+            item(key = "active_filter_duration") {
                 ActiveTagChip(
                     text = "Durasi: ${selectedDuration.label}",
                     onDismiss = onResetDuration
@@ -860,7 +866,7 @@ private fun ActiveFilterRow(
         }
 
         if (selectedSort != SortOption.CREATED_AT) {
-            item {
+            item(key = "active_filter_sort") {
                 val sortLabel = when (selectedSort) {
                     SortOption.FAVORITE -> "Favorit"
                     SortOption.LAST_PERFORMED -> "Terakhir Dilakukan"
@@ -875,7 +881,7 @@ private fun ActiveFilterRow(
         }
 
         if (selectedDuration != DurationFilter.ALL && selectedSort != SortOption.CREATED_AT) {
-            item {
+            item(key = "active_filter_reset_all") {
                 Text(
                     text = "Hapus Semua",
                     style = MaterialTheme.typography.labelSmall,

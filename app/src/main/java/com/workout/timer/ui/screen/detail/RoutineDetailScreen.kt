@@ -20,7 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +58,8 @@ fun RoutineDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val routine = uiState.routine
 
+    val haptic = LocalHapticFeedback.current
+
     Scaffold(
         containerColor = BackgroundPrimary,
         topBar = {
@@ -68,7 +72,10 @@ fun RoutineDetailScreen(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(SurfaceCard.copy(alpha = 0.8f))
-                            .clickable(onClick = onNavigateBack),
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavigateBack()
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -87,7 +94,10 @@ fun RoutineDetailScreen(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(SurfaceCard.copy(alpha = 0.8f))
-                            .clickable { routine?.let { viewModel.toggleFavorite() } },
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                routine?.let { viewModel.toggleFavorite() }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -105,7 +115,10 @@ fun RoutineDetailScreen(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(SurfaceCard.copy(alpha = 0.8f))
-                            .clickable(onClick = onNavigateToEdit),
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavigateToEdit()
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -126,7 +139,10 @@ fun RoutineDetailScreen(
                     runCatching { Color(android.graphics.Color.parseColor(r.accentColor)) }
                         .getOrDefault(AccentWork)
                 } ?: AccentWork,
-                onStart = onNavigateToPlayer
+                onStart = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToPlayer()
+                }
             )
         }
     ) { paddingValues ->
@@ -146,7 +162,7 @@ fun RoutineDetailScreen(
                 )
             ) {
                 // ── Hero Header ──────────────────────────────────────────────
-                item {
+                item(key = "detail_hero_header") {
                     routine?.let {
                         DetailHeroHeader(
                             routine = it,
@@ -157,7 +173,7 @@ fun RoutineDetailScreen(
                 }
 
                 // ── Blocks Section Label ─────────────────────────────────────
-                item {
+                item(key = "detail_blocks_label") {
                     Text(
                         text = "Struktur Latihan",
                         style = MaterialTheme.typography.titleMedium,
@@ -167,7 +183,10 @@ fun RoutineDetailScreen(
                 }
 
                 // ── Blocks List ──────────────────────────────────────────────
-                itemsIndexed(uiState.blocks) { blockIndex, blockWithEx ->
+                itemsIndexed(
+                    items = uiState.blocks,
+                    key = { index, b -> if (b.block.id > 0) "block_${b.block.id}" else "block_$index" }
+                ) { blockIndex, blockWithEx ->
                     DetailBlockCard(
                         blockWithExercises = blockWithEx,
                         blockIndex = blockIndex
@@ -587,11 +606,11 @@ private fun BottomStartBar(
                     enabled = isReady,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, if (isReady) accentColor.copy(alpha = 0.5f) else Color.Transparent),
+                        .height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    border = BorderStroke(1.2.dp, if (isReady) accentColor.copy(alpha = 0.7f) else Color.Transparent),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF24242A),
+                        containerColor = if (isReady) Color(0xFF262630) else SurfaceElevated,
                         contentColor = TextPrimary,
                         disabledContainerColor = SurfaceElevated,
                         disabledContentColor = TextTertiary
@@ -601,14 +620,14 @@ private fun BottomStartBar(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
                         tint = if (isReady) accentColor else TextTertiary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Mulai Latihan",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp,
                         color = if (isReady) TextPrimary else TextTertiary
                     )
                 }
