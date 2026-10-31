@@ -253,6 +253,8 @@ class WorkoutRepository @Inject constructor(
     }
 
     suspend fun getTemplateById(id: Long): ExerciseTemplate? = templateDao.getById(id)
+
+    suspend fun getTemplateByName(name: String): ExerciseTemplate? = templateDao.getByName(name)
 }
 
 /** Opsi pengurutan untuk daftar rutinitas di Home Dashboard (F-03). */

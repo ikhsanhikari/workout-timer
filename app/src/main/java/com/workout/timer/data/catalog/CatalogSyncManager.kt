@@ -17,7 +17,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed interface SyncResult {
-    data class Success(val newVersion: Int, val updatedCount: Int) : SyncResult
+    data class Success(val newVersion: Int, val updatedCount: Int, val details: String? = null) : SyncResult
     data class AlreadyUpToDate(val currentVersion: Int) : SyncResult
     data class Error(val message: String) : SyncResult
     object NoNetwork : SyncResult
@@ -47,6 +47,12 @@ class CatalogSyncManager @Inject constructor(
         const val FALLBACK_CATALOG_URL =
             "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/master/workout_catalog.json"
 
+        const val DEFAULT_EXERCISE_LIBRARY_URL =
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/main/exercise_library.json"
+
+        const val FALLBACK_EXERCISE_LIBRARY_URL =
+            "https://raw.githubusercontent.com/ikhsanhikari/workout-timer/master/exercise_library.json"
+
         private const val TIMEOUT_MS = 10_000
     }
 
@@ -63,7 +69,7 @@ class CatalogSyncManager @Inject constructor(
     }
 
     /**
-     * Melakukan pengecekan dan sinkronisasi katalog dari server GitHub.
+     * Melakukan pengecekan dan sinkronisasi seluruh data (Katalog Rutinitas + Kamus Gerakan) dari GitHub.
      */
     suspend fun sync(
         force: Boolean = false,
@@ -75,7 +81,7 @@ class CatalogSyncManager @Inject constructor(
         }
 
         val targetUrl = overrideUrl
-            ?: userPreferences.getCatalogUrl()
+            ?: userPreferences.getCatalogUrl()?.takeIf { !it.contains("Nurikhsan/workout-v2") }
             ?: DEFAULT_CATALOG_URL
 
         Log.d(TAG, "Memulai sinkronisasi katalog dari: $targetUrl")
@@ -83,46 +89,98 @@ class CatalogSyncManager @Inject constructor(
         try {
             var jsonString: String? = fetchJsonString(targetUrl)
 
-            // Jika URL default mengembalikan null/404, coba fallback ke branch main
+            // Jika URL default mengembalikan null/404, coba fallback ke branch master
             if (jsonString == null && overrideUrl == null && userPreferences.getCatalogUrl() == null) {
-                Log.d(TAG, "Mencoba fallback branch main: $FALLBACK_CATALOG_URL")
+                Log.d(TAG, "Mencoba fallback branch master: $FALLBACK_CATALOG_URL")
                 jsonString = fetchJsonString(FALLBACK_CATALOG_URL)
             }
 
-            if (jsonString == null) {
-                return@withContext SyncResult.Error("File katalog belum ditemukan di server GitHub.")
+            var catalogUpdated = false
+            var updatedRoutineCount = 0
+            var catalogVersion = userPreferences.getCatalogVersion()
+
+            if (jsonString != null) {
+                val remoteCatalog = CatalogImporter.parseCatalogJson(jsonString)
+                if (remoteCatalog != null) {
+                    val localVersion = userPreferences.getCatalogVersion()
+                    if (force || remoteCatalog.catalogVersion > localVersion) {
+                        updatedRoutineCount = CatalogImporter.importCatalog(
+                            database = database,
+                            catalog = remoteCatalog,
+                            onlyIfMissing = false
+                        )
+                        catalogVersion = remoteCatalog.catalogVersion
+                        userPreferences.saveCatalogVersion(remoteCatalog.catalogVersion)
+                        catalogUpdated = true
+                        Log.i(TAG, "Katalog rutinitas berhasil diperbarui ke v$catalogVersion.")
+                    }
+                }
             }
 
-            val remoteCatalog = CatalogImporter.parseCatalogJson(jsonString)
-                ?: return@withContext SyncResult.Error("Gagal membaca format JSON dari server.")
+            // Sync Master Kamus Gerakan (exercise_library.json)
+            val libraryResult = syncExerciseLibrary(force = force)
+            val libraryUpdated = libraryResult is SyncResult.Success
 
-            val localVersion = userPreferences.getCatalogVersion()
-
-            Log.d(TAG, "Versi Lokal: $localVersion | Versi Remote: ${remoteCatalog.catalogVersion}")
-
-            if (!force && remoteCatalog.catalogVersion <= localVersion) {
-                Log.d(TAG, "Katalog lokal sudah yang terbaru (Versi $localVersion). Tidak ada pembaruan.")
-                return@withContext SyncResult.AlreadyUpToDate(localVersion)
+            if (catalogUpdated || libraryUpdated) {
+                userPreferences.recordSyncTimestamp()
+                val details = if (libraryUpdated) "Katalog & Kamus Gerakan terupdate" else "$updatedRoutineCount rutinitas terupdate"
+                SyncResult.Success(
+                    newVersion = catalogVersion,
+                    updatedCount = updatedRoutineCount,
+                    details = details
+                )
+            } else {
+                SyncResult.AlreadyUpToDate(catalogVersion)
             }
-
-            // Jalankan transaksi update ke Room Database
-            val updatedCount = CatalogImporter.importCatalog(
-                database = database,
-                catalog = remoteCatalog,
-                onlyIfMissing = false
-            )
-
-            // Simpan nomor versi baru & waktu sync
-            userPreferences.saveCatalogVersion(remoteCatalog.catalogVersion)
-            userPreferences.recordSyncTimestamp()
-
-            Log.i(TAG, "Sinkronisasi sukses! Versi baru: ${remoteCatalog.catalogVersion}, $updatedCount rutinitas diproses.")
-            SyncResult.Success(newVersion = remoteCatalog.catalogVersion, updatedCount = updatedCount)
 
         } catch (e: Exception) {
             val errorMsg = "Koneksi gagal: ${e.localizedMessage ?: e.message}"
             Log.e(TAG, errorMsg, e)
             SyncResult.Error(errorMsg)
+        }
+    }
+
+    /**
+     * Menyinkronkan Master Kamus Gerakan dari GitHub.
+     */
+    suspend fun syncExerciseLibrary(
+        force: Boolean = false,
+        overrideUrl: String? = null
+    ): SyncResult = withContext(Dispatchers.IO) {
+        if (!isNetworkAvailable()) {
+            return@withContext SyncResult.NoNetwork
+        }
+
+        val targetUrl = overrideUrl
+            ?: userPreferences.getExerciseLibraryUrl()?.takeIf { !it.contains("Nurikhsan/workout-v2") }
+            ?: DEFAULT_EXERCISE_LIBRARY_URL
+
+        try {
+            var jsonString: String? = fetchJsonString(targetUrl)
+            if (jsonString == null && overrideUrl == null && userPreferences.getExerciseLibraryUrl() == null) {
+                jsonString = fetchJsonString(FALLBACK_EXERCISE_LIBRARY_URL)
+            }
+
+            if (jsonString == null) {
+                return@withContext SyncResult.Error("File exercise library tidak ditemukan di GitHub.")
+            }
+
+            val remoteLibrary = CatalogImporter.parseExerciseLibraryJson(jsonString)
+                ?: return@withContext SyncResult.Error("Format JSON exercise library tidak valid.")
+
+            val localVersion = userPreferences.getExerciseLibraryVersion()
+            if (!force && remoteLibrary.libraryVersion <= localVersion) {
+                return@withContext SyncResult.AlreadyUpToDate(localVersion)
+            }
+
+            val updatedCount = CatalogImporter.importExerciseLibrary(database, remoteLibrary)
+            userPreferences.saveExerciseLibraryVersion(remoteLibrary.libraryVersion)
+
+            Log.i(TAG, "Master Kamus Gerakan sukses disinkronkan: $updatedCount gerakan (v${remoteLibrary.libraryVersion}).")
+            SyncResult.Success(newVersion = remoteLibrary.libraryVersion, updatedCount = updatedCount)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gagal sinkronisasi kamus gerakan: ${e.message}", e)
+            SyncResult.Error(e.localizedMessage ?: "Gagal sync kamus gerakan")
         }
     }
 

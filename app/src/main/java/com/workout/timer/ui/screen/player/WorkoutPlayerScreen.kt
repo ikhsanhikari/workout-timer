@@ -294,6 +294,18 @@ private fun DynamicExerciseIllustrationCard(
         getExerciseGuide(currentExercise.title, intervalType)
     }
 
+    val activeTargetMuscles = if (isRest) {
+        nextExercise?.targetMuscle ?: guide.targetMuscles
+    } else {
+        currentExercise.targetMuscle ?: guide.targetMuscles
+    }
+
+    val activeCoachTip = if (isRest) {
+        nextExercise?.coachTip ?: guide.coachTip
+    } else {
+        currentExercise.coachTip ?: guide.coachTip
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "illustration_float")
     val floatY by infiniteTransition.animateFloat(
         initialValue = -4f,
@@ -372,7 +384,7 @@ private fun DynamicExerciseIllustrationCard(
                         color = SurfaceElevated
                     ) {
                         Text(
-                            text = "🎯 ${guide.targetMuscles}",
+                            text = "🎯 $activeTargetMuscles",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = TextSecondary,
@@ -412,7 +424,7 @@ private fun DynamicExerciseIllustrationCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "💡 ${guide.coachTip}",
+                        text = "💡 $activeCoachTip",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         textAlign = TextAlign.Center,

@@ -55,5 +55,26 @@ data class ExerciseTemplate(
     val lastUsedAt: Long = System.currentTimeMillis(),
 
     /** Berapa kali template ini sudah digunakan di berbagai rutinitas. */
-    val usageCount: Int = 0
+    val usageCount: Int = 0,
+
+    /** Kategori gerakan (Cardio, Strength, Core, Mobility, Recovery). */
+    val category: String? = null,
+
+    /** Target otot spesifik (misal: "Dada • Bahu • Trisep"). */
+    val targetMuscle: String? = null,
+
+    /** Grup otot utama untuk filter (Chest, Legs / Glutes, Abs / Core, Back, Full Body / Cardio). */
+    val primaryMuscle: String? = null,
+
+    /** Peralatan yang dibutuhkan (misal: "Tanpa Alat (Bodyweight)", "Matras", "Dumbbell"). */
+    val equipment: String? = null,
+
+    /** Tingkat kesulitan (Beginner, Intermediate, Advanced). */
+    val difficulty: String? = null,
+
+    /** Tips instruktur profesional saat melakukan gerakan ini. */
+    val coachTip: String? = null,
+
+    /** Manfaat kesehatan / biomekanik dari gerakan ini. */
+    val benefits: String? = null
 )

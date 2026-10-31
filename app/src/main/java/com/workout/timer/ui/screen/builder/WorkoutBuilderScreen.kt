@@ -822,10 +822,53 @@ private fun ExerciseRow(
                     autocompleteSuggestions.forEach { template ->
                         DropdownMenuItem(
                             text = {
-                                Column {
-                                    Text(template.name, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
-                                    Text("${template.defaultDuration}s · ${template.usageCount}× dipakai",
-                                        color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                                Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            template.name,
+                                            color = TextPrimary,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        template.difficulty?.let { diff ->
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = when (diff.lowercase()) {
+                                                    "beginner" -> AccentWork.copy(alpha = 0.2f)
+                                                    "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
+                                                    else -> AccentRest.copy(alpha = 0.2f)
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = diff,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = when (diff.lowercase()) {
+                                                        "beginner" -> AccentWork
+                                                        "intermediate" -> AccentWarmup
+                                                        else -> AccentRest
+                                                    },
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    template.targetMuscle?.let { muscle ->
+                                        Text(
+                                            text = "🎯 $muscle",
+                                            color = TextSecondary,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "${template.defaultDuration}s · ${template.equipment ?: "Bodyweight"}",
+                                        color = TextTertiary,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
                                 }
                             },
                             onClick = { onApplyTemplate(template) }

@@ -6,6 +6,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.workout.timer.data.catalog.CatalogImporter
 import com.workout.timer.data.database.dao.*
@@ -17,8 +18,8 @@ import kotlinx.coroutines.launch
 /**
  * Room Database utama aplikasi.
  *
- * Versi: 2 (Mendukung 16 Rutinitas Preset Ilmiah Dunia & Kamus Template Lengkap).
- * Data diisi secara dinamis dari assets/default_catalog.json dan dapat diperbarui via server.
+ * Versi: 3 (Mendukung Master Kamus Gerakan & 16 Rutinitas Preset Ilmiah Dunia).
+ * Data diisi secara dinamis dari assets (default_catalog.json & exercise_library.json) dan dapat diperbarui via server.
  */
 @Database(
     entities = [
@@ -27,7 +28,7 @@ import kotlinx.coroutines.launch
         WorkoutExercise::class,
         ExerciseTemplate::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(WorkoutTypeConverters::class)
@@ -40,6 +41,18 @@ abstract class WorkoutDatabase : RoomDatabase() {
 
     companion object {
         const val DATABASE_NAME = "workout_timer.db"
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN category TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN targetMuscle TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN primaryMuscle TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN equipment TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN difficulty TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN coachTip TEXT")
+                db.execSQL("ALTER TABLE exercise_templates ADD COLUMN benefits TEXT")
+            }
+        }
 
         @Volatile
         private var INSTANCE: WorkoutDatabase? = null
@@ -56,6 +69,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(PrepopulateCallback(context.applicationContext, scope))
+                    .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
@@ -65,7 +79,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
 
         /**
          * Mengisi database dengan Kamus Template Gerakan dan 16 Preset Rutinitas
-         * Berstandar Ilmiah Internasional dari default_catalog.json (assets).
+         * Berstandar Ilmiah Internasional dari assets lokal.
          */
         suspend fun populateStandardData(
             context: Context? = null,
@@ -75,6 +89,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
             val ctx = context ?: appContext
             if (ctx != null) {
                 CatalogImporter.importFromAsset(ctx, database, "default_catalog.json", onlyIfMissing)
+                CatalogImporter.importExerciseLibraryFromAsset(ctx, database, "exercise_library.json")
             } else {
                 Log.w("WorkoutDatabase", "Context tidak tersedia untuk memuat katalog bawaan.")
             }
