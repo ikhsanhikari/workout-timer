@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workout.timer.data.model.*
 import com.workout.timer.ui.theme.*
 import com.workout.timer.ui.component.*
+import androidx.compose.ui.res.painterResource
 
 /**
  * Layar Workout Builder (F-04) — Implementasi Milestone 2.
@@ -1050,7 +1051,7 @@ private fun ExerciseRow(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                imageVector = if (template.mediaUri != null) Icons.Default.PlayCircle else Icons.Default.FitnessCenter,
+                                                painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
                                                 contentDescription = null,
                                                 tint = AccentWork,
                                                 modifier = Modifier.size(16.dp)
@@ -1759,7 +1760,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = if (template.mediaUri != null) Icons.Default.PlayCircle else Icons.Default.FitnessCenter,
+                                        painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
                                         contentDescription = null,
                                         tint = when (template.category?.lowercase()) {
                                             "cardio", "hiit" -> AccentWork

@@ -227,3 +227,26 @@ fun MediaGuideHeaderBadge(
         }
     }
 }
+
+/**
+ * Mendapatkan resource ID ikon atletik profesional untuk gerakan latihan (Master Data).
+ * Menggantikan ikon dumbbell Material standar dengan custom vector SVG:
+ * - Strength / General : ic_dumbbell_pro.xml (Olympic Hex Dumbbell)
+ * - Cardio / Sprint    : ic_cat_cardio.xml (Cardiac Speed Pulse)
+ * - HIIT / Tabata      : ic_cat_hiit.xml (High-Voltage Double Strike)
+ * - Core / Abs         : ic_cat_core.xml (Six-Pack Geometric Shield)
+ * - Mobility           : ic_cat_mobility.xml (Dynamic Flow Lotus)
+ * - Media Video/GIF    : ic_media_guide_badge.xml (Video Slate)
+ */
+@androidx.annotation.DrawableRes
+fun getExerciseMovementIconRes(category: String?, hasMedia: Boolean = false): Int {
+    if (hasMedia) return R.drawable.ic_media_guide_badge
+    val norm = category?.lowercase()?.trim() ?: ""
+    return when {
+        norm.contains("cardio") || norm.contains("sprint") -> R.drawable.ic_cat_cardio
+        norm.contains("hiit") || norm.contains("tabata") -> R.drawable.ic_cat_hiit
+        norm.contains("core") || norm.contains("abs") -> R.drawable.ic_cat_core
+        norm.contains("mobility") || norm.contains("stretch") || norm.contains("yoga") -> R.drawable.ic_cat_mobility
+        else -> R.drawable.ic_dumbbell_pro
+    }
+}

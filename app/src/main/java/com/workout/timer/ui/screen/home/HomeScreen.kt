@@ -1425,7 +1425,7 @@ private fun BackupBottomSheet(
                 ),
                 border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f))
             ) {
-                Icon(Icons.Outlined.FitnessCenter, contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
+                Icon(painter = painterResource(id = R.drawable.ic_dumbbell_pro), contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Muat Ulang 15 Preset Standar Ilmiah", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
             }

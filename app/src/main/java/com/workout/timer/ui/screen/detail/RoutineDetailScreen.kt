@@ -296,7 +296,7 @@ private fun DetailHeroHeader(
                     color = accentColor
                 )
                 DetailStatItem(
-                    icon = Icons.Outlined.FitnessCenter,
+                    iconRes = R.drawable.ic_dumbbell_pro,
                     value = "$totalExercises",
                     label = "Gerakan",
                     color = accentColor
@@ -323,7 +323,8 @@ private fun DetailHeroHeader(
 
 @Composable
 private fun DetailStatItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconRes: Int? = null,
     value: String,
     label: String,
     color: Color
@@ -339,7 +340,11 @@ private fun DetailStatItem(
                 .background(color.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            if (iconRes != null) {
+                Icon(painter = painterResource(id = iconRes), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            } else if (icon != null) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            }
         }
         Column {
             Text(
