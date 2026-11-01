@@ -124,12 +124,64 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 100.dp)
+                .padding(paddingValues)
         ) {
+            // ── Generated Hero Athlete Background (Top-Right) ────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.bg_home_hero),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.55f)
+                )
+
+                // Left Scrim Gradient: fades dark BackgroundPrimary from the left
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    BackgroundPrimary,
+                                    BackgroundPrimary.copy(alpha = 0.90f),
+                                    BackgroundPrimary.copy(alpha = 0.35f),
+                                    Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = 720f
+                            )
+                        )
+                )
+
+                // Bottom Scrim Gradient: fades smoothly into BackgroundPrimary
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    BackgroundPrimary.copy(alpha = 0.50f),
+                                    BackgroundPrimary
+                                )
+                            )
+                        )
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
             // ── Header ──────────────────────────────────────────────────────
             item {
                 HomeHeader(
@@ -265,6 +317,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
 
         if (showBackupSheet) {
             BackupBottomSheet(
@@ -308,152 +361,103 @@ private fun HomeHeader(
     onSyncCatalog: () -> Unit = {},
     isSyncing: Boolean = false
 ) {
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 48.dp, bottom = 8.dp)
+            .padding(horizontal = 20.dp)
+            .padding(top = 48.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Hero Athlete Silhouette Backdrop (Top-Right crop, subtle opacity faded with dark scrim)
-        Image(
-            painter = painterResource(id = R.drawable.hero_strength),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(width = 220.dp, height = 150.dp)
-                .alpha(0.18f)
-                .graphicsLayer {
-                    translationX = 30f
-                    translationY = -20f
-                }
-        )
-
-        // Gradient fade to blend seamlessly into BackgroundPrimary
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            BackgroundPrimary,
-                            BackgroundPrimary.copy(alpha = 0.85f),
-                            Color.Transparent
-                        ),
-                        startX = 0f,
-                        endX = 750f
-                    )
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Workout ",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 30.sp
+                    ),
+                    color = Color.White
                 )
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            BackgroundPrimary
-                        )
-                    )
-                )
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Workout ",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 30.sp
-                        ),
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Timer",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 30.sp
-                        ),
-                        color = AccentWork
-                    )
-                }
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_flame_streak),
-                        contentDescription = "Streak",
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = "Siap bergerak & bakar kalori hari ini?",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = TextSecondary
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(3.5.dp)
-                        .background(AccentWork, RoundedCornerShape(2.dp))
+                Text(
+                    text = "Timer",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontStyle = FontStyle.Italic,
+                        fontSize = 30.sp
+                    ),
+                    color = AccentWork
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Tombol Sync Katalog Server (Actionable - Preserved)
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF14161C))
-                        .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
-                        .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSyncing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = AccentWork,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.CloudSync,
-                            contentDescription = "Sync Katalog Server",
-                            tint = AccentWork,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-
-                // Tombol Backup & Restore (Actionable - Preserved)
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF14161C))
-                        .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
-                        .clickable(onClick = onOpenBackup),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
-                        contentDescription = "Backup & Restore",
-                        modifier = Modifier.size(20.dp)
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_flame_streak),
+                    contentDescription = "Streak",
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "Siap bergerak & bakar kalori hari ini?",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .width(32.dp)
+                    .height(3.5.dp)
+                    .background(AccentWork, RoundedCornerShape(2.dp))
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Tombol Sync Katalog Server (Actionable - Preserved)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
+                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                    .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = AccentWork,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.CloudSync,
+                        contentDescription = "Sync Katalog Server",
+                        tint = AccentWork,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
+            }
+
+            // Tombol Backup & Restore (Actionable - Preserved)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
+                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                    .clickable(onClick = onOpenBackup),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
+                    contentDescription = "Backup & Restore",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -1363,156 +1367,178 @@ private fun WorkoutCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 7.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            brush = Brush.horizontalGradient(
-                listOf(
-                    accentColor.copy(alpha = 0.45f),
-                    Color(0xFF384354).copy(alpha = 0.20f),
-                    Color.Transparent
-                )
-            )
-        )
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151A)),
+        border = BorderStroke(1.dp, Color(0xFF222632))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            val bannerRes = getCategoryBannerRes(routine.category)
-
-            // 1. Cinematic Background Image - Full Opacity (matches SpotlightBanner)
-            Image(
-                painter = painterResource(id = bannerRes),
-                contentDescription = routine.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-
-            // 2. High-contrast Horizontal Scrim (dark on left for text legibility, transparent on right for athlete)
-            Box(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Column: Category Badge + Favorite + Title + Metadata Stats
+            Column(
                 modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.92f),
-                                Color.Black.copy(alpha = 0.78f),
-                                Color.Black.copy(alpha = 0.30f),
-                                Color.Transparent
-                            ),
-                            startX = 0f,
-                            endX = 820f
-                        )
-                    )
-            )
-
-            // 3. Subtle vertical gradient for bottom controls legibility
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.65f)
-                            )
-                        )
-                    )
-            )
-
-            Column(modifier = Modifier.padding(18.dp)) {
+                    .weight(1f)
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Top Row: Category Badge & Favorite
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        // Modern athletic category badge with custom SVG
-                        AthleticCategoryBadge(
-                            category = routine.category,
-                            accentColor = accentColor
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = routine.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = accentColor.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.40f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor)
+                            )
+                            Text(
+                                text = routine.category.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.6.sp
+                                ),
+                                color = accentColor
+                            )
+                        }
                     }
+
                     IconButton(
                         onClick = onFavoriteClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = if (routine.isFavorite) Icons.Filled.Favorite
                             else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorit",
-                            tint = if (routine.isFavorite) AccentHighIntensity else TextTertiary
+                            tint = if (routine.isFavorite) AccentHighIntensity else TextTertiary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                // Routine Title
+                Text(
+                    text = routine.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.5.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
 
-                // Stats row with high-precision SVG icons & pipe separator
+                // Metadata Stats (Timer & Exercises)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    StatChip(
-                        iconRes = R.drawable.ic_stat_timer,
-                        text = formatDuration(routine.totalDurationSec),
-                        tint = Color.White.copy(alpha = 0.90f)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = formatDuration(routine.totalDurationSec),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = TextSecondary
+                        )
+                    }
+
                     Text(
                         text = "|",
-                        color = Color(0xFF4A4E5C),
+                        color = Color(0xFF383C4A),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
+                        fontSize = 11.sp
                     )
-                    StatChip(
-                        iconRes = R.drawable.ic_stat_exercises,
-                        text = "${routine.totalExercises} Gerakan",
-                        tint = Color.White.copy(alpha = 0.90f)
-                    )
-                    if (routine.lastPerformedAt != null) {
-                        Text(
-                            text = "|",
-                            color = Color(0xFF4A4E5C),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FitnessCenter,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(13.dp)
                         )
-                        StatChip(
-                            iconRes = R.drawable.ic_stat_history,
-                            text = "Pernah",
-                            tint = Color.White.copy(alpha = 0.75f)
+                        Text(
+                            text = "${routine.totalExercises} Gerakan",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = TextSecondary
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(14.dp))
+            // Right Column: Exercise/Routine Thumbnail with Centered Frosted Glass Play Button
+            val bannerRes = getCategoryBannerRes(routine.category)
+            Box(
+                modifier = Modifier
+                    .size(width = 96.dp, height = 86.dp)
+                    .clip(RoundedCornerShape(16.dp))
+            ) {
+                Image(
+                    painter = painterResource(id = bannerRes),
+                    contentDescription = routine.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
 
-                // Play action button at bottom-left
+                // Dark vignette overlay on thumbnail
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.38f))
+                )
+
+                // Glassmorphism Play Button in center
                 Surface(
                     onClick = onStartClick,
                     shape = CircleShape,
-                    color = accentColor,
-                    shadowElevation = 6.dp,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                    modifier = Modifier.size(40.dp)
+                    color = Color.Black.copy(alpha = 0.50f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(38.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = "Mulai Latihan",
-                            tint = Color(0xFF101014),
+                            tint = Color.White,
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(20.dp)
                                 .padding(start = 2.dp)
                         )
                     }
