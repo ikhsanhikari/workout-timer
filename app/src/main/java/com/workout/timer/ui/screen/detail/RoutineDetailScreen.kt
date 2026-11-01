@@ -551,12 +551,13 @@ private fun DetailExerciseRow(exercise: WorkoutExercise) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Athletic micro-pill with custom SVG
+        // Athletic micro-pill with custom SVG and uniform fixed width
         IntervalTypePill(
             type = exercise.type,
-            isCompact = true
+            isCompact = true,
+            fixedWidth = true
         )
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
         Text(
             text = exercise.title,

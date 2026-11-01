@@ -29,6 +29,11 @@ import com.workout.timer.ui.theme.AccentRest
 import com.workout.timer.ui.theme.AccentWarmup
 import com.workout.timer.ui.theme.AccentWork
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+
 /**
  * Athletic Interval Type Pill untuk menggantikan titik bulat generik (naked dot AI).
  * Menggunakan Custom Vector SVG atletik khusus per tipe:
@@ -42,6 +47,7 @@ fun IntervalTypePill(
     type: IntervalType,
     modifier: Modifier = Modifier,
     isCompact: Boolean = false,
+    fixedWidth: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
     val (label, color, iconRes) = when (type) {
@@ -52,13 +58,15 @@ fun IntervalTypePill(
     }
 
     val height = if (isCompact) 22.dp else 28.dp
-    val hPadding = if (isCompact) 7.dp else 9.dp
+    val targetWidth = if (fixedWidth) (if (isCompact) 86.dp else 102.dp) else null
+    val hPadding = if (isCompact) 6.dp else 8.dp
     val fontSize = if (isCompact) 9.5.sp else 11.sp
     val iconSize = if (isCompact) 11.dp else 13.dp
 
     Surface(
         modifier = modifier
             .height(height)
+            .then(if (targetWidth != null) Modifier.width(targetWidth) else Modifier)
             .then(
                 if (onClick != null) {
                     Modifier
@@ -71,9 +79,12 @@ fun IntervalTypePill(
         border = BorderStroke(1.dp, color.copy(alpha = 0.45f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = hPadding),
+            modifier = Modifier
+                .then(if (targetWidth != null) Modifier.fillMaxWidth() else Modifier)
+                .fillMaxHeight()
+                .padding(horizontal = hPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.Center
         ) {
             Icon(
                 painter = painterResource(id = iconRes),
@@ -81,13 +92,15 @@ fun IntervalTypePill(
                 tint = color,
                 modifier = Modifier.size(iconSize)
             )
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.6.sp,
-                color = color
+                color = color,
+                maxLines = 1
             )
         }
     }
