@@ -44,6 +44,10 @@ import com.workout.timer.data.model.WorkoutRoutine
 import com.workout.timer.data.repository.SortOption
 import com.workout.timer.ui.theme.*
 import com.workout.timer.ui.component.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.ui.graphics.StrokeCap
 
 /**
  * Layar Home Dashboard (F-02) — Apple Fitness Aesthetic.
@@ -197,17 +201,38 @@ fun HomeScreen(
             // ── Section Label ───────────────────────────────────────────────
             item {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = AccentWork,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Text(
                         text = if (uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters)
-                            "Semua Rutinitas (${uiState.routines.size})"
+                            "Semua Rutinitas"
                         else
-                            "${uiState.routines.size} Hasil",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSecondary
+                            "Hasil Pencarian",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        ),
+                        color = TextPrimary
                     )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E2129)
+                    ) {
+                        Text(
+                            text = "${uiState.routines.size}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 
@@ -283,218 +308,215 @@ private fun HomeHeader(
     onSyncCatalog: () -> Unit = {},
     isSyncing: Boolean = false
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(top = 56.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 48.dp, bottom = 8.dp)
     ) {
-        Column {
-            Text(
-                text = "Workout Timer",
-                style = MaterialTheme.typography.headlineLarge,
-                color = TextPrimary,
-                fontWeight = FontWeight.Black
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_flame_streak),
-                    contentDescription = "Streak",
-                    modifier = Modifier.size(15.dp)
-                )
-                Text(
-                    text = "Siap bergerak & bakar kalori hari ini?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Tombol Sync Katalog Server (GitHub / Remote)
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceCard)
-                    .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = AccentWork,
-                        strokeWidth = 2.dp
+        // Hero Athlete Silhouette Backdrop (Top-Right crop, subtle opacity faded with dark scrim)
+        Image(
+            painter = painterResource(id = R.drawable.hero_strength),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(width = 220.dp, height = 150.dp)
+                .alpha(0.18f)
+                .graphicsLayer {
+                    translationX = 30f
+                    translationY = -20f
+                }
+        )
+
+        // Gradient fade to blend seamlessly into BackgroundPrimary
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            BackgroundPrimary,
+                            BackgroundPrimary.copy(alpha = 0.85f),
+                            Color.Transparent
+                        ),
+                        startX = 0f,
+                        endX = 750f
                     )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.CloudSync,
-                        contentDescription = "Sync Katalog Server",
-                        tint = AccentWork,
-                        modifier = Modifier.size(22.dp)
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            BackgroundPrimary
+                        )
+                    )
+                )
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Workout ",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            fontSize = 30.sp
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Timer",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            fontStyle = FontStyle.Italic,
+                            fontSize = 30.sp
+                        ),
+                        color = AccentWork
                     )
                 }
-            }
-
-            // Tombol Backup & Restore
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceCard)
-                    .clickable(onClick = onOpenBackup),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
-                    contentDescription = "Backup & Restore",
-                    modifier = Modifier.size(22.dp)
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_flame_streak),
+                        contentDescription = "Streak",
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = "Siap bergerak & bakar kalori hari ini?",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = TextSecondary
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(3.5.dp)
+                        .background(AccentWork, RoundedCornerShape(2.dp))
                 )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Tombol Sync Katalog Server (Actionable - Preserved)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF14161C))
+                        .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                        .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSyncing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = AccentWork,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.CloudSync,
+                            contentDescription = "Sync Katalog Server",
+                            tint = AccentWork,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                // Tombol Backup & Restore (Actionable - Preserved)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF14161C))
+                        .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                        .clickable(onClick = onOpenBackup),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
+                        contentDescription = "Backup & Restore",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AestheticGridBackground(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
+private fun AthleticActivityRing(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 8.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
 
-        // 1. Sleek Matte Dark Carbon / Slate Base Gradient
-        drawRect(
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color(0xFF141518),
-                    Color(0xFF16181D),
-                    Color(0xFF131417)
-                )
-            )
-        )
-
-        // 2. Blueprint Technical Grid Lines
-        val step = 22.dp.toPx()
-        val gridColor = Color(0xFF2A313E).copy(alpha = 0.28f)
-        val highlightGridColor = Color(0xFF384354).copy(alpha = 0.42f)
-
-        // Vertical blueprint lines
-        var x = 0f
-        var colIndex = 0
-        while (x <= width) {
-            val isMajor = colIndex % 4 == 0
-            drawLine(
-                color = if (isMajor) highlightGridColor else gridColor,
-                start = Offset(x, 0f),
-                end = Offset(x, height),
-                strokeWidth = if (isMajor) 1.2f else 0.8f
-            )
-            x += step
-            colIndex++
-        }
-
-        // Horizontal blueprint lines
-        var y = 0f
-        var rowIndex = 0
-        while (y <= height) {
-            val isMajor = rowIndex % 4 == 0
-            drawLine(
-                color = if (isMajor) highlightGridColor else gridColor,
-                start = Offset(0f, y),
-                end = Offset(width, y),
-                strokeWidth = if (isMajor) 1.2f else 0.8f
-            )
-            y += step
-            rowIndex++
-        }
-
-        // 3. Precision Technical Crosshairs (+)
-        val crossSize = 3.dp.toPx()
-        val crossColor = Color(0xFFFF6B35).copy(alpha = 0.40f)
-        val samplePoints = listOf(
-            Offset(step * 2, step * 1),
-            Offset(step * 2, height - step * 1),
-            Offset(step * 5, step * 2)
-        )
-        samplePoints.forEach { pt ->
-            drawLine(crossColor, Offset(pt.x - crossSize, pt.y), Offset(pt.x + crossSize, pt.y), 1.5f)
-            drawLine(crossColor, Offset(pt.x, pt.y - crossSize), Offset(pt.x, pt.y + crossSize), 1.5f)
-        }
-
-        // 4. Activity Ring Technical Radar & Stamina Amber Glow
-        // Ring is centered vertically, aligned 63.dp from the right edge
-        val ringCenterX = width - 63.dp.toPx()
-        val ringCenterY = height / 2f
-        val ringCenter = Offset(ringCenterX, ringCenterY)
-
-        // Ambient stamina ember radial glow behind the ring
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFFFF6B35).copy(alpha = 0.18f),
-                    Color(0xFFFF8C42).copy(alpha = 0.06f),
-                    Color.Transparent
+            // Ambient radial glow behind the ring
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        AccentWork.copy(alpha = 0.18f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius * 1.35f
                 ),
-                center = ringCenter,
-                radius = 75.dp.toPx()
-            ),
-            center = ringCenter,
-            radius = 75.dp.toPx()
-        )
-
-        // Concentric dashed radar circles
-        val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
-        drawCircle(
-            color = Color(0xFF455062).copy(alpha = 0.42f),
-            center = ringCenter,
-            radius = 50.dp.toPx(),
-            style = Stroke(width = 1.dp.toPx(), pathEffect = dashedEffect)
-        )
-        drawCircle(
-            color = Color(0xFFFF6B35).copy(alpha = 0.22f),
-            center = ringCenter,
-            radius = 58.dp.toPx(),
-            style = Stroke(width = 0.8.dp.toPx())
-        )
-
-        // Technical corner brackets framing the ring area
-        val boxHalf = 44.dp.toPx()
-        val cornerLen = 7.dp.toPx()
-        val boxLeft = ringCenterX - boxHalf
-        val boxRight = ringCenterX + boxHalf
-        val boxTop = ringCenterY - boxHalf
-        val boxBottom = ringCenterY + boxHalf
-        val frameColor = Color(0xFF4A5568).copy(alpha = 0.38f)
-
-        // Top-left corner
-        drawLine(frameColor, Offset(boxLeft, boxTop), Offset(boxLeft + cornerLen, boxTop), 1.2f)
-        drawLine(frameColor, Offset(boxLeft, boxTop), Offset(boxLeft, boxTop + cornerLen), 1.2f)
-        // Top-right corner
-        drawLine(frameColor, Offset(boxRight, boxTop), Offset(boxRight - cornerLen, boxTop), 1.2f)
-        drawLine(frameColor, Offset(boxRight, boxTop), Offset(boxRight, boxTop + cornerLen), 1.2f)
-        // Bottom-left corner
-        drawLine(frameColor, Offset(boxLeft, boxBottom), Offset(boxLeft + cornerLen, boxBottom), 1.2f)
-        drawLine(frameColor, Offset(boxLeft, boxBottom), Offset(boxLeft, boxBottom - cornerLen), 1.2f)
-        // Bottom-right corner
-        drawLine(frameColor, Offset(boxRight, boxBottom), Offset(boxRight - cornerLen, boxBottom), 1.2f)
-        drawLine(frameColor, Offset(boxRight, boxBottom), Offset(boxRight, boxBottom - cornerLen), 1.2f)
-
-        // 5. Left-side gradient scrim to guarantee 100% crisp text readability
-        drawRect(
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color(0xFF141518).copy(alpha = 0.88f),
-                    Color(0xFF141518).copy(alpha = 0.55f),
-                    Color.Transparent
-                ),
-                startX = 0f,
-                endX = width * 0.65f
+                center = center,
+                radius = radius * 1.35f
             )
+
+            // Track background
+            drawCircle(
+                color = Color(0xFF1F2430),
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // Dynamic progress arc
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        AccentWork,
+                        Color(0xFF00E676),
+                        AccentWork
+                    )
+                ),
+                startAngle = -90f,
+                sweepAngle = 360f * progress.coerceIn(0.08f, 1f),
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+
+        // Center Icon: Athletic Runner
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+            contentDescription = "Aktivitas",
+            tint = AccentWork,
+            modifier = Modifier.size(28.dp)
         )
     }
 }
@@ -508,89 +530,68 @@ private fun WeeklyActivitySection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF141518)),
-        border = BorderStroke(
-            width = 1.dp,
-            brush = Brush.horizontalGradient(
-                listOf(
-                    Color(0xFFFF6B35).copy(alpha = 0.45f),
-                    Color(0xFF384354).copy(alpha = 0.25f),
-                    Color(0xFF1E2129).copy(alpha = 0.15f)
-                )
-            )
-        )
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151A)),
+        border = BorderStroke(1.dp, Color(0xFF222632))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Aesthetic Technical Blueprint Grid & Ambient Workout Glow
-            AestheticGridBackground(modifier = Modifier.matchParentSize())
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFF221A16),
-                        border = BorderStroke(1.dp, Color(0xFFFF6B35).copy(alpha = 0.40f))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1B202A),
+                    border = BorderStroke(1.dp, Color(0xFF2A3242))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_flame_streak),
-                                contentDescription = null,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "AKTIVITAS MINGGU INI",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFFF8C42),
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp,
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                        StatItem(
-                            value = "$totalMinutes",
-                            unit = "Menit Latihan",
-                            color = Color.White
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_flame_streak),
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp)
                         )
-                        StatItem(
-                            value = "$sessionCount",
-                            unit = "Sesi Selesai",
-                            color = Color(0xFFFF7A00)
+                        Text(
+                            text = "AKTIVITAS MINGGU INI",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFFF8C42),
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
+                            fontSize = 10.sp
                         )
                     }
                 }
 
-                // Production Multi-Ring Workout Activity Illustration
-                Box(
-                    modifier = Modifier
-                        .size(86.dp)
-                        .clip(CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_hero_activity_rings),
-                        contentDescription = "Workout Activity Rings",
-                        modifier = Modifier.size(80.dp)
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    StatItem(
+                        value = "$totalMinutes",
+                        unit = "Menit Latihan",
+                        color = Color.White
+                    )
+                    StatItem(
+                        value = "$sessionCount",
+                        unit = "Sesi Selesai",
+                        color = AccentWork,
+                        icon = Icons.Default.CheckCircle
                     )
                 }
             }
+
+            // High-precision Activity Progress Ring with Center Runner
+            AthleticActivityRing(
+                progress = (totalMinutes / 120f).coerceIn(0.18f, 1f),
+                modifier = Modifier.size(86.dp)
+            )
         }
     }
 }
@@ -600,17 +601,31 @@ private fun StatItem(
     value: String,
     unit: String,
     color: Color = Color.White,
-    unitColor: Color = Color(0xFFA6ABB8)
+    unitColor: Color = Color(0xFFA6ABB8),
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
     Column {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black
-            ),
-            color = color
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black
+                ),
+                color = color
+            )
+        }
         Text(
             text = unit,
             style = MaterialTheme.typography.labelSmall.copy(
@@ -722,61 +737,98 @@ private fun SpotlightBanner(
                     }
                 }
 
-                // Middle & Bottom Section
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = featuredRoutine.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 20.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // Middle & Bottom Section with Pagination Dots
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatChip(
-                            iconRes = R.drawable.ic_stat_timer,
-                            text = formatDuration(featuredRoutine.totalDurationSec),
-                            tint = Color.White.copy(alpha = 0.9f)
+                        Text(
+                            text = featuredRoutine.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        StatSlashDivider()
-                        StatChip(
-                            iconRes = R.drawable.ic_intensity_lightning,
-                            text = featuredRoutine.category.uppercase(),
-                            tint = AccentRest
-                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatChip(
+                                iconRes = R.drawable.ic_stat_timer,
+                                text = formatDuration(featuredRoutine.totalDurationSec),
+                                tint = Color.White.copy(alpha = 0.9f)
+                            )
+                            Text(
+                                text = "|",
+                                color = Color(0xFF4A4E5C),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            StatChip(
+                                iconRes = R.drawable.ic_intensity_lightning,
+                                text = featuredRoutine.category.uppercase(),
+                                tint = AccentRest
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Start Quick Button (Actionable - Preserved)
+                        Button(
+                            onClick = { onStartWorkout(featuredRoutine.id) },
+                            modifier = Modifier.height(36.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentWork,
+                                contentColor = Color.Black
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Mulai Latihan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color.Black
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    // Start Quick Button
-                    Button(
-                        onClick = { onStartWorkout(featuredRoutine.id) },
-                        modifier = Modifier
-                            .height(36.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentWork,
-                            contentColor = Color.Black
-                        ),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                    // Pagination indicator dots matching screenshot
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 6.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(16.dp)
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .height(5.dp)
+                                .background(AccentWork, CircleShape)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Mulai Latihan",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = Color.Black
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .background(Color(0xFF4A4E5C), CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .background(Color(0xFF4A4E5C), CircleShape)
                         )
                     }
                 }
@@ -801,7 +853,9 @@ private fun SearchBar(
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .border(BorderStroke(1.dp, Color(0xFF232733)), RoundedCornerShape(26.dp)),
             placeholder = {
                 Text("Cari rutinitas...", color = TextTertiary, fontSize = 14.sp)
             },
@@ -826,30 +880,30 @@ private fun SearchBar(
                 }
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = SurfaceCard,
-                unfocusedContainerColor = SurfaceCard,
+                focusedContainerColor = Color(0xFF14161C),
+                unfocusedContainerColor = Color(0xFF14161C),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
                 cursorColor = AccentWork
             ),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(26.dp),
             singleLine = true
         )
 
         // Filter / Tune button
         Box(
             modifier = Modifier
-                .size(54.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (hasActiveFilters) AccentWork.copy(alpha = 0.15f) else SurfaceCard)
+                .size(52.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (hasActiveFilters) AccentWork.copy(alpha = 0.15f) else Color(0xFF14161C))
                 .border(
                     BorderStroke(
                         1.dp,
-                        if (hasActiveFilters) AccentWork else Color(0xFF282832)
+                        if (hasActiveFilters) AccentWork else Color(0xFF232733)
                     ),
-                    RoundedCornerShape(14.dp)
+                    RoundedCornerShape(16.dp)
                 )
                 .clickable(onClick = onOpenFilter),
             contentAlignment = Alignment.Center
@@ -918,31 +972,51 @@ private fun CategoryPill(
     onClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val categoryIcon = when (label.lowercase()) {
+        "semua", "all" -> Icons.Default.Apps
+        "cardio" -> Icons.Outlined.FavoriteBorder
+        "core" -> Icons.Outlined.Grid3x3
+        "full body" -> Icons.Outlined.FitnessCenter
+        "hiit" -> Icons.Default.Bolt
+        else -> Icons.Outlined.FitnessCenter
+    }
+
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) AccentWork else SurfaceCard)
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (isSelected) AccentWork else Color(0xFF14161C))
             .border(
                 BorderStroke(
                     1.dp,
-                    if (isSelected) AccentWork else Color(0xFF282832)
+                    if (isSelected) AccentWork else Color(0xFF232733)
                 ),
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(22.dp)
             )
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color.Black else TextSecondary,
-            fontSize = 13.sp
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = categoryIcon,
+                contentDescription = null,
+                tint = if (isSelected) Color.Black else TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.Black else TextSecondary,
+                fontSize = 13.sp
+            )
+        }
     }
 }
 
@@ -1385,22 +1459,37 @@ private fun WorkoutCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Stats row with high-precision SVG icons
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Stats row with high-precision SVG icons & pipe separator
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     StatChip(
                         iconRes = R.drawable.ic_stat_timer,
                         text = formatDuration(routine.totalDurationSec),
                         tint = Color.White.copy(alpha = 0.90f)
+                    )
+                    Text(
+                        text = "|",
+                        color = Color(0xFF4A4E5C),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
                     )
                     StatChip(
                         iconRes = R.drawable.ic_stat_exercises,
                         text = "${routine.totalExercises} Gerakan",
                         tint = Color.White.copy(alpha = 0.90f)
                     )
-                    routine.lastPerformedAt?.let {
+                    if (routine.lastPerformedAt != null) {
+                        Text(
+                            text = "|",
+                            color = Color(0xFF4A4E5C),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                         StatChip(
                             iconRes = R.drawable.ic_stat_history,
-                            text = "Pernah dilakukan",
+                            text = "Pernah",
                             tint = Color.White.copy(alpha = 0.75f)
                         )
                     }
