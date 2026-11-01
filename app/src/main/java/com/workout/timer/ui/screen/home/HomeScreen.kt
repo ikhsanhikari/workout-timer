@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,14 +31,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.workout.timer.R
 import com.workout.timer.data.model.WorkoutRoutine
 import com.workout.timer.data.repository.SortOption
 import com.workout.timer.ui.theme.*
+import com.workout.timer.ui.component.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.ui.graphics.StrokeCap
 
 /**
  * Layar Home Dashboard (F-02) — Apple Fitness Aesthetic.
@@ -113,12 +124,64 @@ fun HomeScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 100.dp)
+                .padding(paddingValues)
         ) {
+            // ── Generated Hero Athlete Background (Top-Right) ────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.bg_home_hero),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.55f)
+                )
+
+                // Left Scrim Gradient: fades dark BackgroundPrimary from the left
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    BackgroundPrimary,
+                                    BackgroundPrimary.copy(alpha = 0.90f),
+                                    BackgroundPrimary.copy(alpha = 0.35f),
+                                    Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = 720f
+                            )
+                        )
+                )
+
+                // Bottom Scrim Gradient: fades smoothly into BackgroundPrimary
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    BackgroundPrimary.copy(alpha = 0.50f),
+                                    BackgroundPrimary
+                                )
+                            )
+                        )
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
             // ── Header ──────────────────────────────────────────────────────
             item {
                 HomeHeader(
@@ -190,17 +253,38 @@ fun HomeScreen(
             // ── Section Label ───────────────────────────────────────────────
             item {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = AccentWork,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Text(
                         text = if (uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters)
-                            "Semua Rutinitas (${uiState.routines.size})"
+                            "Semua Rutinitas"
                         else
-                            "${uiState.routines.size} Hasil",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextSecondary
+                            "Hasil Pencarian",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        ),
+                        color = TextPrimary
                     )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E2129)
+                    ) {
+                        Text(
+                            text = "${uiState.routines.size}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 
@@ -233,6 +317,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
 
         if (showBackupSheet) {
             BackupBottomSheet(
@@ -280,17 +365,30 @@ private fun HomeHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .padding(top = 56.dp, bottom = 8.dp),
+            .padding(top = 48.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(
-                text = "Workout Timer",
-                style = MaterialTheme.typography.headlineLarge,
-                color = TextPrimary,
-                fontWeight = FontWeight.Black
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Workout ",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 30.sp
+                    ),
+                    color = Color.White
+                )
+                Text(
+                    text = "Timer",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontStyle = FontStyle.Italic,
+                        fontSize = 30.sp
+                    ),
+                    color = AccentWork
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -303,19 +401,29 @@ private fun HomeHeader(
                 )
                 Text(
                     text = "Siap bergerak & bakar kalori hari ini?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = TextSecondary
                 )
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Tombol Sync Katalog Server (GitHub / Remote)
+            Spacer(modifier = Modifier.height(4.dp))
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .width(32.dp)
+                    .height(3.5.dp)
+                    .background(AccentWork, RoundedCornerShape(2.dp))
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Tombol Sync Katalog Server (Actionable - Preserved)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(SurfaceCard)
+                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
+                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
                     .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
                 contentAlignment = Alignment.Center
             ) {
@@ -335,22 +443,85 @@ private fun HomeHeader(
                 }
             }
 
-            // Tombol Backup & Restore
+            // Tombol Backup & Restore (Actionable - Preserved)
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(SurfaceCard)
+                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
+                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
                     .clickable(onClick = onOpenBackup),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
                     contentDescription = "Backup & Restore",
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AthleticActivityRing(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 8.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+
+            // Ambient radial glow behind the ring
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        AccentWork.copy(alpha = 0.18f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius * 1.35f
+                ),
+                center = center,
+                radius = radius * 1.35f
+            )
+
+            // Track background
+            drawCircle(
+                color = Color(0xFF1F2430),
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // Dynamic progress arc
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        AccentWork,
+                        Color(0xFF00E676),
+                        AccentWork
+                    )
+                ),
+                startAngle = -90f,
+                sweepAngle = 360f * progress.coerceIn(0.08f, 1f),
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+
+        // Center Icon: Athletic Runner
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
+            contentDescription = "Aktivitas",
+            tint = AccentWork,
+            modifier = Modifier.size(28.dp)
+        )
     }
 }
 
@@ -363,20 +534,11 @@ private fun WeeklyActivitySection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            brush = Brush.verticalGradient(
-                listOf(
-                    AccentWork.copy(alpha = 0.25f),
-                    SurfaceElevated.copy(alpha = 0.2f),
-                    Color.Transparent
-                )
-            )
-        )
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151A)),
+        border = BorderStroke(1.dp, Color(0xFF222632))
     ) {
         Row(
             modifier = Modifier
@@ -386,77 +548,95 @@ private fun WeeklyActivitySection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1B202A),
+                    border = BorderStroke(1.dp, Color(0xFF2A3242))
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_flame_streak),
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = "AKTIVITAS MINGGU INI",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_flame_streak),
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "AKTIVITAS MINGGU INI",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFFF8C42),
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.8.sp,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
+
                 Spacer(modifier = Modifier.height(14.dp))
+
                 Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                     StatItem(
                         value = "$totalMinutes",
                         unit = "Menit Latihan",
-                        color = AccentWork
+                        color = Color.White
                     )
                     StatItem(
                         value = "$sessionCount",
                         unit = "Sesi Selesai",
-                        color = AccentRest
+                        color = AccentWork,
+                        icon = Icons.Default.CheckCircle
                     )
                 }
             }
 
-            // Production Multi-Ring Workout Activity Illustration
-            Box(
-                modifier = Modifier
-                    .size(86.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                AccentWork.copy(alpha = 0.18f),
-                                AccentRest.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_hero_activity_rings),
-                    contentDescription = "Workout Activity Rings",
-                    modifier = Modifier.size(80.dp)
-                )
-            }
+            // High-precision Activity Progress Ring with Center Runner
+            AthleticActivityRing(
+                progress = (totalMinutes / 120f).coerceIn(0.18f, 1f),
+                modifier = Modifier.size(86.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun StatItem(value: String, unit: String, color: Color) {
+private fun StatItem(
+    value: String,
+    unit: String,
+    color: Color = Color.White,
+    unitColor: Color = Color(0xFFA6ABB8),
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
     Column {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            color = color,
-            fontWeight = FontWeight.Black
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black
+                ),
+                color = color
+            )
+        }
         Text(
             text = unit,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = unitColor
         )
     }
 }
@@ -561,65 +741,98 @@ private fun SpotlightBanner(
                     }
                 }
 
-                // Middle & Bottom Section
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = featuredRoutine.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 20.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // Middle & Bottom Section with Pagination Dots
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatChip(
-                            iconRes = R.drawable.ic_stat_timer,
-                            text = formatDuration(featuredRoutine.totalDurationSec),
-                            tint = Color.White.copy(alpha = 0.9f)
+                        Text(
+                            text = featuredRoutine.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            StatChip(
+                                iconRes = R.drawable.ic_stat_timer,
+                                text = formatDuration(featuredRoutine.totalDurationSec),
+                                tint = Color.White.copy(alpha = 0.9f)
+                            )
+                            Text(
+                                text = "|",
+                                color = Color(0xFF4A4E5C),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            StatChip(
+                                iconRes = R.drawable.ic_intensity_lightning,
+                                text = featuredRoutine.category.uppercase(),
+                                tint = AccentRest
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Start Quick Button (Actionable - Preserved)
+                        Button(
+                            onClick = { onStartWorkout(featuredRoutine.id) },
+                            modifier = Modifier.height(36.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentWork,
+                                contentColor = Color.Black
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Mulai Latihan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color.Black
+                            )
+                        }
+                    }
+
+                    // Pagination indicator dots matching screenshot
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .height(5.dp)
+                                .background(AccentWork, CircleShape)
                         )
                         Box(
                             modifier = Modifier
-                                .size(3.dp)
-                                .background(Color.White.copy(alpha = 0.5f), CircleShape)
+                                .size(5.dp)
+                                .background(Color(0xFF4A4E5C), CircleShape)
                         )
-                        StatChip(
-                            iconRes = R.drawable.ic_intensity_lightning,
-                            text = featuredRoutine.category.uppercase(),
-                            tint = AccentRest
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    // Start Quick Button
-                    Button(
-                        onClick = { onStartWorkout(featuredRoutine.id) },
-                        modifier = Modifier
-                            .height(36.dp),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentWork,
-                            contentColor = Color.Black
-                        ),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Mulai Latihan",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = Color.Black
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .background(Color(0xFF4A4E5C), CircleShape)
                         )
                     }
                 }
@@ -644,7 +857,9 @@ private fun SearchBar(
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .border(BorderStroke(1.dp, Color(0xFF232733)), RoundedCornerShape(26.dp)),
             placeholder = {
                 Text("Cari rutinitas...", color = TextTertiary, fontSize = 14.sp)
             },
@@ -669,30 +884,30 @@ private fun SearchBar(
                 }
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = SurfaceCard,
-                unfocusedContainerColor = SurfaceCard,
+                focusedContainerColor = Color(0xFF14161C),
+                unfocusedContainerColor = Color(0xFF14161C),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
                 cursorColor = AccentWork
             ),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(26.dp),
             singleLine = true
         )
 
         // Filter / Tune button
         Box(
             modifier = Modifier
-                .size(54.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(if (hasActiveFilters) AccentWork.copy(alpha = 0.15f) else SurfaceCard)
+                .size(52.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (hasActiveFilters) AccentWork.copy(alpha = 0.15f) else Color(0xFF14161C))
                 .border(
                     BorderStroke(
                         1.dp,
-                        if (hasActiveFilters) AccentWork else Color(0xFF282832)
+                        if (hasActiveFilters) AccentWork else Color(0xFF232733)
                     ),
-                    RoundedCornerShape(14.dp)
+                    RoundedCornerShape(16.dp)
                 )
                 .clickable(onClick = onOpenFilter),
             contentAlignment = Alignment.Center
@@ -704,14 +919,13 @@ private fun SearchBar(
                 modifier = Modifier.size(22.dp)
             )
 
-            // Active badge dot indicator
+            // Active filter counter indicator
             if (hasActiveFilters) {
-                Box(
+                FilterActiveCounter(
+                    count = 1,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 8.dp, end = 8.dp)
-                        .size(8.dp)
-                        .background(AccentWork, CircleShape)
+                        .padding(top = 4.dp, end = 4.dp)
                 )
             }
         }
@@ -736,7 +950,7 @@ private fun CategoryRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // "Semua" pill
-        item {
+        item(key = "cat_pill_all") {
             CategoryPill(
                 label = "Semua",
                 isSelected = selectedCategory == null,
@@ -745,7 +959,7 @@ private fun CategoryRow(
         }
 
         // Specific category pills
-        items(categories) { category ->
+        items(categories, key = { "cat_pill_$it" }) { category ->
             CategoryPill(
                 label = category,
                 isSelected = selectedCategory == category,
@@ -761,28 +975,52 @@ private fun CategoryPill(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val categoryIcon = when (label.lowercase()) {
+        "semua", "all" -> Icons.Default.Apps
+        "cardio" -> Icons.Outlined.FavoriteBorder
+        "core" -> Icons.Outlined.Grid3x3
+        "full body" -> Icons.Outlined.FitnessCenter
+        "hiit" -> Icons.Default.Bolt
+        else -> Icons.Outlined.FitnessCenter
+    }
+
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) AccentWork else SurfaceCard)
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (isSelected) AccentWork else Color(0xFF14161C))
             .border(
                 BorderStroke(
                     1.dp,
-                    if (isSelected) AccentWork else Color(0xFF282832)
+                    if (isSelected) AccentWork else Color(0xFF232733)
                 ),
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(22.dp)
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color.Black else TextSecondary,
-            fontSize = 13.sp
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = categoryIcon,
+                contentDescription = null,
+                tint = if (isSelected) Color.Black else TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.Black else TextSecondary,
+                fontSize = 13.sp
+            )
+        }
     }
 }
 
@@ -805,7 +1043,7 @@ private fun ActiveFilterRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (selectedDuration != DurationFilter.ALL) {
-            item {
+            item(key = "active_filter_duration") {
                 ActiveTagChip(
                     text = "Durasi: ${selectedDuration.label}",
                     onDismiss = onResetDuration
@@ -814,7 +1052,7 @@ private fun ActiveFilterRow(
         }
 
         if (selectedSort != SortOption.CREATED_AT) {
-            item {
+            item(key = "active_filter_sort") {
                 val sortLabel = when (selectedSort) {
                     SortOption.FAVORITE -> "Favorit"
                     SortOption.LAST_PERFORMED -> "Terakhir Dilakukan"
@@ -829,7 +1067,7 @@ private fun ActiveFilterRow(
         }
 
         if (selectedDuration != DurationFilter.ALL && selectedSort != SortOption.CREATED_AT) {
-            item {
+            item(key = "active_filter_reset_all") {
                 Text(
                     text = "Hapus Semua",
                     style = MaterialTheme.typography.labelSmall,
@@ -1129,166 +1367,181 @@ private fun WorkoutCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 7.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            brush = Brush.verticalGradient(
-                listOf(
-                    accentColor.copy(alpha = 0.35f),
-                    SurfaceElevated.copy(alpha = 0.25f),
-                    Color.Transparent
-                )
-            )
-        )
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151A)),
+        border = BorderStroke(1.dp, Color(0xFF222632))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            val bannerRes = getCategoryBannerRes(routine.category)
-
-            // 1. Cinematic Background Image
-            Image(
-                painter = painterResource(id = bannerRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Column: Category Badge + Favorite + Title + Metadata Stats
+            Column(
                 modifier = Modifier
-                    .matchParentSize()
-                    .alpha(0.38f)
-            )
-
-            // 2. High-contrast Horizontal Scrim (heavy dark on left for text legibility, medium on right where athlete is)
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                SurfaceCard.copy(alpha = 0.98f),
-                                SurfaceCard.copy(alpha = 0.90f),
-                                SurfaceCard.copy(alpha = 0.68f),
-                                SurfaceCard.copy(alpha = 0.38f)
-                            )
-                        )
-                    )
-            )
-
-            // 3. Subtle vertical tint matching routine accent color
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Column(modifier = Modifier.padding(18.dp)) {
+                    .weight(1f)
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Top Row: Category Badge & Favorite
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        // Category badge with glowing dot
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = accentColor.copy(alpha = 0.16f)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = accentColor.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.40f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(accentColor)
-                                )
-                                Text(
-                                    text = routine.category.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = accentColor,
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor)
+                            )
+                            Text(
+                                text = routine.category.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp
-                                )
-                            }
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.6.sp
+                                ),
+                                color = accentColor
+                            )
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = routine.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
-                    IconButton(onClick = onFavoriteClick) {
+
+                    IconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier.size(28.dp)
+                    ) {
                         Icon(
                             imageVector = if (routine.isFavorite) Icons.Filled.Favorite
                             else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorit",
-                            tint = if (routine.isFavorite) AccentHighIntensity else TextTertiary
+                            tint = if (routine.isFavorite) AccentHighIntensity else TextTertiary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Stats row with high-precision SVG icons
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatChip(
-                        iconRes = R.drawable.ic_stat_timer,
-                        text = formatDuration(routine.totalDurationSec)
-                    )
-                    StatChip(
-                        iconRes = R.drawable.ic_stat_exercises,
-                        text = "${routine.totalExercises} Gerakan"
-                    )
-                    routine.lastPerformedAt?.let {
-                        StatChip(
-                            iconRes = R.drawable.ic_stat_history,
-                            text = "Pernah dilakukan"
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Start button: Compact Obsidian Action Pill (36dp)
-                Button(
-                    onClick = onStartClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF24242A),
-                        contentColor = TextPrimary
-                    ),
-                    border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Mulai Latihan",
-                        style = MaterialTheme.typography.labelMedium,
+                // Routine Title
+                Text(
+                    text = routine.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        fontSize = 16.5.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Metadata Stats (Timer & Exercises)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = formatDuration(routine.totalDurationSec),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = TextSecondary
+                        )
+                    }
+
+                    Text(
+                        text = "|",
+                        color = Color(0xFF383C4A),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FitnessCenter,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "${routine.totalExercises} Gerakan",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+
+            // Right Column: Exercise/Routine Thumbnail with Centered Frosted Glass Play Button
+            val bannerRes = getCategoryBannerRes(routine.category)
+            Box(
+                modifier = Modifier
+                    .size(width = 96.dp, height = 86.dp)
+                    .clip(RoundedCornerShape(16.dp))
+            ) {
+                Image(
+                    painter = painterResource(id = bannerRes),
+                    contentDescription = routine.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Dark vignette overlay on thumbnail
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.38f))
+                )
+
+                // Glassmorphism Play Button in center
+                Surface(
+                    onClick = onStartClick,
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = 0.50f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(38.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Mulai Latihan",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(start = 2.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1449,7 +1702,7 @@ private fun BackupBottomSheet(
                 ),
                 border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f))
             ) {
-                Icon(Icons.Outlined.FitnessCenter, contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
+                Icon(painter = painterResource(id = R.drawable.ic_dumbbell_pro), contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Muat Ulang 15 Preset Standar Ilmiah", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
             }

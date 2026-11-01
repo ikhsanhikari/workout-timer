@@ -38,9 +38,11 @@ class FlattenRoutineUseCase @Inject constructor(
 
                 repeat(block.repeatCount) { setIndex ->
                     for (exercise in exercises) {
-                        val template = if (exercise.customMediaUri == null && exercise.templateId != null) {
+                        val template = if (exercise.templateId != null) {
                             repository.getTemplateById(exercise.templateId)
-                        } else null
+                        } else {
+                            repository.getTemplateByName(exercise.title)
+                        }
 
                         val resolvedMediaUri = exercise.customMediaUri ?: template?.mediaUri
                         val resolvedMediaType = if (exercise.customMediaUri != null) {
@@ -59,7 +61,12 @@ class FlattenRoutineUseCase @Inject constructor(
                                 mediaType = resolvedMediaType,
                                 thumbnailUri = template?.thumbnailUri,
                                 currentSet = if (block.repeatCount > 1) setIndex + 1 else null,
-                                totalSets = if (block.repeatCount > 1) block.repeatCount else null
+                                totalSets = if (block.repeatCount > 1) block.repeatCount else null,
+                                targetMuscle = template?.targetMuscle,
+                                coachTip = template?.coachTip,
+                                category = template?.category,
+                                difficulty = template?.difficulty,
+                                equipment = template?.equipment
                             )
                         )
                     }

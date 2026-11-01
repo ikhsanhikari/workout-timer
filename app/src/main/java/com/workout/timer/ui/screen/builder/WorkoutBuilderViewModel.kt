@@ -9,6 +9,9 @@ import com.workout.timer.data.media.MediaFileManager
 import com.workout.timer.data.model.*
 import com.workout.timer.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,6 +49,7 @@ data class BuilderUiState(
     val totalExercises: Int = 0,
     val isSaving: Boolean = false,
     val isLoading: Boolean = true,
+    val isSaved: Boolean = false,
     val snackbarMessage: String? = null,
     val navigateToPlayer: Long? = null,
     val autocompleteSuggestions: List<ExerciseTemplate> = emptyList(),
@@ -77,6 +81,9 @@ class WorkoutBuilderViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(BuilderUiState())
     val uiState: StateFlow<BuilderUiState> = _uiState.asStateFlow()
 
+    val allTemplates: StateFlow<List<ExerciseTemplate>> = repository.observeAllTemplates()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     init {
         if (routineId != null) {
             loadExistingRoutine(routineId)
@@ -97,9 +104,26 @@ class WorkoutBuilderViewModel @Inject constructor(
     }
 
     private fun loadExistingRoutine(id: Long) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val routine = repository.getRoutineById(id) ?: return@launch
             val blocksFlow = repository.observeBlocksWithExercises(id).first()
+
+            val sortedBlocks = blocksFlow.sortedBy { it.block.orderIndex }.map { blockWithEx ->
+                UiBlock(
+                    block = blockWithEx.block,
+                    exercises = blockWithEx.exercises.sortedBy { it.orderIndex }.map { ex ->
+                        UiExercise(
+                            exercise = ex,
+                            resolvedMediaUri = ex.customMediaUri,
+                            resolvedMediaType = ex.customMediaType
+                        )
+                    }
+                )
+            }
+            val totalDuration = sortedBlocks.sumOf { block ->
+                block.exercises.sumOf { it.exercise.durationSeconds } * block.block.repeatCount
+            }
+            val totalExercises = sortedBlocks.sumOf { it.exercises.size }
 
             _uiState.update { state ->
                 state.copy(
@@ -107,21 +131,11 @@ class WorkoutBuilderViewModel @Inject constructor(
                     routineName = routine.name,
                     category = routine.category,
                     accentColor = routine.accentColor,
-                    blocks = blocksFlow.sortedBy { it.block.orderIndex }.map { blockWithEx ->
-                        UiBlock(
-                            block = blockWithEx.block,
-                            exercises = blockWithEx.exercises.sortedBy { it.orderIndex }.map { ex ->
-                                UiExercise(
-                                    exercise = ex,
-                                    resolvedMediaUri = ex.customMediaUri,
-                                    resolvedMediaType = ex.customMediaType
-                                )
-                            }
-                        )
-                    }
+                    blocks = sortedBlocks,
+                    totalDurationSec = totalDuration,
+                    totalExercises = totalExercises
                 )
             }
-            recalculateStats()
         }
     }
 
@@ -248,6 +262,31 @@ class WorkoutBuilderViewModel @Inject constructor(
         recalculateStats()
     }
 
+    fun addExerciseFromTemplate(blockIndex: Int, template: ExerciseTemplate, type: IntervalType? = null) {
+        val blocks = _uiState.value.blocks.toMutableList()
+        val block = blocks[blockIndex]
+        val resolvedType = type ?: template.resolveIntervalType()
+        val newExercise = UiExercise(
+            exercise = WorkoutExercise(
+                blockId = block.block.id,
+                orderIndex = block.exercises.size,
+                title = template.name,
+                durationSeconds = template.defaultDuration,
+                type = resolvedType,
+                templateId = template.id
+            ),
+            resolvedMediaUri = template.mediaUri,
+            resolvedMediaType = template.mediaType,
+            thumbnailUri = template.thumbnailUri
+        )
+        blocks[blockIndex] = block.copy(exercises = block.exercises + newExercise)
+        _uiState.update { it.copy(blocks = blocks) }
+        recalculateStats()
+        viewModelScope.launch {
+            repository.incrementTemplateUsage(template.id)
+        }
+    }
+
     fun removeExercise(blockIndex: Int, exerciseIndex: Int) {
         val blocks = _uiState.value.blocks.toMutableList()
         val block = blocks[blockIndex]
@@ -279,15 +318,24 @@ class WorkoutBuilderViewModel @Inject constructor(
         recalculateStats()
     }
 
+    fun onExerciseFocused(blockIndex: Int, exerciseIndex: Int) {
+        val currentTitle = _uiState.value.blocks.getOrNull(blockIndex)
+            ?.exercises?.getOrNull(exerciseIndex)?.exercise?.title.orEmpty()
+        val query = if (currentTitle == "Gerakan Baru") "" else currentTitle
+        searchAutocomplete(query)
+    }
+
     fun updateExerciseTitle(blockIndex: Int, exerciseIndex: Int, title: String) {
+        val inferredType = resolveIntervalTypeFromTitle(title)
         updateExercise(blockIndex, exerciseIndex) { ex ->
-            ex.copy(exercise = ex.exercise.copy(title = title))
+            val updatedExercise = if (inferredType != null && inferredType != ex.exercise.type) {
+                ex.exercise.copy(title = title, type = inferredType)
+            } else {
+                ex.exercise.copy(title = title)
+            }
+            ex.copy(exercise = updatedExercise)
         }
-        if (title.length >= 2) {
-            searchAutocomplete(title)
-        } else {
-            clearAutocomplete()
-        }
+        searchAutocomplete(title)
     }
 
     fun updateExerciseDuration(blockIndex: Int, exerciseIndex: Int, seconds: Int) {
@@ -319,6 +367,7 @@ class WorkoutBuilderViewModel @Inject constructor(
                 exercise = ex.exercise.copy(
                     title = template.name,
                     durationSeconds = template.defaultDuration,
+                    type = template.resolveIntervalType(),
                     templateId = template.id
                 ),
                 resolvedMediaUri = template.mediaUri,
@@ -396,15 +445,23 @@ class WorkoutBuilderViewModel @Inject constructor(
 
     // ── Autocomplete ────────────────────────────────────────────────────────
 
-    private fun searchAutocomplete(query: String) {
-        viewModelScope.launch {
-            repository.searchTemplates(query).collect { templates ->
+    private var searchJob: Job? = null
+
+    fun searchAutocomplete(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            val cleanQuery = query.trim().let { if (it == "Gerakan Baru") "" else it }
+            if (cleanQuery.isNotBlank()) {
+                delay(200) // Debounce keystrokes so typing is 100% smooth
+            }
+            repository.searchTemplates(cleanQuery).collect { templates ->
                 _uiState.update { it.copy(autocompleteSuggestions = templates, autocompleteQuery = query) }
             }
         }
     }
 
     fun clearAutocomplete() {
+        searchJob?.cancel()
         _uiState.update { it.copy(autocompleteSuggestions = emptyList(), autocompleteQuery = "") }
     }
 
@@ -420,57 +477,45 @@ class WorkoutBuilderViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
-                // 1. Save/update routine header
-                val savedRoutineId = if (routineId != null) {
-                    val existing = repository.getRoutineById(routineId) ?: return@launch
-                    repository.updateRoutine(
-                        existing.copy(
-                            name = state.routineName,
-                            category = state.category,
-                            accentColor = state.accentColor,
-                            totalDurationSec = state.totalDurationSec,
-                            totalExercises = state.totalExercises
-                        )
-                    )
-                    routineId
-                } else {
-                    repository.saveRoutine(
-                        WorkoutRoutine(
-                            name = state.routineName,
-                            category = state.category,
-                            accentColor = state.accentColor,
-                            totalDurationSec = state.totalDurationSec,
-                            totalExercises = state.totalExercises
-                        )
-                    )
+                val routine = WorkoutRoutine(
+                    id = routineId ?: 0,
+                    name = state.routineName,
+                    category = state.category,
+                    accentColor = state.accentColor,
+                    totalDurationSec = state.totalDurationSec,
+                    totalExercises = state.totalExercises
+                )
+                val blocksData = state.blocks.map { uiBlock ->
+                    uiBlock.block to uiBlock.exercises.map { it.exercise }
                 }
 
-                // 2. Delete existing blocks (untuk edit mode) — CASCADE hapus exercises juga
-                if (routineId != null) {
-                    repository.deleteAllBlocksByRoutineId(routineId)
-                }
-
-
-                // 3. Insert semua blok dan exercise baru
-                state.blocks.forEachIndexed { blockIdx, uiBlock ->
-                    val savedBlockId = repository.insertBlock(
-                        uiBlock.block.copy(routineId = savedRoutineId, orderIndex = blockIdx)
-                    )
-                    uiBlock.exercises.forEachIndexed { exIdx, uiEx ->
-                        repository.insertExercise(
-                            uiEx.exercise.copy(blockId = savedBlockId, orderIndex = exIdx)
-                        )
-                    }
-                }
+                // Batch atomic transaction via withTransaction in repository (<15ms, 1 emission)
+                val savedRoutineId = repository.saveFullRoutine(
+                    routine = routine,
+                    blocksWithExercises = blocksData,
+                    isEdit = routineId != null
+                )
 
                 _uiState.update { it.copy(
                     isSaving = false,
+                    isSaved = !startImmediately,
                     navigateToPlayer = if (startImmediately) savedRoutineId else null
                 )}
-                if (!startImmediately) showSnackbar("Rutinitas disimpan!")
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false) }
                 showSnackbar("Gagal menyimpan: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteRoutine(onSuccess: () -> Unit) {
+        val id = routineId ?: return
+        viewModelScope.launch {
+            try {
+                repository.deleteRoutine(id)
+                onSuccess()
+            } catch (e: Exception) {
+                showSnackbar("Gagal menghapus: ${e.message}")
             }
         }
     }

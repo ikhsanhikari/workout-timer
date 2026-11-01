@@ -37,6 +37,8 @@ class UserPreferencesRepository @Inject constructor(
         val KEY_CATALOG_VERSION = intPreferencesKey("catalog_version")
         val KEY_CATALOG_URL = stringPreferencesKey("catalog_url")
         val KEY_LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
+        val KEY_EXERCISE_LIBRARY_VERSION = intPreferencesKey("exercise_library_version")
+        val KEY_EXERCISE_LIBRARY_URL = stringPreferencesKey("exercise_library_url")
     }
 
     val catalogVersionFlow: Flow<Int> = dataStore.data
@@ -46,6 +48,14 @@ class UserPreferencesRepository @Inject constructor(
     val catalogUrlFlow: Flow<String?> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[KEY_CATALOG_URL] }
+
+    val exerciseLibraryVersionFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_EXERCISE_LIBRARY_VERSION] ?: 1 }
+
+    val exerciseLibraryUrlFlow: Flow<String?> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_EXERCISE_LIBRARY_URL] }
 
     suspend fun getCatalogVersion(): Int {
         return dataStore.data.firstOrNull()?.get(KEY_CATALOG_VERSION) ?: 1
@@ -61,6 +71,22 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun saveCatalogUrl(url: String) {
         dataStore.edit { it[KEY_CATALOG_URL] = url }
+    }
+
+    suspend fun getExerciseLibraryVersion(): Int {
+        return dataStore.data.firstOrNull()?.get(KEY_EXERCISE_LIBRARY_VERSION) ?: 1
+    }
+
+    suspend fun saveExerciseLibraryVersion(version: Int) {
+        dataStore.edit { it[KEY_EXERCISE_LIBRARY_VERSION] = version }
+    }
+
+    suspend fun getExerciseLibraryUrl(): String? {
+        return dataStore.data.firstOrNull()?.get(KEY_EXERCISE_LIBRARY_URL)
+    }
+
+    suspend fun saveExerciseLibraryUrl(url: String) {
+        dataStore.edit { it[KEY_EXERCISE_LIBRARY_URL] = url }
     }
 
     suspend fun recordSyncTimestamp() {

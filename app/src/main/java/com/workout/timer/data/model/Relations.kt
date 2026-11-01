@@ -88,5 +88,15 @@ data class FlatExerciseItem(
     /** Nomor set saat ini (1-based) jika berada dalam loop block, null jika bukan. */
     val currentSet: Int? = null,
     /** Total set dalam block ini, null jika bukan loop block. */
-    val totalSets: Int? = null
+    val totalSets: Int? = null,
+    /** Target otot spesifik dari kamus gerakan. */
+    val targetMuscle: String? = null,
+    /** Tips instruktur profesional dari kamus gerakan. */
+    val coachTip: String? = null,
+    /** Kategori gerakan. */
+    val category: String? = null,
+    /** Tingkat kesulitan gerakan. */
+    val difficulty: String? = null,
+    /** Peralatan yang dibutuhkan. */
+    val equipment: String? = null
 )

@@ -32,6 +32,7 @@ class WorkoutTimerEngine @Inject constructor(
     // Data sesi aktif
     private var activeRoutineId: Long = -1L
     private var activeRoutineName: String = ""
+    private var activeRoutineCategory: String = "Full Body"
     private var exercises: List<FlatExerciseItem> = emptyList()
     private var currentExerciseIndex: Int = 0
 
@@ -53,7 +54,8 @@ class WorkoutTimerEngine @Inject constructor(
     fun startWorkout(
         routineId: Long,
         routineName: String,
-        flatExercises: List<FlatExerciseItem>
+        flatExercises: List<FlatExerciseItem>,
+        routineCategory: String = "Full Body"
     ) {
         if (flatExercises.isEmpty()) return
 
@@ -61,6 +63,7 @@ class WorkoutTimerEngine @Inject constructor(
 
         activeRoutineId = routineId
         activeRoutineName = routineName
+        activeRoutineCategory = routineCategory
         exercises = flatExercises
         currentExerciseIndex = 0
         isPaused = false
@@ -84,7 +87,8 @@ class WorkoutTimerEngine @Inject constructor(
                     countdownSeconds = prepSeconds,
                     routineId = activeRoutineId,
                     routineName = activeRoutineName,
-                    firstExercise = firstExercise
+                    firstExercise = firstExercise,
+                    category = activeRoutineCategory
                 )
                 audioHapticManager.playCountdownBeep()
                 delay(1000)

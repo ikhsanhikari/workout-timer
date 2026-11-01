@@ -1,12 +1,15 @@
 package com.workout.timer.data.repository
 
 import android.net.Uri
+import androidx.room.withTransaction
 import com.workout.timer.data.database.WorkoutDatabase
 import com.workout.timer.data.database.dao.*
 import com.workout.timer.data.media.MediaFileManager
 import com.workout.timer.data.model.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -72,6 +75,41 @@ class WorkoutRepository @Inject constructor(
     suspend fun saveRoutine(routine: WorkoutRoutine): Long = routineDao.insert(routine)
 
     suspend fun updateRoutine(routine: WorkoutRoutine) = routineDao.update(routine)
+
+    /**
+     * Menyimpan seluruh rutinitas (Routine, Blocks, Exercises) secara atomik
+     * menggunakan Room Database Transaction dalam 1 operasi batch cepat.
+     * Mencegah multiple Flow emissions dan disk I/O thrashing.
+     */
+    suspend fun saveFullRoutine(
+        routine: WorkoutRoutine,
+        blocksWithExercises: List<Pair<WorkoutBlock, List<WorkoutExercise>>>,
+        isEdit: Boolean
+    ): Long = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            val savedRoutineId = if (isEdit && routine.id > 0) {
+                routineDao.update(routine)
+                blockDao.deleteAllByRoutineId(routine.id)
+                routine.id
+            } else {
+                routineDao.insert(routine)
+            }
+
+            blocksWithExercises.forEachIndexed { blockIdx, (block, exercises) ->
+                val savedBlockId = blockDao.insert(
+                    block.copy(id = 0, routineId = savedRoutineId, orderIndex = blockIdx)
+                )
+                if (exercises.isNotEmpty()) {
+                    val reindexedExercises = exercises.mapIndexed { exIdx, ex ->
+                        ex.copy(id = 0, blockId = savedBlockId, orderIndex = exIdx)
+                    }
+                    exerciseDao.insertAll(reindexedExercises)
+                }
+            }
+
+            savedRoutineId
+        }
+    }
 
     suspend fun deleteRoutine(routineId: Long) {
         // Room CASCADE DELETE menangani block + exercise secara otomatis.
@@ -253,6 +291,8 @@ class WorkoutRepository @Inject constructor(
     }
 
     suspend fun getTemplateById(id: Long): ExerciseTemplate? = templateDao.getById(id)
+
+    suspend fun getTemplateByName(name: String): ExerciseTemplate? = templateDao.getByName(name)
 }
 
 /** Opsi pengurutan untuk daftar rutinitas di Home Dashboard (F-03). */
