@@ -241,20 +241,14 @@ object CatalogImporter {
 
             for (item in library.exercises) {
                 val existing = templateDao.getByName(item.name)
-                val isCustomVideo = existing?.mediaType == MediaType.VIDEO && !existing.mediaUri.isNullOrBlank()
-                val targetMediaUri = if (isCustomVideo) {
-                    existing?.mediaUri
-                } else if (!item.gifUrl.isNullOrBlank()) {
-                    item.gifUrl
-                } else {
-                    existing?.mediaUri
-                }
-                val targetMediaType = if (isCustomVideo) {
-                    MediaType.VIDEO
-                } else if (!item.gifUrl.isNullOrBlank()) {
-                    MediaType.GIF
-                } else {
+                // Pertahankan media kustom rekaman user sendiri, namun perbarui jika masih berupa aset bawaan
+                val isUserCustomMedia = existing?.mediaUri != null && !existing.mediaUri.startsWith("file:///android_asset/")
+                val rawTarget = if (isUserCustomMedia) existing.mediaUri else if (!item.gifUrl.isNullOrBlank()) item.gifUrl else existing?.mediaUri
+                val targetMediaUri = if (isUserCustomMedia) rawTarget else AssetVideoResolver.resolveVideo(item.name, rawTarget)
+                val targetMediaType = if (isUserCustomMedia) {
                     existing?.mediaType ?: MediaType.NONE
+                } else {
+                    AssetVideoResolver.getEffectiveMediaType(targetMediaUri, MediaType.NONE)
                 }
 
                 if (existing != null) {

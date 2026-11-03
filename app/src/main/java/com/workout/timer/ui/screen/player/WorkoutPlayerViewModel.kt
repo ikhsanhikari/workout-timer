@@ -5,12 +5,16 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.workout.timer.data.preferences.UserPreferencesRepository
 import com.workout.timer.service.WorkoutTimerService
+import com.workout.timer.service.audio.WorkoutMusicManager
 import com.workout.timer.service.timer.WorkoutTimerEngine
 import com.workout.timer.service.timer.WorkoutTimerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,10 +26,15 @@ import javax.inject.Inject
 @HiltViewModel
 class WorkoutPlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val timerEngine: WorkoutTimerEngine
+    private val timerEngine: WorkoutTimerEngine,
+    private val workoutMusicManager: WorkoutMusicManager,
+    private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     val timerState: StateFlow<WorkoutTimerState> = timerEngine.timerState
+
+    val isBgmEnabled: StateFlow<Boolean> = preferencesRepository.bgmEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     /**
      * Memulai rutinitas latihan jika belum aktif.
@@ -71,6 +80,10 @@ class WorkoutPlayerViewModel @Inject constructor(
 
     fun addRestTime(seconds: Int = 15) {
         timerEngine.addRestTime(seconds)
+    }
+
+    fun toggleBgm() {
+        workoutMusicManager.toggleBgm()
     }
 
     fun stopWorkout() {

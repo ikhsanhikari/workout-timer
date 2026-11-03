@@ -21,7 +21,8 @@ import kotlin.math.max
  */
 @Singleton
 class WorkoutTimerEngine @Inject constructor(
-    private val audioHapticManager: AudioHapticManager
+    private val audioHapticManager: AudioHapticManager,
+    private val workoutMusicManager: com.workout.timer.service.audio.WorkoutMusicManager
 ) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var timerJob: Job? = null
@@ -69,6 +70,7 @@ class WorkoutTimerEngine @Inject constructor(
         isPaused = false
         totalPausedDurationMs = 0L
         workoutStartElapsedRealtime = SystemClock.elapsedRealtime()
+        workoutMusicManager.startMusic()
 
         startPreparationPhase()
     }
@@ -113,6 +115,7 @@ class WorkoutTimerEngine @Inject constructor(
 
         currentExerciseIndex = index
         val currentEx = exercises[index]
+        workoutMusicManager.setPhase(currentEx.type)
         stepTotalDurationMs = currentEx.durationSeconds * 1000L
         stepStartTime = SystemClock.elapsedRealtime()
         stepEndTime = stepStartTime + stepTotalDurationMs
@@ -218,6 +221,7 @@ class WorkoutTimerEngine @Inject constructor(
         if (isPaused) return
         isPaused = true
         pausedAt = SystemClock.elapsedRealtime()
+        workoutMusicManager.pause()
         updateCurrentStatePausedFlag(true)
     }
 
@@ -230,6 +234,7 @@ class WorkoutTimerEngine @Inject constructor(
         stepEndTime += pauseDuration
         totalPausedDurationMs += pauseDuration
         isPaused = false
+        workoutMusicManager.resume()
         updateCurrentStatePausedFlag(false)
     }
 
@@ -289,6 +294,7 @@ class WorkoutTimerEngine @Inject constructor(
             totalDurationSeconds = totalSec,
             totalExercisesCompleted = exercises.size
         )
+        workoutMusicManager.stop()
         audioHapticManager.playWorkoutCompleteTone()
     }
 
@@ -299,6 +305,7 @@ class WorkoutTimerEngine @Inject constructor(
         timerJob?.cancel()
         timerJob = null
         isPaused = false
+        workoutMusicManager.stop()
         _timerState.value = WorkoutTimerState.Idle
     }
 

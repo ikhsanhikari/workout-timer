@@ -127,11 +127,17 @@ abstract class WorkoutDatabase : RoomDatabase() {
                 scope.launch(Dispatchers.IO) {
                     try {
                         val templateDao = database.exerciseTemplateDao()
-                        val hasLocalMedia = templateDao.getAll().any { it.mediaUri?.startsWith("file:///android_asset/") == true }
-                        if (!hasLocalMedia) {
-                            CatalogImporter.importExerciseLibraryFromAsset(context, database, "exercise_library.json")
-                        }
-                    } catch (_: Exception) {}
+                        // 1. Selalu sinkronkan Kamus Master dari exercise_library.json saat app dibuka
+                        CatalogImporter.importExerciseLibraryFromAsset(context, database, "exercise_library.json")
+
+                        // 2. Periksa dan upgrade seluruh template di DB yang masih menunjuk GIF ke Video MP4 AI
+                        com.workout.timer.data.catalog.AssetVideoResolver.upgradeAllTemplatesInDb(templateDao)
+
+                        // 3. Pastikan rutinitas standar tersedia
+                        populateStandardData(context, database, onlyIfMissing = true)
+                    } catch (e: Exception) {
+                        Log.e("WorkoutDatabase", "Gagal auto-update media dan katalog di onOpen: ${e.message}", e)
+                    }
                 }
             }
         }

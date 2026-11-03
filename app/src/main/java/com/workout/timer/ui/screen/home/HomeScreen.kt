@@ -1,6 +1,7 @@
 package com.workout.timer.ui.screen.home
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,6 +52,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.ui.graphics.StrokeCap
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Layar Home Dashboard (F-02) — Apple Fitness Aesthetic.
@@ -510,60 +513,178 @@ private fun AthleticActivityRing(
     progress: Float,
     modifier: Modifier = Modifier
 ) {
+    // 1. Smooth Progress Arc Interpolation
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0.08f, 1f),
+        animationSpec = tween(
+            durationMillis = 1100,
+            easing = FastOutSlowInEasing
+        ),
+        label = "ring_progress"
+    )
+
+    // 2. Smooth Floating Breathing Pulse for the Core Lens
+    val infiniteTransition = rememberInfiniteTransition(label = "runner_ambience")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.97f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "runner_scale"
+    )
+    val glowPulse by infiniteTransition.animateFloat(
+        initialValue = 0.14f,
+        targetValue = 0.30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "runner_glow"
+    )
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
+        // High-Precision Biometric Dial Canvas
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 8.dp.toPx()
+            val strokeWidth = 8.5.dp.toPx()
             val radius = (size.minDimension - strokeWidth) / 2f
             val center = Offset(size.width / 2f, size.height / 2f)
 
-            // Ambient radial glow behind the ring
+            // Dynamic ambient radial aura behind ring
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        AccentWork.copy(alpha = 0.18f),
+                        AccentWork.copy(alpha = glowPulse),
+                        AccentRest.copy(alpha = glowPulse * 0.45f),
                         Color.Transparent
                     ),
                     center = center,
-                    radius = radius * 1.35f
+                    radius = radius * 1.45f
                 ),
                 center = center,
-                radius = radius * 1.35f
+                radius = radius * 1.45f
             )
 
-            // Track background
+            // Outer dark frosted glass track
             drawCircle(
-                color = Color(0xFF1F2430),
+                color = Color(0xFF141822).copy(alpha = 0.85f),
                 radius = radius,
                 center = center,
                 style = Stroke(width = strokeWidth)
             )
 
-            // Dynamic progress arc
+            // Subtle inner track guide hairline
+            drawCircle(
+                color = Color.White.copy(alpha = 0.06f),
+                radius = radius - strokeWidth / 2f,
+                center = center,
+                style = Stroke(width = 0.8.dp.toPx())
+            )
+
+            // Dynamic Gradient Sweep Progress Arc
+            val sweepAngle = 360f * animatedProgress
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
+                        AccentRest,
                         AccentWork,
-                        Color(0xFF00E676),
+                        Color(0xFF00FF87),
                         AccentWork
                     )
                 ),
                 startAngle = -90f,
-                sweepAngle = 360f * progress.coerceIn(0.08f, 1f),
+                sweepAngle = sweepAngle,
                 useCenter = false,
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
+
+            // Glowing Leading Tip Flare (Apple Fitness/Biometric spark)
+            val currentAngleDeg = -90f + sweepAngle
+            val angleRad = Math.toRadians(currentAngleDeg.toDouble())
+            val tipX = center.x + radius * cos(angleRad).toFloat()
+            val tipY = center.y + radius * sin(angleRad).toFloat()
+            val tipCenter = Offset(tipX, tipY)
+
+            // Radiant bloom around the tip cap
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        AccentWork.copy(alpha = 0.70f),
+                        Color.Transparent
+                    ),
+                    center = tipCenter,
+                    radius = strokeWidth * 1.4f
+                ),
+                center = tipCenter,
+                radius = strokeWidth * 1.4f
+            )
+
+            // Concentrated bright spark at the center of the tip
+            drawCircle(
+                color = Color.White,
+                center = tipCenter,
+                radius = strokeWidth * 0.32f
+            )
         }
 
-        // Center Icon: Athletic Runner
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.DirectionsRun,
-            contentDescription = "Aktivitas",
-            tint = AccentWork,
-            modifier = Modifier.size(28.dp)
-        )
+        // Center Floating Frosted Glass Lens with Smooth Aerodynamic Sprinter
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .graphicsLayer {
+                    scaleX = pulseScale
+                    scaleY = pulseScale
+                }
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF1A2232).copy(alpha = 0.82f),
+                            Color(0xFF0D111A).copy(alpha = 0.94f)
+                        )
+                    )
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        Brush.linearGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.35f),
+                                AccentWork.copy(alpha = 0.25f),
+                                Color.White.copy(alpha = 0.06f)
+                            )
+                        )
+                    ),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Internal breathing core glow
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                AccentWork.copy(alpha = glowPulse * 1.2f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            // Sleek Aerodynamic Runner Vector with smooth curves & speed trails
+            Image(
+                painter = painterResource(id = R.drawable.ic_runner_sleek),
+                contentDescription = "Aktivitas Lari",
+                modifier = Modifier.size(32.dp)
+            )
+        }
     }
 }
 
@@ -578,66 +699,182 @@ private fun WeeklyActivitySection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151A)),
-        border = BorderStroke(1.dp, Color(0xFF222632))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF131722).copy(alpha = 0.70f)),
+        border = BorderStroke(
+            width = 1.dp,
+            brush = Brush.linearGradient(
+                0.0f to Color.White.copy(alpha = 0.35f),    // Top-left crisp specular highlight
+                0.20f to AccentWork.copy(alpha = 0.30f),   // Neon lime refraction
+                0.55f to Color.White.copy(alpha = 0.08f),   // Translucent body
+                1.0f to Color.White.copy(alpha = 0.02f),    // Bottom shadow bevel
+                start = Offset(0f, 0f),
+                end = Offset(1000f, 600f)
+            )
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF1B202A),
-                    border = BorderStroke(1.dp, Color(0xFF2A3242))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_flame_streak),
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // 1. Subtle Athletic Workout Photography Backdrop (frosted underlay)
+            Image(
+                painter = painterResource(id = R.drawable.banner_weekly_activity),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .alpha(0.18f)
+            )
+
+            // 2. Multi-Directional Dark Frosted Glass Scrim
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF0F121A).copy(alpha = 0.94f),
+                                Color(0xFF0F121A).copy(alpha = 0.82f),
+                                Color(0xFF121724).copy(alpha = 0.60f)
+                            )
                         )
-                        Text(
-                            text = "AKTIVITAS MINGGU INI",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFFF8C42),
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.8.sp,
-                            fontSize = 10.sp
+                    )
+            )
+
+            // 3. Ambient Glass Glows (Left Flame Aura & Right Athletic Neon Halo)
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFFF8C42).copy(alpha = 0.12f),
+                                Color.Transparent
+                            ),
+                            center = Offset(80f, 50f),
+                            radius = 280f
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                AccentWork.copy(alpha = 0.16f),
+                                Color(0xFF00F5EA).copy(alpha = 0.06f),
+                                Color.Transparent
+                            ),
+                            center = Offset(720f, 120f),
+                            radius = 340f
+                        )
+                    )
+            )
+
+            // 4. Top Glass Specular Shine (Light Glare Reflection)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.10f),
+                                Color.White.copy(alpha = 0.02f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            // 5. Foreground Content
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    // Frosted Glass Streak Capsule
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.White.copy(alpha = 0.07f),
+                        border = BorderStroke(
+                            1.dp,
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color(0xFFFF9E44).copy(alpha = 0.45f),
+                                    Color.White.copy(alpha = 0.18f)
+                                )
+                            )
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_flame_streak),
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "AKTIVITAS MINGGU INI",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFFF9E44),
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.sp,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Stats with subtle frosted divider
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        StatItem(
+                            value = "$totalMinutes",
+                            unit = "Menit Latihan",
+                            color = Color.White
+                        )
+
+                        // Vertical Glass Divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(38.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.18f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+
+                        StatItem(
+                            value = "$sessionCount",
+                            unit = "Sesi Selesai",
+                            color = AccentWork,
+                            icon = Icons.Default.CheckCircle
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                    StatItem(
-                        value = "$totalMinutes",
-                        unit = "Menit Latihan",
-                        color = Color.White
-                    )
-                    StatItem(
-                        value = "$sessionCount",
-                        unit = "Sesi Selesai",
-                        color = AccentWork,
-                        icon = Icons.Default.CheckCircle
-                    )
-                }
+                // Sleek Activity Dial with Smooth Animated Runner Lens
+                AthleticActivityRing(
+                    progress = (totalMinutes / 120f).coerceIn(0.18f, 1f),
+                    modifier = Modifier.size(92.dp)
+                )
             }
-
-            // High-precision Activity Progress Ring with Center Runner
-            AthleticActivityRing(
-                progress = (totalMinutes / 120f).coerceIn(0.18f, 1f),
-                modifier = Modifier.size(86.dp)
-            )
         }
     }
 }

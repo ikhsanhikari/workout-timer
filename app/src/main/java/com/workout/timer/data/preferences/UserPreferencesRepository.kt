@@ -34,6 +34,7 @@ class UserPreferencesRepository @Inject constructor(
         val KEY_HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
         val KEY_BEEP_ENABLED = booleanPreferencesKey("beep_enabled")
         val KEY_COUNTDOWN_ENABLED = booleanPreferencesKey("countdown_enabled")
+        val KEY_BGM_ENABLED = booleanPreferencesKey("bgm_enabled")
         val KEY_CATALOG_VERSION = intPreferencesKey("catalog_version")
         val KEY_CATALOG_URL = stringPreferencesKey("catalog_url")
         val KEY_LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
@@ -98,8 +99,13 @@ class UserPreferencesRepository @Inject constructor(
         val isOnboardingDone: Boolean = false,
         val hapticEnabled: Boolean = true,
         val beepEnabled: Boolean = true,
-        val countdownEnabled: Boolean = true
+        val countdownEnabled: Boolean = true,
+        val bgmEnabled: Boolean = true
     )
+
+    val bgmEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_BGM_ENABLED] ?: true }
 
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data
         .catch { e ->
@@ -112,7 +118,8 @@ class UserPreferencesRepository @Inject constructor(
                 isOnboardingDone = preferences[KEY_ONBOARDING_DONE] ?: false,
                 hapticEnabled = preferences[KEY_HAPTIC_ENABLED] ?: true,
                 beepEnabled = preferences[KEY_BEEP_ENABLED] ?: true,
-                countdownEnabled = preferences[KEY_COUNTDOWN_ENABLED] ?: true
+                countdownEnabled = preferences[KEY_COUNTDOWN_ENABLED] ?: true,
+                bgmEnabled = preferences[KEY_BGM_ENABLED] ?: true
             )
         }
 
@@ -134,5 +141,9 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setCountdownEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_COUNTDOWN_ENABLED] = enabled }
+    }
+
+    suspend fun setBgmEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_BGM_ENABLED] = enabled }
     }
 }

@@ -22,14 +22,18 @@ data class ExerciseWithTemplate(
      * Prioritas: customMediaUri (override) > template.mediaUri > null
      */
     val resolvedMediaUri: String?
-        get() = exercise.customMediaUri ?: template?.mediaUri
+        get() {
+            val isUserPersonalFile = exercise.customMediaUri != null && !exercise.customMediaUri.startsWith("file:///android_asset/")
+            if (isUserPersonalFile) return exercise.customMediaUri
+            val raw = exercise.customMediaUri ?: template?.mediaUri
+            return com.workout.timer.data.catalog.AssetVideoResolver.resolveVideo(exercise.title, raw, exercise.type)
+        }
 
     val resolvedMediaType: MediaType
-        get() = when {
-            exercise.customMediaUri != null -> exercise.customMediaType
-            template?.mediaUri != null -> template.mediaType
-            else -> MediaType.NONE
-        }
+        get() = com.workout.timer.data.catalog.AssetVideoResolver.getEffectiveMediaType(
+            resolvedMediaUri,
+            if (exercise.customMediaUri != null) exercise.customMediaType else template?.mediaType ?: MediaType.NONE
+        )
 
     val resolvedThumbnailUri: String?
         get() = template?.thumbnailUri

@@ -44,11 +44,20 @@ class FlattenRoutineUseCase @Inject constructor(
                             repository.getTemplateByName(exercise.title)
                         }
 
-                        val resolvedMediaUri = exercise.customMediaUri ?: template?.mediaUri
-                        val resolvedMediaType = if (exercise.customMediaUri != null) {
+                        val rawUri = exercise.customMediaUri ?: template?.mediaUri
+                        val rawType = if (exercise.customMediaUri != null) exercise.customMediaType else template?.mediaType ?: MediaType.NONE
+
+                        // Prioritaskan video AI: Jika user tidak memiliki video rekaman pribadi, cek apakah ada video MP4 AI di assets
+                        val isUserPersonalFile = exercise.customMediaUri != null && !exercise.customMediaUri.startsWith("file:///android_asset/")
+                        val finalMediaUri = if (isUserPersonalFile) {
+                            exercise.customMediaUri
+                        } else {
+                            com.workout.timer.data.catalog.AssetVideoResolver.resolveVideo(exercise.title, rawUri, exercise.type)
+                        }
+                        val finalMediaType = if (isUserPersonalFile) {
                             exercise.customMediaType
                         } else {
-                            template?.mediaType ?: MediaType.NONE
+                            com.workout.timer.data.catalog.AssetVideoResolver.getEffectiveMediaType(finalMediaUri, rawType)
                         }
 
                         add(
@@ -57,8 +66,8 @@ class FlattenRoutineUseCase @Inject constructor(
                                 title = exercise.title,
                                 durationSeconds = exercise.durationSeconds,
                                 type = exercise.type,
-                                mediaUri = resolvedMediaUri,
-                                mediaType = resolvedMediaType,
+                                mediaUri = finalMediaUri,
+                                mediaType = finalMediaType,
                                 thumbnailUri = template?.thumbnailUri,
                                 currentSet = if (block.repeatCount > 1) setIndex + 1 else null,
                                 totalSets = if (block.repeatCount > 1) block.repeatCount else null,

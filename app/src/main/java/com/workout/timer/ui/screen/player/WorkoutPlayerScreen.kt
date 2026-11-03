@@ -18,6 +18,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -32,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -149,6 +152,8 @@ fun WorkoutPlayerScreen(
         ) {
             val isLandscape = maxWidth > maxHeight
 
+            val isBgmEnabled by viewModel.isBgmEnabled.collectAsStateWithLifecycle()
+
             when (val state = timerState) {
                 is WorkoutTimerState.Idle -> {
                     if (routineId <= 0) {
@@ -188,6 +193,8 @@ fun WorkoutPlayerScreen(
                         isPaused = state.isPaused,
                         intervalType = state.currentExercise.type,
                         isLandscape = isLandscape,
+                        isBgmEnabled = isBgmEnabled,
+                        onToggleBgm = { viewModel.toggleBgm() },
                         onTogglePause = { viewModel.togglePause() },
                         onSkip = { viewModel.skip() },
                         onPrevious = { viewModel.previous() },
@@ -211,6 +218,8 @@ fun WorkoutPlayerScreen(
                         isPaused = state.isPaused,
                         intervalType = IntervalType.REST,
                         isLandscape = isLandscape,
+                        isBgmEnabled = isBgmEnabled,
+                        onToggleBgm = { viewModel.toggleBgm() },
                         onTogglePause = { viewModel.togglePause() },
                         onSkip = { viewModel.skip() },
                         onPrevious = { viewModel.previous() },
@@ -460,6 +469,8 @@ private fun ActiveWorkoutView(
     isPaused: Boolean,
     intervalType: IntervalType,
     isLandscape: Boolean,
+    isBgmEnabled: Boolean = true,
+    onToggleBgm: (() -> Unit)? = null,
     onTogglePause: () -> Unit,
     onSkip: () -> Unit,
     onPrevious: () -> Unit,
@@ -473,13 +484,14 @@ private fun ActiveWorkoutView(
     }
 
     val displayMediaUri = if (intervalType == IntervalType.REST) {
-        nextExercise?.mediaUri
+        currentExercise.mediaUri ?: com.workout.timer.data.catalog.AssetVideoResolver.resolveVideo(currentExercise.title, null, intervalType)
     } else {
         currentExercise.mediaUri
     }
 
     val displayMediaType = if (intervalType == IntervalType.REST) {
-        nextExercise?.mediaType ?: MediaType.NONE
+        val resolvedUri = displayMediaUri
+        if (com.workout.timer.data.catalog.AssetVideoResolver.isVideo(resolvedUri)) MediaType.VIDEO else (currentExercise.mediaType.takeIf { it != MediaType.NONE } ?: MediaType.VIDEO)
     } else {
         currentExercise.mediaType
     }
@@ -559,6 +571,8 @@ private fun ActiveWorkoutView(
                     totalElapsedSeconds = totalElapsedSeconds,
                     intervalType = intervalType,
                     accentColor = accentColor,
+                    isBgmEnabled = isBgmEnabled,
+                    onToggleBgm = onToggleBgm,
                     onStop = onStop
                 )
 
@@ -586,7 +600,7 @@ private fun ActiveWorkoutView(
                             nextExercise = nextExercise,
                             remainingSeconds = remainingSeconds,
                             isPaused = isPaused,
-                            isRestPreview = intervalType == IntervalType.REST,
+                            isRestPreview = false,
                             previewTitle = nextExercise?.title,
                             accentColor = accentColor,
                             intervalType = intervalType,
@@ -644,27 +658,11 @@ private fun ActiveWorkoutView(
                 }
             }
         } else {
-            // ── PORTRAIT LAYOUT (HERO VIDEO MODE) ──────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+            // ── PORTRAIT LAYOUT (FULLSCREEN VIDEO & ULTRA-TRANSPARENT GLASS HUD) ──
+            Box(
+                modifier = Modifier.fillMaxSize()
             ) {
-                // 1. TOP HEADER WITH SESSION PROGRESS & HEARTBEAT
-                TopHeaderBar(
-                    routineName = routineName,
-                    exerciseIndex = exerciseIndex,
-                    totalExercises = totalExercises,
-                    remainingSeconds = remainingSeconds,
-                    totalElapsedSeconds = totalElapsedSeconds,
-                    intervalType = intervalType,
-                    accentColor = accentColor,
-                    onStop = onStop
-                )
-
-                // 2. HERO VIDEO / GIF MEDIA VIEWER OR DYNAMIC ILLUSTRATION CARD (280dp)
+                // 1. FULLSCREEN VIDEO LAYER (EDGE-TO-EDGE)
                 WorkoutMediaContainer(
                     mediaUri = displayMediaUri,
                     mediaType = displayMediaType,
@@ -674,61 +672,129 @@ private fun ActiveWorkoutView(
                     nextExercise = nextExercise,
                     remainingSeconds = remainingSeconds,
                     isPaused = isPaused,
-                    isRestPreview = intervalType == IntervalType.REST,
+                    isRestPreview = false,
                     previewTitle = nextExercise?.title,
                     accentColor = accentColor,
                     intervalType = intervalType,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    isFullscreen = true
                 )
 
-                // 3. 60FPS CIRCULAR PROGRESS RING (COMPACT 185dp WITH AMBIENT GLOW)
+                // 2. ULTRA-SUBTLE VIGNETTE (Only top status bar protection & subtle bottom shade)
                 Box(
                     modifier = Modifier
-                        .size(185.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onTogglePause()
-                            }
-                        ),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                            )
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.40f))
+                            )
+                        )
+                )
+
+                // 3. FLOATING ULTRA-TRANSPARENT HUD OVERLAY
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    CircularProgressRing(
-                        progress = progress,
-                        strokeWidth = 14.dp,
-                        accentColor = accentColor,
-                        trackColor = accentColor.copy(alpha = 0.15f),
-                        remainingSeconds = remainingSeconds
-                    )
-                    RingCenterContent(
+                    // TOP HEADER WITH SESSION PROGRESS & HEARTBEAT (GLASS MODE)
+                    TopHeaderBar(
+                        routineName = routineName,
+                        exerciseIndex = exerciseIndex,
+                        totalExercises = totalExercises,
+                        remainingSeconds = remainingSeconds,
+                        totalElapsedSeconds = totalElapsedSeconds,
                         intervalType = intervalType,
                         accentColor = accentColor,
-                        remainingSeconds = remainingSeconds,
-                        currentExercise = currentExercise,
-                        isPaused = isPaused,
-                        isCompact = true
+                        isBgmEnabled = isBgmEnabled,
+                        onToggleBgm = onToggleBgm,
+                        onStop = onStop,
+                        isGlassMode = true
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // 60FPS COMPACT CIRCULAR PROGRESS RING (130dp WITH ULTRA-TRANSPARENT GLASS DISC)
+                    Box(
+                        modifier = Modifier
+                            .size(130.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.10f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onTogglePause()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressRing(
+                            progress = progress,
+                            strokeWidth = 4.dp,
+                            accentColor = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.18f),
+                            remainingSeconds = remainingSeconds,
+                            isGlassMode = true
+                        )
+                        RingCenterContent(
+                            intervalType = intervalType,
+                            accentColor = accentColor,
+                            remainingSeconds = remainingSeconds,
+                            currentExercise = currentExercise,
+                            isPaused = isPaused,
+                            isCompact = true,
+                            isGlassMode = true
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // FLOATING UP NEXT BANNER & CONTROLS DOCK
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // UP NEXT BANNER (GLASS MODE)
+                        nextExercise?.let { next ->
+                            UpNextBanner(
+                                next = next,
+                                isGlassMode = true
+                            )
+                        }
+
+                        // BOTTOM CONTROLS DOCK (GLASS MODE)
+                        BottomPlaybackControls(
+                            intervalType = intervalType,
+                            accentColor = accentColor,
+                            isPaused = isPaused,
+                            onTogglePause = onTogglePause,
+                            onSkip = onSkip,
+                            onPrevious = onPrevious,
+                            onAddRest = onAddRest,
+                            isGlassMode = true
+                        )
+                    }
                 }
-
-                // 4. UP NEXT BANNER
-                nextExercise?.let { next ->
-                    UpNextBanner(next = next)
-                } ?: Spacer(modifier = Modifier.height(12.dp))
-
-                // 5. BOTTOM CONTROLS DOCK
-                BottomPlaybackControls(
-                    intervalType = intervalType,
-                    accentColor = accentColor,
-                    isPaused = isPaused,
-                    onTogglePause = onTogglePause,
-                    onSkip = onSkip,
-                    onPrevious = onPrevious,
-                    onAddRest = onAddRest
-                )
             }
         }
     }
@@ -750,24 +816,36 @@ private fun WorkoutMediaContainer(
     previewTitle: String?,
     accentColor: Color,
     intervalType: IntervalType,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFullscreen: Boolean = false
 ) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = SurfaceCard,
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
-        modifier = modifier.clip(RoundedCornerShape(24.dp))
-    ) {
+    val content = @Composable {
+        // Prioritaskan video AI beresolusi tinggi daripada animasi GIF
+        // Saat fase REST, putar video istirahat/recovery (bukan video gerakan berikutnya)
+        val effectiveMediaUri = com.workout.timer.data.catalog.AssetVideoResolver.resolveVideo(
+            title = currentExercise.title,
+            currentUri = mediaUri,
+            intervalType = intervalType
+        )
+        val effectiveMediaType = com.workout.timer.data.catalog.AssetVideoResolver.getEffectiveMediaType(effectiveMediaUri, mediaType)
+
+        val effectiveNextUri = com.workout.timer.data.catalog.AssetVideoResolver.resolveVideo(
+            title = nextExercise?.title,
+            currentUri = nextMediaUri,
+            intervalType = nextExercise?.type
+        )
+        val effectiveNextType = com.workout.timer.data.catalog.AssetVideoResolver.getEffectiveMediaType(effectiveNextUri, nextMediaType)
+
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             when {
                 // Media bertipe Video MP4 / WebM: Jalankan Dual-Buffer ExoPlayer
-                mediaType == MediaType.VIDEO && !mediaUri.isNullOrBlank() -> {
+                effectiveMediaType == MediaType.VIDEO && !effectiveMediaUri.isNullOrBlank() -> {
                     DualBufferExoPlayerView(
-                        activeUri = mediaUri,
-                        nextUri = if (nextMediaType == MediaType.VIDEO) nextMediaUri else null,
+                        activeUri = effectiveMediaUri,
+                        nextUri = if (effectiveNextType == MediaType.VIDEO) effectiveNextUri else null,
                         remainingSeconds = remainingSeconds,
                         isPaused = isPaused,
                         modifier = Modifier.fillMaxSize()
@@ -775,13 +853,13 @@ private fun WorkoutMediaContainer(
                 }
 
                 // Media bertipe GIF: Tampilkan via Coil
-                mediaType == MediaType.GIF && !mediaUri.isNullOrBlank() -> {
+                effectiveMediaType == MediaType.GIF && !effectiveMediaUri.isNullOrBlank() -> {
                     val context = LocalContext.current
-                    val imageRequest = remember(mediaUri) {
+                    val imageRequest = remember(effectiveMediaUri) {
                         val modelData = when {
-                            mediaUri.startsWith("file:///android_asset/") -> android.net.Uri.parse(mediaUri)
-                            mediaUri.startsWith("/") -> File(mediaUri)
-                            else -> mediaUri
+                            effectiveMediaUri.startsWith("file:///android_asset/") -> android.net.Uri.parse(effectiveMediaUri)
+                            effectiveMediaUri.startsWith("/") -> File(effectiveMediaUri)
+                            else -> effectiveMediaUri
                         }
                         ImageRequest.Builder(context)
                             .data(modelData)
@@ -791,14 +869,14 @@ private fun WorkoutMediaContainer(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.White),
+                            .background(if (isFullscreen) Color.Black else Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
                             model = imageRequest,
                             imageLoader = context.imageLoader,
                             contentDescription = "Animasi Gerakan",
-                            contentScale = ContentScale.Fit,
+                            contentScale = if (isFullscreen) ContentScale.Crop else ContentScale.Fit,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -816,8 +894,8 @@ private fun WorkoutMediaContainer(
                 }
             }
 
-            // Overlay Badge khusus saat Video / GIF aktif (Bukan Rest Preview)
-            if (!isRestPreview && (mediaType == MediaType.VIDEO || mediaType == MediaType.GIF) && !mediaUri.isNullOrBlank()) {
+            // Overlay Badge khusus saat Video / GIF aktif dalam mode non-fullscreen card
+            if (!isFullscreen && !isRestPreview && (mediaType == MediaType.VIDEO || mediaType == MediaType.GIF) && !mediaUri.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -902,6 +980,24 @@ private fun WorkoutMediaContainer(
                     }
                 }
             }
+        }
+    }
+
+    if (isFullscreen) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    } else {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = SurfaceCard,
+            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
+            modifier = modifier.clip(RoundedCornerShape(24.dp))
+        ) {
+            content()
         }
     }
 }
@@ -1006,6 +1102,55 @@ private fun DualBufferExoPlayerView(
     }
 }
 
+/**
+ * Komponen pemutar video asset looping ringan untuk background sinematik (Opener & Closer).
+ * Menjamin pembebasan resource ExoPlayer secara bersih saat keluar dari layar.
+ */
+@Composable
+private fun LoopingAssetVideoPlayer(
+    assetUri: String,
+    modifier: Modifier = Modifier,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+) {
+    val context = LocalContext.current
+    val player = remember(assetUri) {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ONE
+            volume = 0f
+            setMediaItem(MediaItem.fromUri(Uri.parse(assetUri)))
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(player) {
+        onDispose {
+            try {
+                player.stop()
+                player.release()
+            } catch (_: Exception) { }
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                useController = false
+                this.resizeMode = resizeMode
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                this.player = player
+            }
+        },
+        update = { playerView ->
+            playerView.player = player
+        },
+        modifier = modifier
+    )
+}
+
 // ─── SUBCOMPONENTS: HEADER, RING CONTENT, UP NEXT, CONTROLS ──────────────────
 
 @Composable
@@ -1017,7 +1162,10 @@ private fun TopHeaderBar(
     totalElapsedSeconds: Int,
     intervalType: IntervalType,
     accentColor: Color,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    isGlassMode: Boolean = false,
+    isBgmEnabled: Boolean = true,
+    onToggleBgm: (() -> Unit)? = null
 ) {
     val overallProgress = if (totalExercises > 0) {
         ((exerciseIndex + 1).toFloat() / totalExercises.toFloat()).coerceIn(0f, 1f)
@@ -1026,6 +1174,13 @@ private fun TopHeaderBar(
     val elapsedMin = totalElapsedSeconds / 60
     val elapsedSec = totalElapsedSeconds % 60
     val elapsedStr = String.format("%02d:%02d", elapsedMin, elapsedSec)
+    val textShadow = if (isGlassMode) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.85f),
+            offset = Offset(0f, 2f),
+            blurRadius = 6f
+        )
+    } else null
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1039,16 +1194,24 @@ private fun TopHeaderBar(
         ) {
             Text(
                 text = "${exerciseIndex + 1} / $totalExercises GERAKAN",
-                style = MaterialTheme.typography.labelSmall,
-                color = accentColor,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = if (isGlassMode) Color.White else accentColor,
+                    letterSpacing = 1.sp,
+                    shadow = textShadow
+                )
             )
             Text(
                 text = "Waktu Latihan: $elapsedStr",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
-                fontWeight = FontWeight.Medium
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 11.sp,
+                    color = if (isGlassMode) Color.White.copy(alpha = 0.85f) else TextSecondary,
+                    shadow = textShadow
+                )
             )
         }
 
@@ -1056,10 +1219,10 @@ private fun TopHeaderBar(
             progress = { overallProgress },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp)
+                .height(if (isGlassMode) 2.dp else 4.dp)
                 .clip(RoundedCornerShape(2.dp)),
-            color = accentColor,
-            trackColor = SurfaceElevated
+            color = if (isGlassMode) Color.White else accentColor,
+            trackColor = if (isGlassMode) Color.White.copy(alpha = 0.25f) else SurfaceElevated
         )
 
         Row(
@@ -1072,16 +1235,20 @@ private fun TopHeaderBar(
                     Icon(
                         painter = painterResource(R.drawable.ic_flame_streak),
                         contentDescription = null,
-                        tint = AccentWarmup,
+                        tint = if (isGlassMode) Color.White else AccentWarmup,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = routineName.uppercase(),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White,
+                            letterSpacing = 1.sp,
+                            shadow = textShadow
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1093,20 +1260,54 @@ private fun TopHeaderBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = accentColor,
-                        modifier = Modifier.size(8.dp)
+                        color = if (isGlassMode) Color.White else accentColor,
+                        modifier = Modifier.size(7.dp)
                     ) {}
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = if (intervalType == IntervalType.REST) "PEMULIHAN / RECOVERY" else "LATIHAN AKTIF",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.SemiBold
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = if (isGlassMode) Color.White.copy(alpha = 0.85f) else TextSecondary,
+                            shadow = textShadow
+                        )
                     )
                 }
             }
 
-            HoldToStopButton(onStopConfirmed = onStop)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (onToggleBgm != null) {
+                    IconButton(
+                        onClick = onToggleBgm,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(
+                                color = if (isGlassMode) Color.Black.copy(alpha = 0.25f) else SurfaceCard,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isBgmEnabled) (if (isGlassMode) Color.White.copy(alpha = 0.40f) else accentColor.copy(alpha = 0.5f))
+                                        else Color.White.copy(alpha = 0.15f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = if (isBgmEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                            contentDescription = if (isBgmEnabled) "Matikan Musik" else "Nyalakan Musik",
+                            tint = if (isBgmEnabled) (if (isGlassMode) Color.White else accentColor) else Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                HoldToStopButton(onStopConfirmed = onStop, isGlassMode = isGlassMode)
+            }
         }
     }
 }
@@ -1118,21 +1319,30 @@ private fun RingCenterContent(
     remainingSeconds: Int,
     currentExercise: FlatExerciseItem,
     isPaused: Boolean,
-    isCompact: Boolean = false
+    isCompact: Boolean = false,
+    isGlassMode: Boolean = false
 ) {
+    val textShadow = if (isGlassMode) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.9f),
+            offset = Offset(0f, 2f),
+            blurRadius = 8f
+        )
+    } else null
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(if (isCompact) 10.dp else 12.dp),
-            color = accentColor.copy(alpha = 0.2f),
-            border = BorderStroke(1.dp, accentColor.copy(alpha = 0.4f))
+            shape = RoundedCornerShape(if (isCompact) 8.dp else 12.dp),
+            color = if (isGlassMode) Color.White.copy(alpha = 0.15f) else accentColor.copy(alpha = 0.2f),
+            border = BorderStroke(1.dp, if (isGlassMode) Color.White.copy(alpha = 0.25f) else accentColor.copy(alpha = 0.4f))
         ) {
             Row(
                 modifier = Modifier.padding(
-                    horizontal = if (isCompact) 10.dp else 14.dp,
-                    vertical = if (isCompact) 3.dp else 5.dp
+                    horizontal = if (isCompact) 8.dp else 14.dp,
+                    vertical = if (isCompact) 2.dp else 5.dp
                 ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1142,10 +1352,10 @@ private fun RingCenterContent(
                         else R.drawable.ic_intensity_lightning
                     ),
                     contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(if (isCompact) 12.dp else 14.dp)
+                    tint = if (isGlassMode) Color.White else accentColor,
+                    modifier = Modifier.size(if (isCompact) 10.dp else 14.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(3.dp))
                 Text(
                     text = when (intervalType) {
                         IntervalType.WORK -> "KERJA"
@@ -1153,11 +1363,14 @@ private fun RingCenterContent(
                         IntervalType.WARMUP -> "PEMANASAN"
                         IntervalType.COOLDOWN -> "PENDINGINAN"
                     },
-                    style = if (isCompact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-                    color = accentColor,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = if (isCompact) 1.2.sp else 2.sp,
-                    fontSize = if (isCompact) 10.sp else 12.sp
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Black,
+                        fontSize = if (isCompact) 9.sp else 12.sp,
+                        color = if (isGlassMode) Color.White else accentColor,
+                        letterSpacing = if (isCompact) 1.sp else 2.sp,
+                        shadow = textShadow
+                    )
                 )
             }
         }
@@ -1173,62 +1386,73 @@ private fun RingCenterContent(
             style = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Bold,
-                fontSize = if (isCompact) 42.sp else 62.sp,
+                fontSize = if (isCompact) (if (isGlassMode) 26.sp else 42.sp) else 62.sp,
                 color = Color.White,
-                fontFeatureSettings = "tnum"
+                fontFeatureSettings = "tnum",
+                shadow = textShadow
             )
         )
 
         Text(
             text = currentExercise.title,
-            style = if (isCompact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isCompact) (if (isGlassMode) 11.sp else 14.sp) else 16.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                shadow = textShadow
+            ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = if (isCompact) 14.dp else 24.dp)
+            modifier = Modifier.padding(horizontal = if (isCompact) 6.dp else 24.dp)
         )
 
         if (currentExercise.currentSet != null) {
-            Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 4.dp))
+            Spacer(modifier = Modifier.height(if (isCompact) 1.dp else 4.dp))
             Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = SurfaceElevated
+                shape = RoundedCornerShape(4.dp),
+                color = if (isGlassMode) Color.White.copy(alpha = 0.15f) else SurfaceElevated
             ) {
                 Text(
                     text = "SET ${currentExercise.currentSet} DARI ${currentExercise.totalSets}",
                     modifier = Modifier.padding(
-                        horizontal = if (isCompact) 8.dp else 10.dp,
-                        vertical = if (isCompact) 2.dp else 3.dp
+                        horizontal = if (isCompact) 6.dp else 10.dp,
+                        vertical = if (isCompact) 1.dp else 3.dp
                     ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (isCompact) 9.sp else 11.sp,
-                    letterSpacing = 0.8.sp
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (isCompact) 8.sp else 11.sp,
+                        color = if (isGlassMode) Color.White else accentColor,
+                        letterSpacing = 0.8.sp,
+                        shadow = textShadow
+                    )
                 )
             }
         }
 
         if (isPaused) {
-            Spacer(modifier = Modifier.height(if (isCompact) 3.dp else 6.dp))
+            Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 6.dp))
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = AccentHighIntensity.copy(alpha = 0.2f),
-                border = BorderStroke(1.dp, AccentHighIntensity.copy(alpha = 0.5f))
+                color = if (isGlassMode) Color.Black.copy(alpha = 0.45f) else AccentHighIntensity.copy(alpha = 0.2f),
+                border = BorderStroke(1.dp, if (isGlassMode) Color.White.copy(alpha = 0.35f) else AccentHighIntensity.copy(alpha = 0.5f))
             ) {
                 Text(
                     text = "DIJEDA",
                     modifier = Modifier.padding(
-                        horizontal = if (isCompact) 8.dp else 10.dp,
-                        vertical = if (isCompact) 2.dp else 3.dp
+                        horizontal = if (isCompact) 6.dp else 10.dp,
+                        vertical = if (isCompact) 1.dp else 3.dp
                     ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AccentHighIntensity,
-                    fontWeight = FontWeight.Black,
-                    fontSize = if (isCompact) 9.sp else 11.sp,
-                    letterSpacing = 1.sp
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Black,
+                        fontSize = if (isCompact) 8.sp else 11.sp,
+                        color = if (isGlassMode) Color.White else AccentHighIntensity,
+                        letterSpacing = 1.sp,
+                        shadow = textShadow
+                    )
                 )
             }
         }
@@ -1236,12 +1460,23 @@ private fun RingCenterContent(
 }
 
 @Composable
-private fun UpNextBanner(next: FlatExerciseItem) {
+private fun UpNextBanner(
+    next: FlatExerciseItem,
+    isGlassMode: Boolean = false
+) {
     val guide = getExerciseGuide(next.title, next.type)
+    val textShadow = if (isGlassMode) {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.85f),
+            offset = Offset(0f, 1f),
+            blurRadius = 4f
+        )
+    } else null
+
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = SurfaceCard,
-        border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.6f)),
+        shape = RoundedCornerShape(if (isGlassMode) 20.dp else 16.dp),
+        color = if (isGlassMode) Color.Black.copy(alpha = 0.25f) else SurfaceCard,
+        border = BorderStroke(1.dp, if (isGlassMode) Color.White.copy(alpha = 0.18f) else SurfaceBorder.copy(alpha = 0.6f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1254,15 +1489,15 @@ private fun UpNextBanner(next: FlatExerciseItem) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = CircleShape,
-                    color = AccentWork.copy(alpha = 0.15f),
+                    color = if (isGlassMode) Color.White.copy(alpha = 0.15f) else AccentWork.copy(alpha = 0.15f),
                     modifier = Modifier.size(34.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             painter = painterResource(guide.iconRes),
                             contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(22.dp)
+                            tint = if (isGlassMode) Color.White else Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1272,18 +1507,24 @@ private fun UpNextBanner(next: FlatExerciseItem) {
                 Column {
                     Text(
                         text = "GERAKAN BERIKUTNYA",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        letterSpacing = 0.8.sp
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = if (isGlassMode) Color.White.copy(alpha = 0.75f) else TextSecondary,
+                            letterSpacing = 0.8.sp,
+                            shadow = textShadow
+                        )
                     )
                     Text(
                         text = next.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.White,
+                            shadow = textShadow
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1292,15 +1533,18 @@ private fun UpNextBanner(next: FlatExerciseItem) {
 
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = SurfaceElevated
+                color = if (isGlassMode) Color.White.copy(alpha = 0.20f) else SurfaceElevated
             ) {
                 Text(
                     text = "${next.durationSeconds}s",
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AccentWork,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        shadow = textShadow
+                    )
                 )
             }
         }
@@ -1315,7 +1559,8 @@ private fun BottomPlaybackControls(
     onTogglePause: () -> Unit,
     onSkip: () -> Unit,
     onPrevious: () -> Unit,
-    onAddRest: (() -> Unit)? = null
+    onAddRest: (() -> Unit)? = null,
+    isGlassMode: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -1341,14 +1586,14 @@ private fun BottomPlaybackControls(
                     shape = RoundedCornerShape(23.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E1E24),
-                        contentColor = TextPrimary
+                        containerColor = if (isGlassMode) Color.Black.copy(alpha = 0.35f) else Color(0xFF1E1E24),
+                        contentColor = Color.White
                     ),
-                    border = BorderStroke(1.2.dp, Color(0xFF383844))
+                    border = BorderStroke(1.2.dp, if (isGlassMode) Color.White.copy(alpha = 0.25f) else Color(0xFF383844))
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = AccentRest, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, tint = if (isGlassMode) Color.White else AccentRest, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("+15 Detik", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Text("+15 Detik", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                 }
 
                 Button(
@@ -1362,23 +1607,23 @@ private fun BottomPlaybackControls(
                     shape = RoundedCornerShape(23.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF22222A),
-                        contentColor = TextPrimary
+                        containerColor = if (isGlassMode) Color.Black.copy(alpha = 0.40f) else Color(0xFF22222A),
+                        contentColor = Color.White
                     ),
-                    border = BorderStroke(1.2.dp, AccentRest.copy(alpha = 0.65f))
+                    border = BorderStroke(1.2.dp, if (isGlassMode) Color.White.copy(alpha = 0.35f) else AccentRest.copy(alpha = 0.65f))
                 ) {
-                    Text("Mulai Sekarang", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Text("Mulai Sekarang", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Icon(Icons.Default.SkipNext, contentDescription = null, tint = AccentRest, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = null, tint = if (isGlassMode) Color.White else AccentRest, modifier = Modifier.size(18.dp))
                 }
             }
         }
 
-        // Floating Control Bar (Compact & Sleek Obsidian Dock)
+        // Floating Control Bar (Compact & Sleek Obsidian Glass Dock)
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0xEE161618),
-            border = BorderStroke(1.dp, Color(0x403A3A42)),
+            shape = RoundedCornerShape(28.dp),
+            color = if (isGlassMode) Color.Black.copy(alpha = 0.28f) else Color(0xEE161618),
+            border = BorderStroke(1.dp, if (isGlassMode) Color.White.copy(alpha = 0.20f) else Color(0x403A3A42)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -1388,31 +1633,36 @@ private fun BottomPlaybackControls(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Previous Button (48dp Touch Target)
+                // Previous Button
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onPrevious()
                     },
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(Color(0xFF202026), CircleShape)
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(if (isGlassMode) Color.Black.copy(alpha = 0.30f) else Color(0xFF202026))
+                        .then(
+                            if (isGlassMode) Modifier.border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), CircleShape)
+                            else Modifier
+                        )
                 ) {
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Sebelumnya",
-                        tint = TextPrimary.copy(alpha = 0.85f),
+                        tint = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Primary Play/Pause Button (60dp Dark Titanium with Accent Border)
+                // Primary Play/Pause Button
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(56.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF262630))
-                        .border(BorderStroke(2.dp, accentColor), CircleShape)
+                        .background(if (isGlassMode) Color.White else Color(0xFF262630))
+                        .border(BorderStroke(if (isGlassMode) 1.dp else 2.dp, if (isGlassMode) Color.White else accentColor), CircleShape)
                         .clickable {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onTogglePause()
@@ -1422,25 +1672,30 @@ private fun BottomPlaybackControls(
                     Icon(
                         imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
                         contentDescription = if (isPaused) "Lanjutkan" else "Jeda",
-                        tint = accentColor,
+                        tint = if (isGlassMode) Color.Black else accentColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }
 
-                // Next / Skip Button (48dp Touch Target)
+                // Next / Skip Button
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onSkip()
                     },
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(Color(0xFF202026), CircleShape)
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(if (isGlassMode) Color.Black.copy(alpha = 0.30f) else Color(0xFF202026))
+                        .then(
+                            if (isGlassMode) Modifier.border(BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), CircleShape)
+                            else Modifier
+                        )
                 ) {
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Lewati",
-                        tint = TextPrimary.copy(alpha = 0.85f),
+                        tint = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1457,7 +1712,8 @@ private fun CircularProgressRing(
     strokeWidth: Dp,
     accentColor: Color,
     trackColor: Color,
-    remainingSeconds: Int
+    remainingSeconds: Int,
+    isGlassMode: Boolean = false
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -1488,19 +1744,21 @@ private fun CircularProgressRing(
         val topLeft = Offset(center.x - radius, center.y - radius)
         val arcSize = Size(diameter, diameter)
 
-        // 1. Ambient blurred halo glow behind the ring
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    accentColor.copy(alpha = if (isFinalCountdown) 0.35f else 0.18f),
-                    Color.Transparent
+        // 1. Ambient blurred halo glow behind the ring (only in non-glass mode, to keep video fully transparent)
+        if (!isGlassMode) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = if (isFinalCountdown) 0.35f else 0.18f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = (radius + strokePx * 2f) * countdownPulse
                 ),
-                center = center,
-                radius = (radius + strokePx * 2f) * countdownPulse
-            ),
-            radius = (radius + strokePx * 2f) * countdownPulse,
-            center = center
-        )
+                radius = (radius + strokePx * 2f) * countdownPulse,
+                center = center
+            )
+        }
 
         // 2. Background Track
         drawArc(
@@ -1520,8 +1778,8 @@ private fun CircularProgressRing(
             val pipX = center.x + pipRadius * cos(pipAngle).toFloat()
             val pipY = center.y + pipRadius * sin(pipAngle).toFloat()
             drawCircle(
-                color = Color.White.copy(alpha = 0.12f),
-                radius = 2.dp.toPx(),
+                color = Color.White.copy(alpha = if (isGlassMode) 0.18f else 0.12f),
+                radius = if (isGlassMode) 1.5.dp.toPx() else 2.dp.toPx(),
                 center = Offset(pipX, pipY)
             )
         }
@@ -1547,7 +1805,7 @@ private fun CircularProgressRing(
 
             // Outer diffused glow
             drawCircle(
-                color = accentColor.copy(alpha = 0.5f),
+                color = if (isGlassMode) Color.White.copy(alpha = 0.5f) else accentColor.copy(alpha = 0.5f),
                 radius = strokePx * 0.75f,
                 center = tipOffset
             )
@@ -1565,7 +1823,8 @@ private fun CircularProgressRing(
 
 @Composable
 private fun HoldToStopButton(
-    onStopConfirmed: () -> Unit
+    onStopConfirmed: () -> Unit,
+    isGlassMode: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
     var holdProgress by remember { mutableFloatStateOf(0f) }
@@ -1593,10 +1852,18 @@ private fun HoldToStopButton(
 
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(40.dp)
             .clip(CircleShape)
-            .background(Color(0xFF222228))
-            .border(BorderStroke(1.dp, if (isHolding) AccentHighIntensity.copy(alpha = 0.6f) else Color(0xFF32323A)), CircleShape)
+            .background(if (isGlassMode) Color.Black.copy(alpha = 0.35f) else Color(0xFF222228))
+            .border(
+                BorderStroke(
+                    1.dp,
+                    if (isHolding) AccentHighIntensity.copy(alpha = 0.8f)
+                    else if (isGlassMode) Color.White.copy(alpha = 0.22f)
+                    else Color(0xFF32323A)
+                ),
+                CircleShape
+            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -1610,7 +1877,7 @@ private fun HoldToStopButton(
     ) {
         if (holdProgress > 0f) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val stroke = 3.5.dp.toPx()
+                val stroke = 3.dp.toPx()
                 drawArc(
                     color = AccentHighIntensity,
                     startAngle = -90f,
@@ -1626,8 +1893,8 @@ private fun HoldToStopButton(
         Icon(
             Icons.Default.Stop,
             contentDescription = "Tahan untuk berhenti",
-            tint = if (isHolding) AccentHighIntensity else TextSecondary,
-            modifier = Modifier.size(20.dp)
+            tint = if (isHolding) AccentHighIntensity else if (isGlassMode) Color.White.copy(alpha = 0.9f) else TextSecondary,
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -1644,12 +1911,7 @@ private fun PreparingView(
         if (firstEx != null) getExerciseGuide(firstEx.title, firstEx.type) else null
     }
 
-    // Resolusi banner kategori atletik
-    val bannerRes = remember(state.category) {
-        getCategoryBannerRes(state.category)
-    }
-
-    // Warna aksen spesifik kategori untuk ambient glow & badge
+    // Warna aksen spesifik kategori untuk tag badge
     val categoryColor = remember(state.category) {
         when (state.category.lowercase().trim()) {
             "cardio", "sprint" -> Color(0xFFFF9500) // Energetic Orange
@@ -1661,16 +1923,12 @@ private fun PreparingView(
         }
     }
 
-    // Subtle living zoom effect pada foto latar kategori
-    val infiniteTransition = rememberInfiniteTransition(label = "banner_zoom")
-    val bannerScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "banner_scale"
+    // Animasi sweeping progress arc untuk hitung mundur 3, 2, 1
+    val countdownProgress = (state.countdownSeconds / 3f).coerceIn(0f, 1f)
+    val animatedCountdownProgress by animateFloatAsState(
+        targetValue = countdownProgress,
+        animationSpec = tween(300, easing = LinearEasing),
+        label = "countdown_ring_progress"
     )
 
     Box(
@@ -1678,50 +1936,28 @@ private fun PreparingView(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 1. FULL-BLEED CATEGORY ATHLETIC BACKGROUND BANNER
-        Image(
-            painter = painterResource(id = bannerRes),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = bannerScale
-                    scaleY = bannerScale
-                }
+        // 1. FULL-BLEED OPENER AI VIDEO BACKGROUND (Wanita mengedipkan mata & melambaikan tangan)
+        LoopingAssetVideoPlayer(
+            assetUri = com.workout.timer.data.catalog.AssetVideoResolver.WORKOUT_INTRO_URI,
+            modifier = Modifier.fillMaxSize()
         )
 
-        // 2. MULTI-LAYER CINEMATIC GRADIENT SCRIM (AMOLED CONTRAST)
+        // 2. CRYSTALLINE LIQUID GLASS GRADIENT SCRIM (Tanpa sapuan warna pekat agar video coach natural)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0.0f to Color.Black.copy(alpha = 0.65f),
-                        0.30f to Color.Black.copy(alpha = 0.45f),
-                        0.60f to Color.Black.copy(alpha = 0.80f),
-                        1.0f to Color.Black.copy(alpha = 0.95f)
+                        0.0f to Color.Black.copy(alpha = 0.45f),
+                        0.18f to Color.Black.copy(alpha = 0.15f),
+                        0.55f to Color.Transparent,
+                        0.78f to Color.Black.copy(alpha = 0.50f),
+                        1.0f to Color.Black.copy(alpha = 0.88f)
                     )
                 )
         )
 
-        // 3. AMBIENT RADIAL CATEGORY GLOW AROUND COUNTDOWN CIRCLE
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        categoryColor.copy(alpha = 0.35f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width / 2f, size.height * 0.44f),
-                    radius = size.width * 0.70f
-                ),
-                radius = size.width * 0.70f,
-                center = Offset(size.width / 2f, size.height * 0.44f)
-            )
-        }
-
-        // 4. MAIN CONTENT
+        // 3. MAIN CONTENT
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1741,11 +1977,11 @@ private fun PreparingView(
                     // Category Tag Badge
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = categoryColor.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.5f))
+                        color = Color.Black.copy(alpha = 0.60f),
+                        border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.6f))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
@@ -1781,7 +2017,7 @@ private fun PreparingView(
                     modifier = Modifier
                         .size(44.dp)
                         .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                 ) {
                     Icon(
                         Icons.Default.Close,
@@ -1791,7 +2027,7 @@ private fun PreparingView(
                 }
             }
 
-            // Center: Big High-Impact 3-2-1 Countdown Circle
+            // Center: Floating Frosted Liquid Glass Countdown Orb
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -1800,34 +2036,55 @@ private fun PreparingView(
                     modifier = Modifier.size(190.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Outer decorative pulse halo
+                    // Outer countdown arc and track
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawCircle(
-                            color = categoryColor.copy(alpha = 0.12f),
-                            radius = size.minDimension / 2f,
-                            style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
+                        val strokePx = 4.dp.toPx()
+                        val radius = (size.minDimension - strokePx) / 2f
+                        val arcSize = androidx.compose.ui.geometry.Size(radius * 2, radius * 2)
+                        val topLeft = androidx.compose.ui.geometry.Offset(
+                            (size.width - arcSize.width) / 2f,
+                            (size.height - arcSize.height) / 2f
                         )
+
+                        // Base subtle glass track
                         drawCircle(
-                            color = categoryColor.copy(alpha = 0.85f),
-                            radius = size.minDimension / 2f - 8.dp.toPx(),
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                            color = Color.White.copy(alpha = 0.18f),
+                            radius = radius,
+                            style = Stroke(width = strokePx)
+                        )
+
+                        // Active sweep countdown arc
+                        drawArc(
+                            color = AccentWork,
+                            startAngle = -90f,
+                            sweepAngle = 360f * animatedCountdownProgress,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokePx, cap = StrokeCap.Round)
                         )
                     }
 
-                    // Inner frosted backdrop
+                    // Inner frosted glass orb
                     Box(
                         modifier = Modifier
-                            .size(150.dp)
+                            .size(152.dp)
                             .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        Color.Black.copy(alpha = 0.7f),
-                                        Color.Black.copy(alpha = 0.4f)
+                                Color.White.copy(alpha = 0.12f),
+                                CircleShape
+                            )
+                            .border(
+                                BorderStroke(
+                                    1.5.dp,
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.70f),
+                                            Color.White.copy(alpha = 0.15f)
+                                        )
                                     )
                                 ),
                                 CircleShape
-                            )
-                            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         AnimatedContent(
@@ -1854,13 +2111,13 @@ private fun PreparingView(
                 // Subtitle tag under countdown
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color.Black.copy(alpha = 0.55f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    color = Color.Black.copy(alpha = 0.60f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
                 ) {
                     Text(
                         text = "SIAPKAN POSISI",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
@@ -1868,12 +2125,20 @@ private fun PreparingView(
                 }
             }
 
-            // Bottom: First Exercise Preview Card
+            // Bottom: First Exercise Preview Card (Frosted Glass)
             if (firstEx != null) {
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = SurfaceCard.copy(alpha = 0.85f),
-                    border = BorderStroke(1.dp, categoryColor.copy(alpha = 0.35f)),
+                    color = Color(0xFF1E1E24).copy(alpha = 0.60f),
+                    border = BorderStroke(
+                        1.dp,
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.35f),
+                                Color.White.copy(alpha = 0.10f)
+                            )
+                        )
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)
@@ -1889,22 +2154,22 @@ private fun PreparingView(
                         Box(
                             modifier = Modifier
                                 .size(60.dp)
-                                .background(categoryColor.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-                                .border(1.dp, categoryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+                                .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             if (guide != null) {
                                 Icon(
                                     painter = painterResource(id = guide.iconRes),
                                     contentDescription = null,
-                                    tint = categoryColor,
+                                    tint = AccentWork,
                                     modifier = Modifier.size(38.dp)
                                 )
                             } else {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_flame_streak),
                                     contentDescription = null,
-                                    tint = categoryColor,
+                                    tint = AccentWork,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -1918,7 +2183,7 @@ private fun PreparingView(
                                 Text(
                                     text = "GERAKAN PERTAMA",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = categoryColor,
+                                    color = AccentWork,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 1.sp
                                 )
@@ -1978,199 +2243,214 @@ private fun CompletedWorkoutView(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Hero Victory Banner Image (top half)
+        // 1. FULL-BLEED SELEBRASI AI VIDEO BACKGROUND (Wanita tersenyum bangga & dua jempol 100% utuh tanpa kepotong)
+        LoopingAssetVideoPlayer(
+            assetUri = com.workout.timer.data.catalog.AssetVideoResolver.WORKOUT_COMPLETE_URI,
+            modifier = Modifier.fillMaxSize(),
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        )
+
+        // 2. MULTI-LAYER CINEMATIC GRADIENT SCRIM (AMOLED CONTRAST)
+        // Area tengah (wajah & kedua jempol coach) bersih dan jelas, area bawah kontras tinggi untuk teks
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(340.dp)
-                .align(Alignment.TopCenter)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.banner_celebration),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // Dark vignette scrims fading into AMOLED black
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.5f),
-                            0.25f to Color.Transparent,
-                            0.7f to Color.Black.copy(alpha = 0.8f),
-                            1.0f to Color.Black
-                        )
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Black.copy(alpha = 0.50f),
+                        0.18f to Color.Transparent,
+                        0.50f to Color.Transparent,
+                        0.72f to Color.Black.copy(alpha = 0.70f),
+                        1.0f to Color.Black.copy(alpha = 0.95f)
                     )
-            )
+                )
+        )
 
-            // Accent celebration glow overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                AccentWork.copy(alpha = 0.2f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        }
-
-        // Ambient Volt Green Celebration Glow
+        // 3. Ambient Volt Green Glow di bagian bawah
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        AccentWork.copy(alpha = 0.2f),
+                        AccentWork.copy(alpha = 0.20f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width / 2f, size.height * 0.35f),
-                    radius = size.width * 0.85f
+                    center = Offset(size.width / 2f, size.height * 0.85f),
+                    radius = size.width * 0.75f
                 ),
-                radius = size.width * 0.85f,
-                center = Offset(size.width / 2f, size.height * 0.35f)
+                radius = size.width * 0.75f,
+                center = Offset(size.width / 2f, size.height * 0.85f)
             )
         }
 
+        // 4. FLOATING LIQUID GLASS CONTENT (Scroll-safe, tidak akan pernah kepotong)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Trophy / Lightning Badge
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(110.dp)
-                        .background(AccentWork.copy(alpha = 0.15f), CircleShape)
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(AccentWork, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_intensity_lightning),
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(52.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "LATIHAN SELESAI!",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = AccentWork,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp
-                )
-
-                Text(
-                    text = state.routineName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            // Stat Cards
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = SurfaceCard.copy(alpha = 0.9f),
-                border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.6f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val mm = state.totalDurationSeconds / 60
-                        val ss = state.totalDurationSeconds % 60
-                        Text(
-                            text = String.format("%02d:%02d", mm, ss),
-                            style = TextStyle(
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 34.sp,
-                                color = Color.White
-                            )
-                        )
-                        Text(
-                            text = "TOTAL WAKTU",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(48.dp)
-                            .background(SurfaceBorder)
-                    )
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "${state.totalExercisesCompleted}",
-                            style = TextStyle(
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 34.sp,
-                                color = AccentWork
-                            )
-                        )
-                        Text(
-                            text = "GERAKAN",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
-            }
-
-            // Finish button
-            Button(
-                onClick = onFinish,
+            // Header Top Bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(22.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF242428),
-                    contentColor = TextPrimary
-                ),
-                border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f))
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Kembali ke Beranda",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = TextPrimary
-                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Black.copy(alpha = 0.65f),
+                    border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(AccentWork, CircleShape)
+                        )
+                        Text(
+                            text = "LUAR BIASA! • LATIHAN SELESAI",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AccentWork,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+                }
+            }
+
+            // Tengah: Area bebas visual agar gestur coach dua jempol terlihat penuh!
+            Spacer(modifier = Modifier.height(260.dp))
+
+            // Bawah: Floating Liquid Glass Card berisi ucapan, statistik, dan tombol aksi
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFF141418).copy(alpha = 0.75f),
+                border = BorderStroke(
+                    1.5.dp,
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.35f),
+                            AccentWork.copy(alpha = 0.40f)
+                        )
+                    )
+                ),
+                shadowElevation = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    // Headline & Nama Rutinitas
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "LATIHAN SELESAI!",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = AccentWork,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.8.sp
+                        )
+                        Text(
+                            text = state.routineName,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Stat Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(18.dp))
+                            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+                            .padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val mm = state.totalDurationSeconds / 60
+                            val ss = state.totalDurationSeconds % 60
+                            Text(
+                                text = String.format("%02d:%02d", mm, ss),
+                                style = TextStyle(
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 30.sp,
+                                    color = Color.White
+                                )
+                            )
+                            Text(
+                                text = "TOTAL WAKTU",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(40.dp)
+                                .background(Color.White.copy(alpha = 0.15f))
+                        )
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${state.totalExercisesCompleted}",
+                                style = TextStyle(
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 30.sp,
+                                    color = AccentWork
+                                )
+                            )
+                            Text(
+                                text = "GERAKAN SELESAI",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                    }
+
+                    // Button Selesai
+                    Button(
+                        onClick = onFinish,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentWork,
+                            contentColor = Color.Black
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                    ) {
+                        Text(
+                            text = "Kembali ke Beranda",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 16.sp,
+                            color = Color.Black
+                        )
+                    }
+                }
             }
         }
     }
