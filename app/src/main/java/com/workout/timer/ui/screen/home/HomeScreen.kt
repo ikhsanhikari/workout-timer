@@ -113,19 +113,19 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToBuilder,
-                containerColor = Color(0xFF222228),
-                contentColor = AccentWork,
+                containerColor = Color.White,
+                contentColor = Color.Black,
                 shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
                 modifier = Modifier
-                    .size(48.dp)
-                    .border(BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f)), CircleShape)
+                    .size(50.dp)
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)), CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Buat Rutinitas Baru",
-                    tint = AccentWork,
-                    modifier = Modifier.size(22.dp)
+                    tint = Color.Black,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -153,7 +153,7 @@ fun HomeScreen(
                         .alpha(0.70f)
                 )
 
-                // Diagonal green light rays matching screenshot
+                // Diagonal subtle crystalline glass reflection
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -161,7 +161,7 @@ fun HomeScreen(
                             Brush.linearGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    AccentWork.copy(alpha = 0.12f),
+                                    Color.White.copy(alpha = 0.05f),
                                     Color.Transparent
                                 ),
                                 start = Offset(150f, 0f),
@@ -293,7 +293,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = null,
-                            tint = AccentWork,
+                            tint = Color.White,
                             modifier = Modifier.size(19.dp)
                         )
                         Text(
@@ -340,7 +340,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth().padding(48.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = AccentWork)
+                        CircularProgressIndicator(color = Color.White)
                     }
                 }
             } else if (uiState.routines.isEmpty()) {
@@ -431,7 +431,7 @@ private fun HomeHeader(
                         fontStyle = FontStyle.Italic,
                         fontSize = 30.sp
                     ),
-                    color = AccentWork
+                    color = Color.White
                 )
             }
             Spacer(modifier = Modifier.height(2.dp))
@@ -458,43 +458,43 @@ private fun HomeHeader(
                 modifier = Modifier
                     .width(32.dp)
                     .height(3.5.dp)
-                    .background(AccentWork, RoundedCornerShape(2.dp))
+                    .background(Color.White.copy(alpha = 0.50f), RoundedCornerShape(2.dp))
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Tombol Sync Katalog Server (Actionable - Preserved)
+            // Tombol Sync Katalog Server (Actionable - Frosted White Glass)
             Box(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
-                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
                     .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSyncing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = AccentWork,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.CloudSync,
                         contentDescription = "Sync Katalog Server",
-                        tint = AccentWork,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            // Tombol Backup & Restore (Actionable - Preserved)
+            // Tombol Backup & Restore (Actionable - Frosted White Glass)
             Box(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF14161C).copy(alpha = 0.85f))
-                    .border(BorderStroke(1.dp, Color(0xFF232733)), CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
                     .clickable(onClick = onOpenBackup),
                 contentAlignment = Alignment.Center
             ) {
@@ -558,8 +558,7 @@ private fun AthleticActivityRing(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        AccentWork.copy(alpha = glowPulse),
-                        AccentRest.copy(alpha = glowPulse * 0.45f),
+                        Color.White.copy(alpha = glowPulse * 0.25f),
                         Color.Transparent
                     ),
                     center = center,
@@ -585,15 +584,15 @@ private fun AthleticActivityRing(
                 style = Stroke(width = 0.8.dp.toPx())
             )
 
-            // Dynamic Gradient Sweep Progress Arc
+            // Dynamic Gradient Sweep Progress Arc (Pure Crystal White Arc)
             val sweepAngle = 360f * animatedProgress
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
-                        AccentRest,
-                        AccentWork,
-                        Color(0xFF00FF87),
-                        AccentWork
+                        Color.White.copy(alpha = 0.50f),
+                        Color.White,
+                        Color.White.copy(alpha = 0.85f),
+                        Color.White
                     )
                 ),
                 startAngle = -90f,
@@ -602,7 +601,7 @@ private fun AthleticActivityRing(
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
 
-            // Glowing Leading Tip Flare (Apple Fitness/Biometric spark)
+            // Glowing Leading Tip Flare (Pure White Spark)
             val currentAngleDeg = -90f + sweepAngle
             val angleRad = Math.toRadians(currentAngleDeg.toDouble())
             val tipX = center.x + radius * cos(angleRad).toFloat()
@@ -614,7 +613,7 @@ private fun AthleticActivityRing(
                 brush = Brush.radialGradient(
                     colors = listOf(
                         Color.White,
-                        AccentWork.copy(alpha = 0.70f),
+                        Color.White.copy(alpha = 0.40f),
                         Color.Transparent
                     ),
                     center = tipCenter,
@@ -654,9 +653,8 @@ private fun AthleticActivityRing(
                         1.dp,
                         Brush.linearGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.35f),
-                                AccentWork.copy(alpha = 0.25f),
-                                Color.White.copy(alpha = 0.06f)
+                                Color.White.copy(alpha = 0.40f),
+                                Color.White.copy(alpha = 0.12f)
                             )
                         )
                     ),
@@ -671,7 +669,7 @@ private fun AthleticActivityRing(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                AccentWork.copy(alpha = glowPulse * 1.2f),
+                                Color.White.copy(alpha = glowPulse * 0.35f),
                                 Color.Transparent
                             )
                         )
@@ -705,9 +703,8 @@ private fun WeeklyActivitySection(
             width = 1.dp,
             brush = Brush.linearGradient(
                 0.0f to Color.White.copy(alpha = 0.35f),    // Top-left crisp specular highlight
-                0.20f to AccentWork.copy(alpha = 0.30f),   // Neon lime refraction
-                0.55f to Color.White.copy(alpha = 0.08f),   // Translucent body
-                1.0f to Color.White.copy(alpha = 0.02f),    // Bottom shadow bevel
+                0.55f to Color.White.copy(alpha = 0.12f),   // Translucent body
+                1.0f to Color.White.copy(alpha = 0.04f),    // Bottom shadow bevel
                 start = Offset(0f, 0f),
                 end = Offset(1000f, 600f)
             )
@@ -863,7 +860,7 @@ private fun WeeklyActivitySection(
                         StatItem(
                             value = "$sessionCount",
                             unit = "Sesi Selesai",
-                            color = AccentWork,
+                            color = Color.White,
                             icon = Icons.Default.CheckCircle
                         )
                     }
@@ -936,11 +933,10 @@ private fun SpotlightBanner(
         colors = CardDefaults.cardColors(containerColor = SurfaceCard),
         border = BorderStroke(
             1.dp,
-            Brush.horizontalGradient(
+            Brush.verticalGradient(
                 listOf(
-                    AccentWork.copy(alpha = 0.55f),
-                    AccentRest.copy(alpha = 0.25f),
-                    Color.Transparent
+                    Color.White.copy(alpha = 0.35f),
+                    Color.White.copy(alpha = 0.08f)
                 )
             )
         )
@@ -996,8 +992,8 @@ private fun SpotlightBanner(
                 // Top Tag
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = AccentWork.copy(alpha = 0.18f),
-                    border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.60f))
+                    color = Color.White.copy(alpha = 0.10f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -1012,8 +1008,8 @@ private fun SpotlightBanner(
                         Text(
                             text = "TANTANGAN HARI INI",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AccentWork,
-                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             fontSize = 10.sp
                         )
@@ -1058,19 +1054,19 @@ private fun SpotlightBanner(
                             StatChip(
                                 iconRes = R.drawable.ic_intensity_lightning,
                                 text = featuredRoutine.category.uppercase(),
-                                tint = AccentRest
+                                tint = Color.White.copy(alpha = 0.85f)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        // Start Quick Button (Actionable - Preserved)
+                        // Start Quick Button (Frosted White Capsule)
                         Button(
                             onClick = { onStartWorkout(featuredRoutine.id) },
                             modifier = Modifier.height(36.dp),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentWork,
+                                containerColor = Color.White,
                                 contentColor = Color.Black
                             ),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
@@ -1101,7 +1097,7 @@ private fun SpotlightBanner(
                             modifier = Modifier
                                 .width(16.dp)
                                 .height(5.dp)
-                                .background(AccentWork, CircleShape)
+                                .background(Color.White, CircleShape)
                         )
                         Box(
                             modifier = Modifier
@@ -1138,15 +1134,15 @@ private fun SearchBar(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .weight(1f)
-                .border(BorderStroke(1.dp, Color(0xFF232733)), RoundedCornerShape(26.dp)),
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), RoundedCornerShape(26.dp)),
             placeholder = {
-                Text("Cari rutinitas...", color = TextTertiary, fontSize = 14.sp)
+                Text("Cari rutinitas...", color = Color.White.copy(alpha = 0.38f), fontSize = 14.sp)
             },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
-                    tint = TextSecondary,
+                    tint = Color.White.copy(alpha = 0.65f),
                     modifier = Modifier.size(20.dp)
                 )
             },
@@ -1156,35 +1152,35 @@ private fun SearchBar(
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "Hapus",
-                            tint = TextSecondary,
+                            tint = Color.White.copy(alpha = 0.65f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF14161C),
-                unfocusedContainerColor = Color(0xFF14161C),
+                focusedContainerColor = Color.White.copy(alpha = 0.10f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                cursorColor = AccentWork
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color.White
             ),
             shape = RoundedCornerShape(26.dp),
             singleLine = true
         )
 
-        // Filter / Tune button
+        // Filter / Tune button (Frosted White Glass Orb)
         Box(
             modifier = Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (hasActiveFilters) AccentWork.copy(alpha = 0.15f) else Color(0xFF14161C))
+                .background(if (hasActiveFilters) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f))
                 .border(
                     BorderStroke(
                         1.dp,
-                        if (hasActiveFilters) AccentWork else Color(0xFF232733)
+                        if (hasActiveFilters) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.18f)
                     ),
                     RoundedCornerShape(16.dp)
                 )
@@ -1194,7 +1190,7 @@ private fun SearchBar(
             Icon(
                 imageVector = Icons.Default.Tune,
                 contentDescription = "Filter & Urutkan",
-                tint = if (hasActiveFilters) AccentWork else TextSecondary,
+                tint = if (hasActiveFilters) Color.White else Color.White.copy(alpha = 0.70f),
                 modifier = Modifier.size(22.dp)
             )
 
@@ -1267,11 +1263,11 @@ private fun CategoryPill(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(22.dp))
-            .background(if (isSelected) AccentWork else Color(0xFF14161C))
+            .background(if (isSelected) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
             .border(
                 BorderStroke(
                     1.dp,
-                    if (isSelected) AccentWork else Color(0xFF232733)
+                    if (isSelected) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.15f)
                 ),
                 RoundedCornerShape(22.dp)
             )
@@ -1289,14 +1285,14 @@ private fun CategoryPill(
             Icon(
                 imageVector = categoryIcon,
                 contentDescription = null,
-                tint = if (isSelected) Color.Black else TextSecondary,
+                tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
                 modifier = Modifier.size(16.dp)
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.Black else TextSecondary,
+                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
                 fontSize = 13.sp
             )
         }
@@ -1656,9 +1652,9 @@ private fun WorkoutCard(
             width = 1.dp,
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    accentColor.copy(alpha = 0.45f),
-                    Color(0xFF222632).copy(alpha = 0.70f),
-                    Color(0xFF1B1E28).copy(alpha = 0.40f)
+                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.10f),
+                    Color.White.copy(alpha = 0.04f)
                 )
             )
         )
@@ -1670,15 +1666,14 @@ private fun WorkoutCard(
         ) {
             val bannerRes = getCategoryBannerRes(routine.category)
 
-            // 1. Ambient Glow di sudut kiri atas sesuai kategori (seperti aura di SS acuan)
+            // 1. Ambient Glow di sudut kiri atas sesuai kategori (soft subtle tint)
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                accentColor.copy(alpha = 0.22f),
-                                accentColor.copy(alpha = 0.06f),
+                                accentColor.copy(alpha = 0.08f),
                                 Color.Transparent
                             ),
                             center = Offset(0f, 0f),
@@ -1750,11 +1745,11 @@ private fun WorkoutCard(
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Category Pill Badge
+                    // Category Pill Badge (Frosted White Glass)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = accentColor.copy(alpha = 0.16f),
-                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f))
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp),
@@ -1765,7 +1760,7 @@ private fun WorkoutCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(accentColor)
+                                    .background(Color.White.copy(alpha = 0.85f))
                             )
                             Text(
                                 text = routine.category,
@@ -1773,7 +1768,7 @@ private fun WorkoutCard(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.5.sp
                                 ),
-                                color = accentColor
+                                color = Color.White
                             )
                         }
                     }

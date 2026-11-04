@@ -151,7 +151,7 @@ fun RoutineDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = AccentWork)
+                CircularProgressIndicator(color = Color.White)
             }
         } else {
             LazyColumn(
@@ -510,22 +510,22 @@ private fun DetailBlockCard(
                             Icon(
                                 imageVector = Icons.Default.Repeat,
                                 contentDescription = null,
-                                tint = AccentWork,
+                                tint = Color.White.copy(alpha = 0.85f),
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Diulang ${block.repeatCount}×",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AccentWork
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            StatSlashDivider(tint = AccentWork.copy(alpha = 0.5f))
+                            StatSlashDivider(tint = Color.White.copy(alpha = 0.35f))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Total ${formatDuration(blockDurationSec)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AccentWork
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                         }
                     }
@@ -570,13 +570,14 @@ private fun DetailExerciseRow(exercise: WorkoutExercise) {
         // Duration badge
         Surface(
             shape = RoundedCornerShape(6.dp),
-            color = accentColor.copy(alpha = 0.12f)
+            color = Color.White.copy(alpha = 0.08f),
+            border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f))
         ) {
             Text(
                 text = formatSeconds(exercise.durationSeconds),
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelMedium,
-                color = accentColor,
+                color = Color.White,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -609,10 +610,10 @@ private fun BottomStartBar(
                         .weight(1f)
                         .height(52.dp),
                     shape = RoundedCornerShape(26.dp),
-                    border = BorderStroke(1.2.dp, if (isReady) accentColor.copy(alpha = 0.7f) else Color.Transparent),
+                    border = BorderStroke(1.2.dp, if (isReady) Color.White.copy(alpha = 0.7f) else Color.Transparent),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isReady) Color(0xFF262630) else SurfaceElevated,
-                        contentColor = TextPrimary,
+                        containerColor = if (isReady) Color.White else SurfaceElevated,
+                        contentColor = if (isReady) Color.Black else TextTertiary,
                         disabledContainerColor = SurfaceElevated,
                         disabledContentColor = TextTertiary
                     )
@@ -620,7 +621,7 @@ private fun BottomStartBar(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = if (isReady) accentColor else TextTertiary,
+                        tint = if (isReady) Color.Black else TextTertiary,
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -629,7 +630,7 @@ private fun BottomStartBar(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         fontSize = 16.sp,
-                        color = if (isReady) TextPrimary else TextTertiary
+                        color = if (isReady) Color.Black else TextTertiary
                     )
                 }
             }

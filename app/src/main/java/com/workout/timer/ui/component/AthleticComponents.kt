@@ -75,8 +75,8 @@ fun IntervalTypePill(
                 } else Modifier
             ),
         shape = RoundedCornerShape(6.dp),
-        color = color.copy(alpha = 0.16f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.45f))
+        color = color.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
     ) {
         Row(
             modifier = Modifier
@@ -89,7 +89,7 @@ fun IntervalTypePill(
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = label,
-                tint = color,
+                tint = Color.White,
                 modifier = Modifier.size(iconSize)
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -97,9 +97,9 @@ fun IntervalTypePill(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = fontSize,
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.6.sp,
-                color = color,
+                color = Color.White,
                 maxLines = 1
             )
         }
@@ -132,8 +132,8 @@ fun AthleticCategoryBadge(
 
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = accentColor.copy(alpha = 0.16f),
-        border = BorderStroke(0.8.dp, accentColor.copy(alpha = 0.35f)),
+        color = Color.White.copy(alpha = 0.08f),
+        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.20f)),
         modifier = modifier
     ) {
         Row(
@@ -144,14 +144,14 @@ fun AthleticCategoryBadge(
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
-                tint = accentColor,
+                tint = Color.White,
                 modifier = Modifier.size(12.dp)
             )
             Text(
                 text = category.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = accentColor,
-                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.6.sp
             )
         }
@@ -186,8 +186,8 @@ fun FilterActiveCounter(
     Surface(
         modifier = modifier.height(16.dp),
         shape = RoundedCornerShape(8.dp),
-        color = AccentWork,
-        border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f))
+        color = Color.White,
+        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.6f))
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 5.dp),
@@ -215,8 +215,8 @@ fun MediaGuideHeaderBadge(
 ) {
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = AccentWork.copy(alpha = 0.14f),
-        border = BorderStroke(0.8.dp, AccentWork.copy(alpha = 0.35f)),
+        color = Color.White.copy(alpha = 0.08f),
+        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.20f)),
         modifier = modifier
     ) {
         Row(
@@ -227,14 +227,14 @@ fun MediaGuideHeaderBadge(
             Icon(
                 painter = painterResource(id = R.drawable.ic_media_guide_badge),
                 contentDescription = null,
-                tint = AccentWork,
+                tint = Color.White,
                 modifier = Modifier.size(13.dp)
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall,
-                color = AccentWork,
-                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.8.sp
             )
         }

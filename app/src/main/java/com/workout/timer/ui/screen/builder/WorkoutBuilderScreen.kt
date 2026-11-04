@@ -197,7 +197,7 @@ fun WorkoutBuilderScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    color = AccentWork,
+                    color = Color.White,
                     strokeWidth = 3.dp,
                     modifier = Modifier.size(36.dp)
                 )
@@ -256,8 +256,8 @@ fun WorkoutBuilderScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 6.dp),
                             shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-                            border = BorderStroke(1.dp, Color(0xFF2C2C35))
+                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
                         ) {
                             Column {
                                 // Block Header Row
@@ -276,7 +276,7 @@ fun WorkoutBuilderScreen(
                                     onDelete = { viewModel.removeBlock(blockIndex) }
                                 )
 
-                                HorizontalDivider(color = Color(0xFF2C2C35), thickness = 0.5.dp)
+                                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
 
                                 // Exercises in this block
                                 uiBlock.exercises.forEachIndexed { exIdx, uiExercise ->
@@ -326,14 +326,14 @@ fun WorkoutBuilderScreen(
 
                                     if (exIdx < uiBlock.exercises.size - 1) {
                                         HorizontalDivider(
-                                            color = Color(0xFF26262F),
+                                            color = Color.White.copy(alpha = 0.05f),
                                             thickness = 0.5.dp,
                                             modifier = Modifier.padding(horizontal = 16.dp)
                                         )
                                     }
                                 }
 
-                                HorizontalDivider(color = Color(0xFF2C2C35), thickness = 0.5.dp)
+                                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
 
                                 // Block Footer (Tambah Gerakan & Sisipan Cepat)
                                 BlockFooterCompact(
@@ -355,10 +355,13 @@ fun WorkoutBuilderScreen(
                             .padding(horizontal = 24.dp)
                             .height(44.dp),
                         shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, Color(0xFF383842)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.06f),
+                            contentColor = TextPrimary
+                        )
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "+ Tambah Blok / Superset Baru",
@@ -448,7 +451,7 @@ fun WorkoutBuilderScreen(
                             renamingBlockIndex = null
                         }
                     ) {
-                        Text("Simpan", color = AccentWork, fontWeight = FontWeight.Bold)
+                        Text("Simpan", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
@@ -521,7 +524,15 @@ private fun BuilderTopBar(
     onSave: () -> Unit
 ) {
     TopAppBar(
-        title = {},
+        title = {
+            Text(
+                text = if (isEditing) "Perbarui Rutinitas" else "Buat Rutinitas",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(
@@ -532,19 +543,21 @@ private fun BuilderTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Hapus Rutinitas",
-                    tint = ColorDanger
-                )
+            if (isEditing) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Hapus Rutinitas",
+                        tint = ColorDanger
+                    )
+                }
             }
             if (isSaving) {
                 CircularProgressIndicator(
                     modifier = Modifier
                         .size(36.dp)
                         .padding(8.dp),
-                    color = AccentWork,
+                    color = Color.White,
                     strokeWidth = 2.dp
                 )
             } else {
@@ -552,7 +565,7 @@ private fun BuilderTopBar(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Simpan",
-                        tint = AccentWork
+                        tint = Color.White
                     )
                 }
             }
@@ -574,8 +587,8 @@ private fun BuilderBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding(),
-        color = Color(0xFF141418),
-        border = BorderStroke(0.5.dp, Color(0xFF2C2C35))
+        color = Color.White.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier
@@ -607,7 +620,7 @@ private fun BuilderBottomBar(
                 enabled = !isSaving,
                 shape = RoundedCornerShape(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentWork,
+                    containerColor = Color.White,
                     contentColor = Color.Black
                 ),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
@@ -686,7 +699,7 @@ private fun RoutineHeader(
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     ),
-                    cursorBrush = SolidColor(AccentWork),
+                    cursorBrush = SolidColor(Color.White),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -711,12 +724,12 @@ private fun RoutineHeader(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Category Chip
+            // Category Chip (Frosted White Glass)
             Box {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF1E1E24),
-                    border = BorderStroke(1.dp, Color(0xFF383842)),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                     modifier = Modifier.clickable { showCategoryMenu = true }
                 ) {
                     Row(
@@ -727,20 +740,20 @@ private fun RoutineHeader(
                         Icon(
                             imageVector = Icons.Default.Bolt,
                             contentDescription = null,
-                            tint = AccentWork,
+                            tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = category,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = AccentWork
+                                color = Color.White
                             )
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = null,
-                            tint = AccentWork,
+                            tint = Color.White.copy(alpha = 0.70f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -753,7 +766,7 @@ private fun RoutineHeader(
                     ) {
                         PRESET_CATEGORIES.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat, color = if (cat == category) AccentWork else TextPrimary) },
+                                text = { Text(cat, color = if (cat == category) Color.White else TextSecondary) },
                                 onClick = { onCategoryChange(cat); showCategoryMenu = false }
                             )
                         }
@@ -761,14 +774,14 @@ private fun RoutineHeader(
                 }
             }
 
-            // Accent Color Chip
+            // Accent Color Chip (Frosted White Glass)
             val parsedColor = runCatching { Color(android.graphics.Color.parseColor(accentColor)) }
                 .getOrDefault(AccentWork)
             Box {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF1E1E24),
-                    border = BorderStroke(1.dp, Color(0xFF383842)),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                     modifier = Modifier.clickable { showColorMenu = true }
                 ) {
                     Row(
@@ -786,13 +799,13 @@ private fun RoutineHeader(
                             text = "Warna Aksen",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                color = parsedColor
+                                color = Color.White
                             )
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = null,
-                            tint = parsedColor,
+                            tint = Color.White.copy(alpha = 0.70f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -971,7 +984,7 @@ private fun BlockHeaderRow(
                 Icon(
                     imageVector = Icons.Default.Remove,
                     contentDescription = "Kurang Set",
-                    tint = if (uiBlock.block.repeatCount > 1) AccentWork else TextTertiary,
+                    tint = if (uiBlock.block.repeatCount > 1) Color.White else TextTertiary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -979,7 +992,7 @@ private fun BlockHeaderRow(
                 text = "${uiBlock.block.repeatCount}x",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = if (uiBlock.block.repeatCount > 1) AccentWork else TextPrimary
+                    color = if (uiBlock.block.repeatCount > 1) Color.White else TextPrimary
                 )
             )
             IconButton(
@@ -994,7 +1007,7 @@ private fun BlockHeaderRow(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Tambah Set",
-                    tint = AccentWork,
+                    tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1086,7 +1099,7 @@ private fun ExerciseRowCompact(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp
                         ),
-                        cursorBrush = SolidColor(accentColor),
+                        cursorBrush = SolidColor(Color.White),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
                     )
@@ -1259,12 +1272,12 @@ private fun ExerciseRowCompact(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Pilih dari Kamus Master", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.MenuBook, null, tint = AccentWork) },
+                            leadingIcon = { Icon(Icons.Default.MenuBook, null, tint = Color.White) },
                             onClick = { onOpenLibraryPicker(); showExerciseMenu = false }
                         )
                         DropdownMenuItem(
                             text = { Text(if (hasMedia) "Ganti GIF / Video" else "Pasang GIF / Video", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.AttachFile, null, tint = AccentRest) },
+                            leadingIcon = { Icon(Icons.Default.AttachFile, null, tint = Color.White.copy(alpha = 0.85f)) },
                             onClick = { onPickMedia(); showExerciseMenu = false }
                         )
                         if (hasMedia) {
@@ -1289,7 +1302,7 @@ private fun ExerciseRowCompact(
             }
         }
 
-        // Expanded Duration Quick Stepper & Presets
+        // Expanded Duration Quick Stepper & Presets (Frosted White Glass)
         AnimatedVisibility(
             visible = isDurationExpanded,
             enter = expandVertically() + fadeIn(),
@@ -1310,8 +1323,8 @@ private fun ExerciseRowCompact(
                         Surface(
                             onClick = { onDurationAdd(addSec) },
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF262630),
-                            border = BorderStroke(0.5.dp, Color(0xFF383842))
+                            color = Color.White.copy(alpha = 0.08f),
+                            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f))
                         ) {
                             Text(
                                 text = "+${addSec}s",
@@ -1329,13 +1342,13 @@ private fun ExerciseRowCompact(
                         Surface(
                             onClick = { onDurationSet(sec) },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) accentColor else Color(0xFF262630),
-                            border = BorderStroke(0.5.dp, if (isSelected) accentColor else Color(0xFF383842))
+                            color = if (isSelected) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f),
+                            border = BorderStroke(0.5.dp, if (isSelected) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.15f))
                         ) {
                             Text(
                                 text = "${sec}s",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = if (isSelected) Color.Black else TextSecondary,
+                                color = if (isSelected) Color.White else TextSecondary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -1366,7 +1379,7 @@ private fun ExerciseRowCompact(
             }
         }
 
-        // Autocomplete suggestions
+        // Autocomplete suggestions (Frosted White Glass Card)
         AnimatedVisibility(
             visible = isActive && autocompleteSuggestions.isNotEmpty(),
             enter = expandVertically() + fadeIn(),
@@ -1377,8 +1390,8 @@ private fun ExerciseRowCompact(
                     .fillMaxWidth()
                     .padding(start = 36.dp, end = 14.dp, top = 4.dp, bottom = 10.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF23232C)),
-                border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.35f))
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Row(
@@ -1395,13 +1408,13 @@ private fun ExerciseRowCompact(
                             Icon(
                                 Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                tint = AccentWork,
+                                tint = Color.White,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = "Kamus Master (${autocompleteSuggestions.size})",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AccentWork,
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -1517,12 +1530,12 @@ private fun BlockFooterCompact(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // [ 📖 + Tambah Gerakan (Kamus / Manual) ]
+        // [ 📖 + Tambah Gerakan (Kamus / Manual) ] (Frosted White Glass)
         Surface(
             onClick = onAddMovement,
             shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF23232A),
-            border = BorderStroke(1.dp, Color(0xFF383842)),
+            color = Color.White.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -1567,7 +1580,7 @@ private fun BlockFooterCompact(
             Text(
                 text = "+ Istirahat",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = AccentRest,
+                    color = Color.White.copy(alpha = 0.85f),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp
                 ),
@@ -1583,7 +1596,7 @@ private fun BlockFooterCompact(
             Text(
                 text = "+ Warmup",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = AccentWarmup,
+                    color = Color.White.copy(alpha = 0.85f),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp
                 ),
@@ -1599,7 +1612,7 @@ private fun BlockFooterCompact(
             Text(
                 text = "+ Cooldown",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = AccentCooldown,
+                    color = Color.White.copy(alpha = 0.85f),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp
                 ),
@@ -1616,13 +1629,13 @@ private fun BlockFooterCompact(
 
 @Composable
 private fun builderTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = AccentWork,
-    unfocusedBorderColor = SurfaceElevated,
+    focusedBorderColor = Color.White.copy(alpha = 0.50f),
+    unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    cursorColor = AccentWork,
-    focusedContainerColor = BackgroundPrimary.copy(alpha = 0.5f),
-    unfocusedContainerColor = Color.Transparent
+    cursorColor = Color.White,
+    focusedContainerColor = Color.White.copy(alpha = 0.10f),
+    unfocusedContainerColor = Color.White.copy(alpha = 0.06f)
 )
 
 private fun formatDuration(totalSec: Int): String {
@@ -1693,12 +1706,12 @@ private fun MediaSourceBottomSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Option 1: Record Video Direct with Camera
+            // Option 1: Record Video Direct with Camera (Frosted White Glass)
             Surface(
                 onClick = onRecordVideo,
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceElevated,
-                border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.4f)),
+                color = Color.White.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1711,7 +1724,7 @@ private fun MediaSourceBottomSheet(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .background(AccentWork, RoundedCornerShape(16.dp)),
+                            .background(Color.White, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1735,14 +1748,14 @@ private fun MediaSourceBottomSheet(
                             )
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = AccentWork.copy(alpha = 0.2f)
+                                color = Color.White.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = "KAMERA",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AccentWork,
-                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp
                                 )
                             }
@@ -1763,12 +1776,12 @@ private fun MediaSourceBottomSheet(
                 }
             }
 
-            // Option 2: Pick from Gallery / Files
+            // Option 2: Pick from Gallery / Files (Frosted White Glass)
             Surface(
                 onClick = onPickFromGallery,
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceElevated,
-                border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f)),
+                color = Color.White.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1781,13 +1794,13 @@ private fun MediaSourceBottomSheet(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .background(AccentRest.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.VideoLibrary,
                             contentDescription = null,
-                            tint = AccentRest,
+                            tint = Color.White,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -1805,14 +1818,14 @@ private fun MediaSourceBottomSheet(
                             )
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = AccentRest.copy(alpha = 0.15f)
+                                color = Color.White.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = "FILE / GIF",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AccentRest,
-                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp
                                 )
                             }
@@ -1982,13 +1995,13 @@ private fun ExerciseLibraryPickerBottomSheet(
                         )
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = AccentWork.copy(alpha = 0.15f)
+                            color = Color.White.copy(alpha = 0.10f)
                         ) {
                             Text(
                                 text = "${filteredTemplates.size} item",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = AccentWork,
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -2007,17 +2020,17 @@ private fun ExerciseLibraryPickerBottomSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search Bar
+            // Search Bar (Frosted White Glass)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Cari gerakan, otot, alat...", color = TextTertiary) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = AccentWork) },
+                placeholder = { Text("Cari gerakan, otot, alat...", color = Color.White.copy(alpha = 0.40f)) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.65f)) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, null, tint = TextTertiary)
+                            Icon(Icons.Default.Clear, null, tint = Color.White.copy(alpha = 0.65f))
                         }
                     }
                 },
@@ -2028,7 +2041,7 @@ private fun ExerciseLibraryPickerBottomSheet(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Category Chips
+            // Category Chips (Frosted White Glass)
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = PaddingValues(vertical = 4.dp)
@@ -2043,10 +2056,16 @@ private fun ExerciseLibraryPickerBottomSheet(
                         },
                         label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = AccentWork,
-                            selectedLabelColor = Color.Black,
-                            containerColor = SurfaceElevated,
-                            labelColor = TextSecondary
+                            selectedContainerColor = Color.White.copy(alpha = 0.22f),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White.copy(alpha = 0.06f),
+                            labelColor = Color.White.copy(alpha = 0.65f)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = Color.White.copy(alpha = 0.15f),
+                            selectedBorderColor = Color.White.copy(alpha = 0.50f)
                         )
                     )
                 }
@@ -2114,11 +2133,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                                     modifier = Modifier
                                         .size(44.dp)
                                         .background(
-                                            when (template.category?.lowercase()) {
-                                                "cardio", "hiit" -> AccentWork.copy(alpha = 0.15f)
-                                                "core" -> AccentWarmup.copy(alpha = 0.15f)
-                                                else -> AccentRest.copy(alpha = 0.15f)
-                                            },
+                                            Color.White.copy(alpha = 0.08f),
                                             RoundedCornerShape(10.dp)
                                         ),
                                     contentAlignment = Alignment.Center
@@ -2126,11 +2141,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                                     Icon(
                                         painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
                                         contentDescription = null,
-                                        tint = when (template.category?.lowercase()) {
-                                            "cardio", "hiit" -> AccentWork
-                                            "core" -> AccentWarmup
-                                            else -> AccentRest
-                                        },
+                                        tint = Color.White,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -2149,20 +2160,12 @@ private fun ExerciseLibraryPickerBottomSheet(
                                         template.difficulty?.let { diff ->
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = when (diff.lowercase()) {
-                                                    "beginner" -> AccentWork.copy(alpha = 0.2f)
-                                                    "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
-                                                    else -> AccentRest.copy(alpha = 0.2f)
-                                                }
+                                                color = Color.White.copy(alpha = 0.12f)
                                             ) {
                                                 Text(
                                                     text = diff,
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = when (diff.lowercase()) {
-                                                        "beginner" -> AccentWork
-                                                        "intermediate" -> AccentWarmup
-                                                        else -> AccentRest
-                                                    },
+                                                    color = Color.White,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                                 )
                                             }
@@ -2200,7 +2203,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                                 Icon(
                                     imageVector = Icons.Default.AddCircleOutline,
                                     contentDescription = "Pilih",
-                                    tint = AccentWork,
+                                    tint = Color.White,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

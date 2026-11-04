@@ -366,7 +366,8 @@ private fun DynamicExerciseIllustrationCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = accentColor.copy(alpha = 0.2f)
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.20f))
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -377,14 +378,14 @@ private fun DynamicExerciseIllustrationCard(
                                     if (isRest) R.drawable.ic_pose_meditation else R.drawable.ic_intensity_lightning
                                 ),
                                 contentDescription = null,
-                                tint = accentColor,
+                                tint = Color.White,
                                 modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (isRest) "BERSIAP BERIKUTNYA" else "PANDUAN POSTUR",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = accentColor,
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
                             )
@@ -1744,12 +1745,12 @@ private fun CircularProgressRing(
         val topLeft = Offset(center.x - radius, center.y - radius)
         val arcSize = Size(diameter, diameter)
 
-        // 1. Ambient blurred halo glow behind the ring (only in non-glass mode, to keep video fully transparent)
+        // 1. Ambient blurred halo glow behind the ring (Pure Crystalline White Glow)
         if (!isGlassMode) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        accentColor.copy(alpha = if (isFinalCountdown) 0.35f else 0.18f),
+                        Color.White.copy(alpha = if (isFinalCountdown) 0.25f else 0.10f),
                         Color.Transparent
                     ),
                     center = center,
@@ -1762,7 +1763,7 @@ private fun CircularProgressRing(
 
         // 2. Background Track
         drawArc(
-            color = trackColor,
+            color = Color.White.copy(alpha = 0.12f),
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,
@@ -1784,11 +1785,11 @@ private fun CircularProgressRing(
             )
         }
 
-        // 4. Dynamic Active Progress Arc
+        // 4. Dynamic Active Progress Arc (Pure Glowing White Crystal Arc)
         val sweepAngle = animatedProgress * 360f
         if (sweepAngle > 0f) {
             drawArc(
-                color = accentColor,
+                color = Color.White,
                 startAngle = -90f,
                 sweepAngle = sweepAngle,
                 useCenter = false,
@@ -1805,7 +1806,7 @@ private fun CircularProgressRing(
 
             // Outer diffused glow
             drawCircle(
-                color = if (isGlassMode) Color.White.copy(alpha = 0.5f) else accentColor.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = 0.6f),
                 radius = strokePx * 0.75f,
                 center = tipOffset
             )
@@ -2053,9 +2054,9 @@ private fun PreparingView(
                             style = Stroke(width = strokePx)
                         )
 
-                        // Active sweep countdown arc
+                        // Active sweep countdown arc (Pure White Glass Ring)
                         drawArc(
-                            color = AccentWork,
+                            color = Color.White,
                             startAngle = -90f,
                             sweepAngle = 360f * animatedCountdownProgress,
                             useCenter = false,
@@ -2302,7 +2303,7 @@ private fun CompletedWorkoutView(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color.Black.copy(alpha = 0.65f),
-                    border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -2312,13 +2313,13 @@ private fun CompletedWorkoutView(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(AccentWork, CircleShape)
+                                .background(Color.White, CircleShape)
                         )
                         Text(
                             text = "LUAR BIASA! • LATIHAN SELESAI",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AccentWork,
-                            fontWeight = FontWeight.Black,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 1.2.sp
                         )
                     }
@@ -2336,8 +2337,8 @@ private fun CompletedWorkoutView(
                     1.5.dp,
                     Brush.verticalGradient(
                         listOf(
-                            Color.White.copy(alpha = 0.35f),
-                            AccentWork.copy(alpha = 0.40f)
+                            Color.White.copy(alpha = 0.40f),
+                            Color.White.copy(alpha = 0.10f)
                         )
                     )
                 ),
@@ -2437,7 +2438,7 @@ private fun CompletedWorkoutView(
                             .height(52.dp),
                         shape = RoundedCornerShape(26.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentWork,
+                            containerColor = Color.White,
                             contentColor = Color.Black
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
