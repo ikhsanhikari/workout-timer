@@ -56,6 +56,10 @@ android {
         compose = true
     }
 
+    androidResources {
+        noCompress += listOf("mp3", "mp4", "ogg")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

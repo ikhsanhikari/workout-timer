@@ -53,4 +53,16 @@ class RoutineDetailViewModel @Inject constructor(
             repository.toggleFavorite(routineId)
         }
     }
+
+    /**
+     * Menduplikasi rutinitas saat ini beserta seluruh blok dan gerakannya.
+     */
+    fun duplicateRoutine(onSuccess: (Long) -> Unit) {
+        viewModelScope.launch {
+            val newId = repository.duplicateRoutine(routineId)
+            if (newId != null && newId > 0) {
+                onSuccess(newId)
+            }
+        }
+    }
 }

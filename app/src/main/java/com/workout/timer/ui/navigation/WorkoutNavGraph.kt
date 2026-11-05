@@ -10,11 +10,15 @@ import com.workout.timer.ui.screen.home.HomeScreen
 import com.workout.timer.ui.screen.builder.WorkoutBuilderScreen
 import com.workout.timer.ui.screen.player.WorkoutPlayerScreen
 import com.workout.timer.ui.screen.detail.RoutineDetailScreen
+import com.workout.timer.ui.screen.history.WorkoutHistoryScreen
+import com.workout.timer.ui.screen.splash.SplashScreen
+import com.workout.timer.ui.screen.onboarding.OnboardingScreen
+import com.workout.timer.ui.screen.settings.SettingsScreen
 
 /**
  * NavGraph utama aplikasi.
  *
- * Start destination: [Screen.Home]
+ * Start destination: [Screen.Splash]
  *
  * Navigasi antar layar menggunakan lambda callback untuk
  * memisahkan logika navigasi dari Composable (unidirectional).
@@ -26,8 +30,36 @@ import com.workout.timer.ui.screen.detail.RoutineDetailScreen
 fun WorkoutNavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Splash.route
     ) {
+        // ── Splash Screen (Hook & Brand Identity) ───────────────────────────
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onSplashFinished = { isOnboardingDone ->
+                    if (isOnboardingDone) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(Screen.Onboarding.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        // ── Onboarding Flow (Interactive 3-Phase Setup & Curation) ───────────
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onOnboardingFinished = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // ── Home Dashboard ──────────────────────────────────────────────────
         composable(Screen.Home.route) {
             HomeScreen(
@@ -39,6 +71,12 @@ fun WorkoutNavGraph(navController: NavHostController) {
                 },
                 onNavigateToStartWorkout = { routineId ->
                     navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.WorkoutHistory.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -93,6 +131,9 @@ fun WorkoutNavGraph(navController: NavHostController) {
                 },
                 onNavigateToPlayer = {
                     navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToNewRoutine = { newId ->
+                    navController.navigate(Screen.RoutineDetail.createRoute(newId))
                 }
             )
         }
@@ -107,6 +148,26 @@ fun WorkoutNavGraph(navController: NavHostController) {
             val routineId = backStackEntry.arguments?.getLong("routineId") ?: return@composable
             WorkoutPlayerScreen(
                 routineId = routineId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Workout History ──────────────────────────────────────────────────
+        composable(route = Screen.WorkoutHistory.route) {
+            WorkoutHistoryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToRoutineDetail = { routineId ->
+                    navController.navigate(Screen.RoutineDetail.createRoute(routineId))
+                },
+                onNavigateToStartWorkout = { routineId ->
+                    navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                }
+            )
+        }
+
+        // ── Centralized Settings Screen ──────────────────────────────────────
+        composable(route = Screen.Settings.route) {
+            SettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

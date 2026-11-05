@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Olympic Hex Dumbbell -->
+    <!-- Left Weight -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,8 L5,6 L6.5,6 L6.5,18 L5,18 L2,16 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.5,7.5 L9.5,7.5 L9.5,16.5 L7.5,16.5 Z" />
+    <!-- Bar Handle -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.5,11 L14.5,11 L14.5,13 L9.5,13 Z" />
+    <!-- Right Weight -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M14.5,7.5 L16.5,7.5 L16.5,16.5 L14.5,16.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M17.5,6 L19,6 L22,8 L22,16 L19,18 L17.5,18 Z" />
+</vector>

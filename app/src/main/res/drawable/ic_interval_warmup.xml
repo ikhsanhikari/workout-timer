@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Rising Ignition Spark for Warmup -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M13.5,2 C13.5,2 14,6 11,8.5 C8,11 6.5,13 6.5,16 C6.5,19.3 9.2,22 12.5,22 C16.5,22 18.5,18.8 18.5,15.5 C18.5,11.2 15.5,8 15.5,8 C15.5,8 16.5,10.5 15,12 C13.5,13.5 12.5,12.5 12.5,11 C12.5,8.5 13.5,2 13.5,2 Z" />
+</vector>

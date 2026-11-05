@@ -23,7 +23,10 @@ import com.workout.timer.data.catalog.SyncResult
  * State UI untuk layar Home Dashboard.
  */
 data class HomeUiState(
+    val userNickname: String = "",
     val routines: List<WorkoutRoutine> = emptyList(),
+    val favoriteRoutines: List<WorkoutRoutine> = emptyList(),
+    val latestPerformedRoutine: WorkoutRoutine? = null,
     val categories: List<String> = emptyList(),
     val weeklyTotalMinutes: Int = 0,
     val weeklySessionCount: Int = 0,
@@ -49,7 +52,8 @@ enum class DurationFilter(val label: String, val minSec: Int?, val maxSec: Int?)
 class HomeViewModel @Inject constructor(
     private val repository: WorkoutRepository,
     private val backupManager: LocalBackupManager,
-    private val syncManager: CatalogSyncManager
+    private val syncManager: CatalogSyncManager,
+    private val preferencesRepository: com.workout.timer.data.preferences.UserPreferencesRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -79,37 +83,71 @@ class HomeViewModel @Inject constructor(
         return cal.timeInMillis
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(
-        _searchQuery.debounce(200), // Debounce 200ms untuk real-time search
+    private val spotlightFlow = combine(
+        repository.observeFavoriteRoutines(),
+        repository.observePerformedRoutines()
+    ) { favorites, performed ->
+        favorites to performed.firstOrNull()
+    }
+
+    private data class FilterCriteria(
+        val query: String = "",
+        val category: String? = null,
+        val duration: DurationFilter = DurationFilter.ALL,
+        val sort: SortOption = SortOption.CREATED_AT
+    )
+
+    private val filterCriteriaFlow = combine(
+        _searchQuery,
         _selectedCategory,
         _selectedDuration,
         _selectedSort
     ) { query, category, duration, sort ->
-        Triple(query to category, duration, sort)
-    }.flatMapLatest { (queryCat, duration, sort) ->
-        val (query, category) = queryCat
-        repository.searchRoutines(
-            keyword = query.ifBlank { null },
-            category = category,
-            minDuration = duration.minSec,
-            maxDuration = duration.maxSec,
-            sortBy = sort
-        )
-    }.combine(repository.observeAllCategories()) { routines, categories ->
-        routines to categories
-    }.combine(_snackbarMessage) { (routines, categories), snackbar ->
-        Triple(routines, categories, snackbar)
-    }.combine(_isSyncing) { (routines, categories, snackbar), isSyncing ->
+        FilterCriteria(query, category, duration, sort)
+    }
+
+    private val routinesFlow = filterCriteriaFlow
+        .debounce { criteria ->
+            if (criteria.query.isNotBlank()) 200L else 0L
+        }
+        .flatMapLatest { criteria ->
+            repository.searchRoutines(
+                keyword = criteria.query.ifBlank { null },
+                category = criteria.category,
+                minDuration = criteria.duration.minSec,
+                maxDuration = criteria.duration.maxSec,
+                sortBy = criteria.sort
+            )
+        }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        routinesFlow,
+        repository.observeAllCategories(),
+        filterCriteriaFlow,
+        _isSyncing,
+        _snackbarMessage
+    ) { routines, categories, criteria, isSyncing, snackbar ->
         HomeUiState(
             routines = routines,
+            favoriteRoutines = emptyList(),
+            latestPerformedRoutine = null,
             categories = categories,
             isLoading = false,
             isSyncing = isSyncing,
-            searchQuery = _searchQuery.value,
-            selectedCategory = _selectedCategory.value,
-            selectedDurationFilter = _selectedDuration.value,
-            selectedSort = _selectedSort.value,
+            searchQuery = criteria.query,
+            selectedCategory = criteria.category,
+            selectedDurationFilter = criteria.duration,
+            selectedSort = criteria.sort,
             snackbarMessage = snackbar
+        )
+    }.combine(spotlightFlow) { state, (favorites, latestPerformed) ->
+        state.copy(
+            favoriteRoutines = favorites,
+            latestPerformedRoutine = latestPerformed
+        )
+    }.combine(preferencesRepository.userPreferencesFlow) { state, prefs ->
+        state.copy(
+            userNickname = prefs.nickname
         )
     }.stateIn(
         scope = viewModelScope,
@@ -192,7 +230,7 @@ class HomeViewModel @Inject constructor(
     fun restoreStandardRoutines() {
         viewModelScope.launch(Dispatchers.IO) {
             repository.restoreStandardRoutines()
-            _snackbarMessage.value = "15 Preset latihan standar ilmiah berhasil dimuat!"
+            _snackbarMessage.value = "40 Preset latihan standar ilmiah berhasil dimuat!"
         }
     }
 

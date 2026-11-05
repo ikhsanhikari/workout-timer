@@ -21,7 +21,9 @@ import kotlin.math.max
  */
 @Singleton
 class WorkoutTimerEngine @Inject constructor(
-    private val audioHapticManager: AudioHapticManager
+    private val audioHapticManager: AudioHapticManager,
+    private val workoutMusicManager: com.workout.timer.service.audio.WorkoutMusicManager,
+    private val voiceCoach: com.workout.timer.service.audio.WorkoutVoiceCoach
 ) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var timerJob: Job? = null
@@ -32,6 +34,7 @@ class WorkoutTimerEngine @Inject constructor(
     // Data sesi aktif
     private var activeRoutineId: Long = -1L
     private var activeRoutineName: String = ""
+    private var activeRoutineCategory: String = "Full Body"
     private var exercises: List<FlatExerciseItem> = emptyList()
     private var currentExerciseIndex: Int = 0
 
@@ -47,13 +50,18 @@ class WorkoutTimerEngine @Inject constructor(
     // Tracker beep agar tidak berulang dalam 1 detik yang sama
     private var lastBeepSecond: Int = -1
 
+    // Tracker Voice Coach cues agar tidak berulang dalam satu interval
+    private var hasAnnouncedHalfway: Boolean = false
+    private var hasAnnouncedUpcoming: Boolean = false
+
     /**
      * Memulai sesi latihan dari daftar gerakan yang sudah di-flatten.
      */
     fun startWorkout(
         routineId: Long,
         routineName: String,
-        flatExercises: List<FlatExerciseItem>
+        flatExercises: List<FlatExerciseItem>,
+        routineCategory: String = "Full Body"
     ) {
         if (flatExercises.isEmpty()) return
 
@@ -61,11 +69,13 @@ class WorkoutTimerEngine @Inject constructor(
 
         activeRoutineId = routineId
         activeRoutineName = routineName
+        activeRoutineCategory = routineCategory
         exercises = flatExercises
         currentExerciseIndex = 0
         isPaused = false
         totalPausedDurationMs = 0L
         workoutStartElapsedRealtime = SystemClock.elapsedRealtime()
+        workoutMusicManager.startMusic()
 
         startPreparationPhase()
     }
@@ -79,12 +89,17 @@ class WorkoutTimerEngine @Inject constructor(
             var prepSeconds = 3
             val firstExercise = exercises.firstOrNull()
 
+            if (firstExercise != null) {
+                voiceCoach.announcePreparation(firstExercise.title)
+            }
+
             while (prepSeconds > 0 && isActive) {
                 _timerState.value = WorkoutTimerState.Preparing(
                     countdownSeconds = prepSeconds,
                     routineId = activeRoutineId,
                     routineName = activeRoutineName,
-                    firstExercise = firstExercise
+                    firstExercise = firstExercise,
+                    category = activeRoutineCategory
                 )
                 audioHapticManager.playCountdownBeep()
                 delay(1000)
@@ -93,6 +108,7 @@ class WorkoutTimerEngine @Inject constructor(
 
             if (isActive) {
                 audioHapticManager.playStartTone()
+                voiceCoach.announceStart()
                 startExerciseAt(0)
             }
         }
@@ -109,15 +125,21 @@ class WorkoutTimerEngine @Inject constructor(
 
         currentExerciseIndex = index
         val currentEx = exercises[index]
+        workoutMusicManager.setPhase(currentEx.type)
         stepTotalDurationMs = currentEx.durationSeconds * 1000L
         stepStartTime = SystemClock.elapsedRealtime()
         stepEndTime = stepStartTime + stepTotalDurationMs
         isPaused = false
         lastBeepSecond = -1
+        hasAnnouncedHalfway = false
+        hasAnnouncedUpcoming = false
 
         // Play cue suara transisi fase
         if (currentEx.type == IntervalType.REST) {
             audioHapticManager.playRestTone()
+            voiceCoach.announceRest()
+        } else if (index > 0) {
+            voiceCoach.announceStart()
         }
 
         runTimerLoop()
@@ -154,6 +176,24 @@ class WorkoutTimerEngine @Inject constructor(
                 if (remSecInt in 1..3 && remSecInt != lastBeepSecond) {
                     lastBeepSecond = remSecInt
                     audioHapticManager.playCountdownBeep()
+                }
+
+                // Trigger Voice Coach cues (Smart pacing)
+                if (currentEx.type == IntervalType.REST) {
+                    // Beri tahu gerakan berikutnya di sisa 5 detik fase istirahat (sebelum beep 3-2-1)
+                    if (remSecInt in 4..6 && !hasAnnouncedUpcoming) {
+                        val upcomingTitle = nextEx?.title
+                        if (upcomingTitle != null) {
+                            hasAnnouncedUpcoming = true
+                            voiceCoach.announceNextExercise(upcomingTitle)
+                        }
+                    }
+                } else if (currentEx.type == IntervalType.WORK) {
+                    // Pengingat setengah jalan jika gerakan berdurasi cukup panjang (>= 24 detik)
+                    if (stepTotalDurationMs >= 24_000L && elapsedInStepMs >= stepTotalDurationMs / 2 && !hasAnnouncedHalfway) {
+                        hasAnnouncedHalfway = true
+                        voiceCoach.announceHalfway()
+                    }
                 }
 
                 // Update UI state
@@ -214,6 +254,8 @@ class WorkoutTimerEngine @Inject constructor(
         if (isPaused) return
         isPaused = true
         pausedAt = SystemClock.elapsedRealtime()
+        workoutMusicManager.pause()
+        voiceCoach.announcePaused()
         updateCurrentStatePausedFlag(true)
     }
 
@@ -226,6 +268,8 @@ class WorkoutTimerEngine @Inject constructor(
         stepEndTime += pauseDuration
         totalPausedDurationMs += pauseDuration
         isPaused = false
+        workoutMusicManager.resume()
+        voiceCoach.announceResumed()
         updateCurrentStatePausedFlag(false)
     }
 
@@ -264,13 +308,47 @@ class WorkoutTimerEngine @Inject constructor(
     }
 
     /**
-     * Tambah waktu istirahat secara dinamis (+15 detik) on-the-fly (PRD 4.2.3).
+     * Tambah waktu gerakan atau istirahat secara dinamis (+15 detik) on-the-fly.
      */
-    fun addRestTime(seconds: Int = 15) {
+    fun addTime(seconds: Int = 15) {
         val extraMs = seconds * 1000L
         stepTotalDurationMs += extraMs
         stepEndTime += extraMs
         audioHapticManager.vibrateLightTick()
+    }
+
+    /**
+     * Tambah waktu istirahat secara dinamis (+15 detik) on-the-fly (PRD 4.2.3).
+     */
+    fun addRestTime(seconds: Int = 15) = addTime(seconds)
+
+    /**
+     * Tambah waktu latihan (work) secara dinamis (+15 detik) on-the-fly.
+     */
+    fun addWorkTime(seconds: Int = 15) = addTime(seconds)
+
+    /**
+     * Mengambil snapshot sesi latihan saat ini untuk disimpan ke log riwayat.
+     */
+    fun getCurrentSessionSnapshot(isCompletedFully: Boolean): com.workout.timer.data.model.WorkoutSessionRecord? {
+        if (activeRoutineId <= 0L || exercises.isEmpty()) return null
+        val now = SystemClock.elapsedRealtime()
+        val totalSec = (((now - workoutStartElapsedRealtime - totalPausedDurationMs).coerceAtLeast(0L)) / 1000).toInt()
+        val completedExercises = if (isCompletedFully) {
+            exercises.size
+        } else {
+            currentExerciseIndex.coerceIn(0, exercises.size)
+        }
+        return com.workout.timer.data.model.WorkoutSessionRecord(
+            routineId = activeRoutineId,
+            routineName = activeRoutineName,
+            category = activeRoutineCategory,
+            completedAt = System.currentTimeMillis(),
+            durationSeconds = totalSec.coerceAtLeast(1),
+            totalExercisesCompleted = completedExercises,
+            totalExercisesPlanned = exercises.size,
+            isCompletedFully = isCompletedFully
+        )
     }
 
     /**
@@ -282,10 +360,13 @@ class WorkoutTimerEngine @Inject constructor(
         _timerState.value = WorkoutTimerState.Completed(
             routineId = activeRoutineId,
             routineName = activeRoutineName,
-            totalDurationSeconds = totalSec,
-            totalExercisesCompleted = exercises.size
+            totalDurationSeconds = totalSec.coerceAtLeast(1),
+            totalExercisesCompleted = exercises.size,
+            category = activeRoutineCategory
         )
+        workoutMusicManager.stop()
         audioHapticManager.playWorkoutCompleteTone()
+        voiceCoach.announceCompleted()
     }
 
     /**
@@ -295,6 +376,8 @@ class WorkoutTimerEngine @Inject constructor(
         timerJob?.cancel()
         timerJob = null
         isPaused = false
+        workoutMusicManager.stop()
+        voiceCoach.stop()
         _timerState.value = WorkoutTimerState.Idle
     }
 
