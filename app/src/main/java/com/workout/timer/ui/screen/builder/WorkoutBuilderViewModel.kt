@@ -216,22 +216,28 @@ class WorkoutBuilderViewModel @Inject constructor(
         _uiState.update { it.copy(blocks = updated) }
     }
 
+    fun moveBlock(from: Int, to: Int) {
+        if (from == to) return
+        val blocks = _uiState.value.blocks.toMutableList()
+        if (from !in blocks.indices || to !in blocks.indices) return
+        val item = blocks.removeAt(from)
+        blocks.add(to, item)
+        val reindexed = blocks.mapIndexed { i, b ->
+            b.copy(block = b.block.copy(orderIndex = i))
+        }
+        _uiState.update { it.copy(blocks = reindexed) }
+        recalculateStats()
+    }
+
     fun moveBlockUp(blockIndex: Int) {
         if (blockIndex <= 0) return
-        val blocks = _uiState.value.blocks.toMutableList()
-        val temp = blocks[blockIndex]
-        blocks[blockIndex] = blocks[blockIndex - 1].copy(block = blocks[blockIndex - 1].block.copy(orderIndex = blockIndex))
-        blocks[blockIndex - 1] = temp.copy(block = temp.block.copy(orderIndex = blockIndex - 1))
-        _uiState.update { it.copy(blocks = blocks) }
+        moveBlock(blockIndex, blockIndex - 1)
     }
 
     fun moveBlockDown(blockIndex: Int) {
-        val blocks = _uiState.value.blocks.toMutableList()
+        val blocks = _uiState.value.blocks
         if (blockIndex >= blocks.size - 1) return
-        val temp = blocks[blockIndex]
-        blocks[blockIndex] = blocks[blockIndex + 1].copy(block = blocks[blockIndex + 1].block.copy(orderIndex = blockIndex))
-        blocks[blockIndex + 1] = temp.copy(block = temp.block.copy(orderIndex = blockIndex + 1))
-        _uiState.update { it.copy(blocks = blocks) }
+        moveBlock(blockIndex, blockIndex + 1)
     }
 
     // ── Exercise Operations ─────────────────────────────────────────────────
@@ -383,9 +389,12 @@ class WorkoutBuilderViewModel @Inject constructor(
     }
 
     fun moveExercise(blockIndex: Int, from: Int, to: Int) {
+        if (from == to) return
         val blocks = _uiState.value.blocks.toMutableList()
+        if (blockIndex !in blocks.indices) return
         val block = blocks[blockIndex]
         val exercises = block.exercises.toMutableList()
+        if (from !in exercises.indices || to !in exercises.indices) return
         val item = exercises.removeAt(from)
         exercises.add(to, item)
         val reindexed = exercises.mapIndexed { i, ex ->

@@ -50,11 +50,12 @@ sealed interface WorkoutTimerState {
         val isPaused: Boolean
     ) : WorkoutTimerState
 
-    /** Sesi latihan telah diselesaikan sepenuhnya */
+    /** Sesi latihan telah diselesaikan */
     data class Completed(
         val routineId: Long,
         val routineName: String,
         val totalDurationSeconds: Int,
-        val totalExercisesCompleted: Int
+        val totalExercisesCompleted: Int,
+        val category: String = "Full Body"
     ) : WorkoutTimerState
 }

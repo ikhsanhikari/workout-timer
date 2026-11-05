@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workout.timer.R
@@ -53,15 +54,19 @@ fun RoutineDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: () -> Unit,
     onNavigateToPlayer: () -> Unit,
+    onNavigateToNewRoutine: ((Long) -> Unit)? = null,
     viewModel: RoutineDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val routine = uiState.routine
 
     val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         containerColor = BackgroundPrimary,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { },
@@ -106,6 +111,36 @@ fun RoutineDetailScreen(
                             contentDescription = "Favorit",
                             tint = if (routine?.isFavorite == true) AccentHighIntensity else TextPrimary,
                             modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    // Duplicate button
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceCard.copy(alpha = 0.8f))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.duplicateRoutine { newId ->
+                                    scope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "Rutinitas berhasil diduplikasi!",
+                                            actionLabel = "Buka"
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            onNavigateToNewRoutine?.invoke(newId)
+                                        }
+                                    }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "Duplikat",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(19.dp)
                         )
                     }
                     // Edit button
@@ -205,10 +240,6 @@ private fun DetailHeroHeader(
     totalDurationSec: Int,
     totalExercises: Int
 ) {
-    val accentColor = runCatching {
-        Color(android.graphics.Color.parseColor(routine.accentColor))
-    }.getOrDefault(AccentWork)
-
     val bannerRes = getCategoryBannerRes(routine.category)
 
     Box(
@@ -241,14 +272,14 @@ private fun DetailHeroHeader(
                 )
         )
 
-        // Subtle accent brand tint
+        // Subtle frosted brand tint
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            accentColor.copy(alpha = 0.15f),
+                            Color.White.copy(alpha = 0.05f),
                             Color.Transparent
                         )
                     )
@@ -277,17 +308,17 @@ private fun DetailHeroHeader(
                 .padding(top = 96.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.Bottom
         ) {
-            // Category badge
+            // Category badge (Frosted White Glass)
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = SurfaceCard.copy(alpha = 0.85f),
-                border = BorderStroke(1.dp, accentColor.copy(alpha = 0.45f))
+                color = Color.White.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Text(
                     text = routine.category.uppercase(),
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
-                    color = accentColor,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
@@ -306,33 +337,33 @@ private fun DetailHeroHeader(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Stats row
+            // Stats row (Frosted White Glass)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DetailStatItem(
                     icon = Icons.Outlined.Timer,
                     value = formatDuration(totalDurationSec),
                     label = "Durasi",
-                    color = accentColor
+                    color = Color.White
                 )
                 DetailStatItem(
                     iconRes = R.drawable.ic_dumbbell_pro,
                     value = "$totalExercises",
                     label = "Gerakan",
-                    color = accentColor
+                    color = Color.White
                 )
                 if (routine.lastPerformedAt != null) {
                     DetailStatItem(
                         icon = Icons.Outlined.History,
                         value = "Pernah",
                         label = "Dilakukan",
-                        color = AccentRest
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 } else {
                     DetailStatItem(
                         icon = Icons.Outlined.NewReleases,
                         value = "Baru",
                         label = "Belum Pernah",
-                        color = AccentWarmup
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }
@@ -356,13 +387,13 @@ private fun DetailStatItem(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.15f)),
+                .background(Color.White.copy(alpha = 0.10f)),
             contentAlignment = Alignment.Center
         ) {
             if (iconRes != null) {
-                Icon(painter = painterResource(id = iconRes), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Icon(painter = painterResource(id = iconRes), contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
             } else if (icon != null) {
-                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
             }
         }
         Column {
@@ -400,7 +431,8 @@ private fun DetailBlockCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
         Column {
             // Block header row
@@ -416,13 +448,13 @@ private fun DetailBlockCard(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(SurfaceElevated),
+                        .background(Color.White.copy(alpha = 0.10f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "${blockIndex + 1}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -443,13 +475,13 @@ private fun DetailBlockCard(
                         if (isLoop) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = AccentWork.copy(alpha = 0.15f)
+                                color = Color.White.copy(alpha = 0.12f)
                             ) {
                                 Text(
                                     text = "×${block.repeatCount}",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AccentWork,
+                                    color = Color.White,
                                     fontWeight = FontWeight.Black
                                 )
                             }
@@ -484,14 +516,14 @@ private fun DetailBlockCard(
             // Animated exercises list
             AnimatedVisibility(visible = isExpanded) {
                 Column {
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
 
                     exercises.forEachIndexed { exIdx, exercise ->
                         DetailExerciseRow(exercise = exercise)
                         if (exIdx < exercises.size - 1) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(start = 56.dp),
-                                color = SurfaceElevated,
+                                color = Color.White.copy(alpha = 0.08f),
                                 thickness = 0.5.dp
                             )
                         }
@@ -499,7 +531,7 @@ private fun DetailBlockCard(
 
                     // Loop repeat footer
                     if (isLoop) {
-                        HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -537,7 +569,6 @@ private fun DetailBlockCard(
 
 @Composable
 private fun DetailExerciseRow(exercise: WorkoutExercise) {
-    val accentColor = exercise.type.toAccentColor()
     val typeLabel = when (exercise.type) {
         IntervalType.WARMUP -> "Warmup"
         IntervalType.WORK -> "Work"

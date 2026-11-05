@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 /**
  * Room Database utama aplikasi.
  *
- * Versi: 3 (Mendukung Master Kamus Gerakan & 16 Rutinitas Preset Ilmiah Dunia).
+ * Versi: 3 (Mendukung Master Kamus Gerakan & 40 Rutinitas Preset Ilmiah Dunia).
  * Data diisi secara dinamis dari assets (default_catalog.json & exercise_library.json) dan dapat diperbarui via server.
  */
 @Database(
@@ -26,9 +26,10 @@ import kotlinx.coroutines.launch
         WorkoutRoutine::class,
         WorkoutBlock::class,
         WorkoutExercise::class,
-        ExerciseTemplate::class
+        ExerciseTemplate::class,
+        WorkoutSessionRecord::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(WorkoutTypeConverters::class)
@@ -38,6 +39,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun workoutBlockDao(): WorkoutBlockDao
     abstract fun workoutExerciseDao(): WorkoutExerciseDao
     abstract fun exerciseTemplateDao(): ExerciseTemplateDao
+    abstract fun workoutSessionRecordDao(): WorkoutSessionRecordDao
 
     companion object {
         const val DATABASE_NAME = "workout_timer.db"
@@ -51,6 +53,38 @@ abstract class WorkoutDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE exercise_templates ADD COLUMN difficulty TEXT")
                 db.execSQL("ALTER TABLE exercise_templates ADD COLUMN coachTip TEXT")
                 db.execSQL("ALTER TABLE exercise_templates ADD COLUMN benefits TEXT")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `workout_session_records` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `routineId` INTEGER NOT NULL,
+                        `routineName` TEXT NOT NULL,
+                        `category` TEXT NOT NULL,
+                        `completedAt` INTEGER NOT NULL,
+                        `durationSeconds` INTEGER NOT NULL,
+                        `totalExercisesCompleted` INTEGER NOT NULL,
+                        `totalExercisesPlanned` INTEGER NOT NULL,
+                        `isCompletedFully` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_workout_session_records_completedAt` ON `workout_session_records` (`completedAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_workout_session_records_routineId` ON `workout_session_records` (`routineId`)")
+
+                // Backfill dari rutinitas yang pernah dijalankan sebelumnya
+                try {
+                    db.execSQL("""
+                        INSERT INTO workout_session_records (routineId, routineName, category, completedAt, durationSeconds, totalExercisesCompleted, totalExercisesPlanned, isCompletedFully)
+                        SELECT id, name, category, lastPerformedAt, totalDurationSec, totalExercises, totalExercises, 1
+                        FROM workout_routines
+                        WHERE lastPerformedAt IS NOT NULL AND lastPerformedAt > 0
+                    """.trimIndent())
+                } catch (_: Exception) {
+                    // Fail-safe jika tabel workout_routines belum memiliki baris
+                }
             }
         }
 
@@ -69,7 +103,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(PrepopulateCallback(context.applicationContext, scope))
-                    .addMigrations(MIGRATION_2_3)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

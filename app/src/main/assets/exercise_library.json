@@ -1,6 +1,6 @@
 {
-  "libraryVersion": 6,
-  "lastUpdated": "2026-11-03T08:52:01.169Z",
+  "libraryVersion": 7,
+  "lastUpdated": "2026-11-04T13:40:00.000Z",
   "totalExercises": 100,
   "exercises": [
     {
@@ -531,7 +531,7 @@
       "defaultDuration": 30,
       "coachTip": "Lari di tempat dengan mengangkat lutut setinggi pinggang sambil memompa kedua lengan.",
       "benefits": "Latihan anaerobik bertenaga tinggi untuk membakar lemak perut.",
-      "gifUrl": "file:///android_asset/exercise_ai/stationary-sprint.mp4",
+      "gifUrl": "file:///android_asset/exercise_ai/high-knees.mp4",
       "remoteGifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/cardio/high-knee-against-wall.gif"
     },
     {
@@ -543,7 +543,7 @@
       "equipment": "Tanpa Alat (Bodyweight)",
       "difficulty": "Beginner",
       "defaultDuration": 30,
-      "coachTip": "Tarik siku ke belakang setinggi bahu dan peras kedua belikat bersamaan.",
+      "coachTip": "Dari posisi plank, tarik siku secara bergantian ke atas setinggi bahu sambil menjaga pinggul tetap stabil dan peras belikat.",
       "benefits": "Memperbaiki postur bungkuk dan menguatkan punggung bagian atas.",
       "gifUrl": "file:///android_asset/exercise_ai/high-rows.mp4",
       "remoteGifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/upper-back/inverted-row.gif"
@@ -668,9 +668,9 @@
       "equipment": "Tanpa Alat (Bodyweight)",
       "difficulty": "Intermediate",
       "defaultDuration": 30,
-      "coachTip": "Angkat lutut secara ritmis dengan mendarat lembut pada ujung telapak kaki depan.",
-      "benefits": "Meningkatkan daya tahan paru-paru dan kelincahan kaki.",
-      "gifUrl": "file:///android_asset/exercise_ai/stationary-sprint.mp4",
+      "coachTip": "Dari posisi berlutut, langkahkan satu kaki ke depan lalu berdiri tegak (kneel to stand), lalu kembali berlutut secara terkontrol.",
+      "benefits": "Meningkatkan mobilitas panggul, kekuatan paha, dan stabilitas lutut.",
+      "gifUrl": "file:///android_asset/exercise_ai/knees-up.mp4",
       "remoteGifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/cardio/high-knee-against-wall.gif"
     },
     {

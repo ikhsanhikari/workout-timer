@@ -7,8 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -82,6 +87,11 @@ fun WorkoutBuilderScreen(
     var showDeleteRoutineConfirm by remember { mutableStateOf(false) }
     var renamingBlockIndex by remember { mutableStateOf<Int?>(null) }
     var renameBlockText by remember { mutableStateOf("") }
+
+    // Block Drag & Drop states
+    var draggedBlockIndex by remember { mutableStateOf<Int?>(null) }
+    var blockDragOffsetY by remember { mutableFloatStateOf(0f) }
+    var blockItemHeightPx by remember { mutableFloatStateOf(0f) }
 
     // Media picker & Camera recording state
     var pendingMediaBlockIndex by remember { mutableIntStateOf(-1) }
@@ -250,98 +260,95 @@ fun WorkoutBuilderScreen(
 
                 // ── Blocks List ──────────────────────────────────────────────
                 uiState.blocks.forEachIndexed { blockIndex, uiBlock ->
+                    val isBlockDragged = (draggedBlockIndex == blockIndex)
                     item(key = "block_${uiBlock.block.id}_${blockIndex}") {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
-                        ) {
-                            Column {
-                                // Block Header Row
-                                BlockHeaderRow(
-                                    uiBlock = uiBlock,
-                                    blockIndex = blockIndex,
-                                    totalBlocks = uiState.blocks.size,
-                                    onRenameBlock = {
-                                        renamingBlockIndex = blockIndex
-                                        renameBlockText = uiBlock.block.label ?: "Blok ${blockIndex + 1}"
-                                    },
-                                    onRepeatCountChange = { viewModel.updateBlockRepeatCount(blockIndex, it) },
-                                    onMoveUp = { viewModel.moveBlockUp(blockIndex) },
-                                    onMoveDown = { viewModel.moveBlockDown(blockIndex) },
-                                    onDuplicate = { viewModel.duplicateBlock(blockIndex) },
-                                    onDelete = { viewModel.removeBlock(blockIndex) }
-                                )
-
-                                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
-
-                                // Exercises in this block
-                                uiBlock.exercises.forEachIndexed { exIdx, uiExercise ->
-                                    val isFocused = focusedExerciseTarget == (blockIndex to exIdx)
-                                    val isDurationExpanded = expandedDurationTarget == (blockIndex to exIdx)
-
-                                    ExerciseRowCompact(
-                                        uiExercise = uiExercise,
-                                        exerciseIndex = exIdx,
-                                        blockIndex = blockIndex,
-                                        isActive = isFocused,
-                                        isDurationExpanded = isDurationExpanded,
-                                        autocompleteSuggestions = if (isFocused) uiState.autocompleteSuggestions else emptyList(),
-                                        onFocus = {
-                                            focusedExerciseTarget = blockIndex to exIdx
-                                            viewModel.onExerciseFocused(blockIndex, exIdx)
-                                        },
-                                        onToggleDurationExpand = {
-                                            expandedDurationTarget = if (isDurationExpanded) null else (blockIndex to exIdx)
-                                        },
-                                        onTitleChange = { title -> viewModel.updateExerciseTitle(blockIndex, exIdx, title) },
-                                        onTypeChange = { type -> viewModel.updateExerciseType(blockIndex, exIdx, type) },
-                                        onDurationChange = { sec -> viewModel.updateExerciseDuration(blockIndex, exIdx, sec) },
-                                        onDurationAdd = { addSec -> viewModel.addDurationPreset(blockIndex, exIdx, addSec) },
-                                        onDurationSet = { sec -> viewModel.setDurationPreset(blockIndex, exIdx, sec) },
-                                        onOpenLibraryPicker = { libraryPickerTarget = blockIndex to exIdx },
-                                        onPickMedia = {
-                                            pendingMediaBlockIndex = blockIndex
-                                            pendingMediaExerciseIndex = exIdx
-                                            targetExerciseHasMedia = uiExercise.resolvedMediaUri != null
-                                            showMediaSourceSheet = true
-                                        },
-                                        onRemoveMedia = {
-                                            viewModel.removeMediaFromExercise(blockIndex, exIdx)
-                                        },
-                                        onDuplicate = { viewModel.duplicateExercise(blockIndex, exIdx) },
-                                        onDelete = { viewModel.removeExercise(blockIndex, exIdx) },
-                                        onApplyTemplate = { template ->
-                                            viewModel.applyTemplate(blockIndex, exIdx, template)
-                                            focusedExerciseTarget = null
-                                        },
-                                        onClearAutocomplete = {
-                                            viewModel.clearAutocomplete()
-                                            focusedExerciseTarget = null
-                                        }
-                                    )
-
-                                    if (exIdx < uiBlock.exercises.size - 1) {
-                                        HorizontalDivider(
-                                            color = Color.White.copy(alpha = 0.05f),
-                                            thickness = 0.5.dp,
-                                            modifier = Modifier.padding(horizontal = 16.dp)
-                                        )
+                        WorkoutBlockCard(
+                            uiBlock = uiBlock,
+                            blockIndex = blockIndex,
+                            totalBlocks = uiState.blocks.size,
+                            isBlockDragged = isBlockDragged,
+                            blockDragOffsetY = if (isBlockDragged) blockDragOffsetY else 0f,
+                            focusedExerciseTarget = focusedExerciseTarget,
+                            expandedDurationTarget = expandedDurationTarget,
+                            autocompleteSuggestions = if (focusedExerciseTarget?.first == blockIndex) uiState.autocompleteSuggestions else emptyList(),
+                            onBlockDragStart = { idx ->
+                                draggedBlockIndex = idx
+                                blockDragOffsetY = 0f
+                            },
+                            onBlockDrag = { deltaY ->
+                                blockDragOffsetY += deltaY
+                                val current = draggedBlockIndex ?: return@WorkoutBlockCard
+                                val h = if (blockItemHeightPx > 0f) blockItemHeightPx else 350f
+                                if (blockDragOffsetY > h * 0.5f) {
+                                    val next = current + 1
+                                    if (next < uiState.blocks.size) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.moveBlock(current, next)
+                                        draggedBlockIndex = next
+                                        blockDragOffsetY -= h
+                                    }
+                                } else if (blockDragOffsetY < -h * 0.5f) {
+                                    val prev = current - 1
+                                    if (prev >= 0) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.moveBlock(current, prev)
+                                        draggedBlockIndex = prev
+                                        blockDragOffsetY += h
                                     }
                                 }
-
-                                HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
-
-                                // Block Footer (Tambah Gerakan & Sisipan Cepat)
-                                BlockFooterCompact(
-                                    onAddMovement = { libraryPickerTarget = blockIndex to null },
-                                    onQuickAdd = { type -> viewModel.addExercise(blockIndex, type) }
-                                )
-                            }
-                        }
+                            },
+                            onBlockDragEnd = {
+                                draggedBlockIndex = null
+                                blockDragOffsetY = 0f
+                            },
+                            onBlockHeightMeasured = { h ->
+                                if (blockItemHeightPx == 0f) blockItemHeightPx = h
+                            },
+                            onExerciseMove = { bIdx, from, to ->
+                                viewModel.moveExercise(bIdx, from, to)
+                            },
+                            onRenameBlock = {
+                                renamingBlockIndex = blockIndex
+                                renameBlockText = uiBlock.block.label ?: "Blok ${blockIndex + 1}"
+                            },
+                            onRepeatCountChange = { viewModel.updateBlockRepeatCount(blockIndex, it) },
+                            onMoveUp = { viewModel.moveBlockUp(blockIndex) },
+                            onMoveDown = { viewModel.moveBlockDown(blockIndex) },
+                            onDuplicateBlock = { viewModel.duplicateBlock(blockIndex) },
+                            onDeleteBlock = { viewModel.removeBlock(blockIndex) },
+                            onExerciseFocus = { exIdx ->
+                                focusedExerciseTarget = blockIndex to exIdx
+                                viewModel.onExerciseFocused(blockIndex, exIdx)
+                            },
+                            onToggleDurationExpand = { exIdx ->
+                                expandedDurationTarget = if (expandedDurationTarget == (blockIndex to exIdx)) null else (blockIndex to exIdx)
+                            },
+                            onTitleChange = { exIdx, title -> viewModel.updateExerciseTitle(blockIndex, exIdx, title) },
+                            onTypeChange = { exIdx, type -> viewModel.updateExerciseType(blockIndex, exIdx, type) },
+                            onDurationChange = { exIdx, sec -> viewModel.updateExerciseDuration(blockIndex, exIdx, sec) },
+                            onDurationAdd = { exIdx, addSec -> viewModel.addDurationPreset(blockIndex, exIdx, addSec) },
+                            onDurationSet = { exIdx, sec -> viewModel.setDurationPreset(blockIndex, exIdx, sec) },
+                            onOpenLibraryPicker = { exIdx -> libraryPickerTarget = blockIndex to exIdx },
+                            onPickMedia = { exIdx, hasMedia ->
+                                pendingMediaBlockIndex = blockIndex
+                                pendingMediaExerciseIndex = exIdx
+                                targetExerciseHasMedia = hasMedia
+                                showMediaSourceSheet = true
+                            },
+                            onRemoveMedia = { exIdx -> viewModel.removeMediaFromExercise(blockIndex, exIdx) },
+                            onDuplicateExercise = { exIdx -> viewModel.duplicateExercise(blockIndex, exIdx) },
+                            onDeleteExercise = { exIdx -> viewModel.removeExercise(blockIndex, exIdx) },
+                            onApplyTemplate = { exIdx, template ->
+                                viewModel.applyTemplate(blockIndex, exIdx, template)
+                                focusedExerciseTarget = null
+                            },
+                            onClearAutocomplete = {
+                                viewModel.clearAutocomplete()
+                                focusedExerciseTarget = null
+                            },
+                            onAddMovement = { libraryPickerTarget = blockIndex to null },
+                            onQuickAdd = { type -> viewModel.addExercise(blockIndex, type) }
+                        )
                     }
                 }
 
@@ -814,7 +821,7 @@ private fun RoutineHeader(
                     DropdownMenu(
                         expanded = true,
                         onDismissRequest = { showColorMenu = false },
-                        containerColor = SurfaceCard
+                        containerColor = Color(0xFF18181B)
                     ) {
                         PRESET_ACCENT_COLORS.forEach { colorHex ->
                             val col = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
@@ -833,7 +840,7 @@ private fun RoutineHeader(
                                         )
                                         Text(
                                             text = colorHex,
-                                            color = if (colorHex == accentColor) col else TextPrimary
+                                            color = if (colorHex == accentColor) Color.White else TextSecondary
                                         )
                                     }
                                 },
@@ -847,6 +854,183 @@ private fun RoutineHeader(
     }
 }
 
+// ── Workout Block Card ──────────────────────────────────────────────────────
+
+@Composable
+private fun WorkoutBlockCard(
+    uiBlock: UiBlock,
+    blockIndex: Int,
+    totalBlocks: Int,
+    isBlockDragged: Boolean,
+    blockDragOffsetY: Float,
+    focusedExerciseTarget: Pair<Int, Int>?,
+    expandedDurationTarget: Pair<Int, Int>?,
+    autocompleteSuggestions: List<ExerciseTemplate>,
+    onBlockDragStart: (Int) -> Unit,
+    onBlockDrag: (Float) -> Unit,
+    onBlockDragEnd: () -> Unit,
+    onBlockHeightMeasured: (Float) -> Unit,
+    onExerciseMove: (Int, Int, Int) -> Unit,
+    onRenameBlock: () -> Unit,
+    onRepeatCountChange: (Int) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onDuplicateBlock: () -> Unit,
+    onDeleteBlock: () -> Unit,
+    onExerciseFocus: (Int) -> Unit,
+    onToggleDurationExpand: (Int) -> Unit,
+    onTitleChange: (Int, String) -> Unit,
+    onTypeChange: (Int, IntervalType) -> Unit,
+    onDurationChange: (Int, Int) -> Unit,
+    onDurationAdd: (Int, Int) -> Unit,
+    onDurationSet: (Int, Int) -> Unit,
+    onOpenLibraryPicker: (Int) -> Unit,
+    onPickMedia: (Int, Boolean) -> Unit,
+    onRemoveMedia: (Int) -> Unit,
+    onDuplicateExercise: (Int) -> Unit,
+    onDeleteExercise: (Int) -> Unit,
+    onApplyTemplate: (Int, ExerciseTemplate) -> Unit,
+    onClearAutocomplete: () -> Unit,
+    onAddMovement: () -> Unit,
+    onQuickAdd: (IntervalType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var draggedExerciseIndex by remember { mutableStateOf<Int?>(null) }
+    var exerciseDragOffsetY by remember { mutableFloatStateOf(0f) }
+    var exerciseItemHeightPx by remember { mutableFloatStateOf(0f) }
+    val haptic = LocalHapticFeedback.current
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .onGloballyPositioned { coords ->
+                if (coords.size.height > 0) {
+                    onBlockHeightMeasured(coords.size.height.toFloat())
+                }
+            }
+            .zIndex(if (isBlockDragged) 10f else 1f)
+            .graphicsLayer {
+                if (isBlockDragged) {
+                    translationY = blockDragOffsetY
+                    scaleX = 1.02f
+                    scaleY = 1.02f
+                    shadowElevation = 16f
+                }
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isBlockDragged) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.06f)
+        ),
+        border = BorderStroke(
+            if (isBlockDragged) 1.5.dp else 1.dp,
+            if (isBlockDragged) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.14f)
+        )
+    ) {
+        Column {
+            // Block Header Row
+            BlockHeaderRow(
+                uiBlock = uiBlock,
+                blockIndex = blockIndex,
+                totalBlocks = totalBlocks,
+                isBeingDragged = isBlockDragged,
+                onDragStart = { onBlockDragStart(blockIndex) },
+                onDrag = onBlockDrag,
+                onDragEnd = onBlockDragEnd,
+                onRenameBlock = onRenameBlock,
+                onRepeatCountChange = onRepeatCountChange,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
+                onDuplicate = onDuplicateBlock,
+                onDelete = onDeleteBlock
+            )
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
+
+            // Exercises in this block
+            uiBlock.exercises.forEachIndexed { exIdx, uiExercise ->
+                val isFocused = focusedExerciseTarget == (blockIndex to exIdx)
+                val isDurationExpanded = expandedDurationTarget == (blockIndex to exIdx)
+                val isExerciseDragged = (draggedExerciseIndex == exIdx)
+
+                ExerciseRowCompact(
+                    uiExercise = uiExercise,
+                    exerciseIndex = exIdx,
+                    blockIndex = blockIndex,
+                    isActive = isFocused,
+                    isDurationExpanded = isDurationExpanded,
+                    autocompleteSuggestions = if (isFocused) autocompleteSuggestions else emptyList(),
+                    isBeingDragged = isExerciseDragged,
+                    dragOffsetY = if (isExerciseDragged) exerciseDragOffsetY else 0f,
+                    onDragStart = {
+                        draggedExerciseIndex = exIdx
+                        exerciseDragOffsetY = 0f
+                    },
+                    onDrag = { deltaY ->
+                        exerciseDragOffsetY += deltaY
+                        val current = draggedExerciseIndex ?: return@ExerciseRowCompact
+                        val h = if (exerciseItemHeightPx > 0f) exerciseItemHeightPx else 180f
+                        if (exerciseDragOffsetY > h * 0.5f) {
+                            val next = current + 1
+                            if (next < uiBlock.exercises.size) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onExerciseMove(blockIndex, current, next)
+                                draggedExerciseIndex = next
+                                exerciseDragOffsetY -= h
+                            }
+                        } else if (exerciseDragOffsetY < -h * 0.5f) {
+                            val prev = current - 1
+                            if (prev >= 0) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onExerciseMove(blockIndex, current, prev)
+                                draggedExerciseIndex = prev
+                                exerciseDragOffsetY += h
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        draggedExerciseIndex = null
+                        exerciseDragOffsetY = 0f
+                    },
+                    onRowHeightMeasured = { h ->
+                        if (exerciseItemHeightPx == 0f) exerciseItemHeightPx = h
+                    },
+                    onFocus = { onExerciseFocus(exIdx) },
+                    onToggleDurationExpand = { onToggleDurationExpand(exIdx) },
+                    onTitleChange = { title -> onTitleChange(exIdx, title) },
+                    onTypeChange = { type -> onTypeChange(exIdx, type) },
+                    onDurationChange = { sec -> onDurationChange(exIdx, sec) },
+                    onDurationAdd = { addSec -> onDurationAdd(exIdx, addSec) },
+                    onDurationSet = { sec -> onDurationSet(exIdx, sec) },
+                    onOpenLibraryPicker = { onOpenLibraryPicker(exIdx) },
+                    onPickMedia = { onPickMedia(exIdx, uiExercise.resolvedMediaUri != null) },
+                    onRemoveMedia = { onRemoveMedia(exIdx) },
+                    onDuplicate = { onDuplicateExercise(exIdx) },
+                    onDelete = { onDeleteExercise(exIdx) },
+                    onApplyTemplate = { template -> onApplyTemplate(exIdx, template) },
+                    onClearAutocomplete = onClearAutocomplete
+                )
+
+                if (exIdx < uiBlock.exercises.size - 1) {
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.05f),
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
+
+            // Block Footer (Tambah Gerakan & Sisipan Cepat)
+            BlockFooterCompact(
+                onAddMovement = onAddMovement,
+                onQuickAdd = onQuickAdd
+            )
+        }
+    }
+}
+
 // ── Block Header Row ─────────────────────────────────────────────────────────
 
 @Composable
@@ -854,6 +1038,10 @@ private fun BlockHeaderRow(
     uiBlock: UiBlock,
     blockIndex: Int,
     totalBlocks: Int,
+    isBeingDragged: Boolean = false,
+    onDragStart: () -> Unit = {},
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
     onRenameBlock: () -> Unit,
     onRepeatCountChange: (Int) -> Unit,
     onMoveUp: () -> Unit,
@@ -864,6 +1052,7 @@ private fun BlockHeaderRow(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val label = uiBlock.block.label?.takeIf { it.isNotBlank() } ?: "Blok ${blockIndex + 1}"
+    val haptic = LocalHapticFeedback.current
 
     Row(
         modifier = modifier
@@ -871,6 +1060,31 @@ private fun BlockHeaderRow(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Drag handle (⠿) for block reorder
+        if (totalBlocks > 1) {
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Pindah Urutan Blok",
+                tint = if (isBeingDragged) Color.White else TextTertiary,
+                modifier = Modifier
+                    .size(28.dp)
+                    .padding(end = 4.dp)
+                    .pointerInput(blockIndex, totalBlocks) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDragStart()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() }
+                        )
+                    }
+            )
+        }
         // Menu icon (≡) with dropdown
         Box {
             IconButton(
@@ -1025,6 +1239,12 @@ private fun ExerciseRowCompact(
     isActive: Boolean,
     isDurationExpanded: Boolean,
     autocompleteSuggestions: List<ExerciseTemplate>,
+    isBeingDragged: Boolean = false,
+    dragOffsetY: Float = 0f,
+    onDragStart: () -> Unit = {},
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onRowHeightMeasured: (Float) -> Unit = {},
     onFocus: () -> Unit,
     onToggleDurationExpand: () -> Unit,
     onTitleChange: (String) -> Unit,
@@ -1042,12 +1262,32 @@ private fun ExerciseRowCompact(
     modifier: Modifier = Modifier
 ) {
     val exercise = uiExercise.exercise
-    val accentColor = exercise.type.toAccentColor()
     val hasMedia = uiExercise.resolvedMediaUri != null && uiExercise.resolvedMediaType != MediaType.NONE
     var showTypeMenu by remember { mutableStateOf(false) }
     var showExerciseMenu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                if (coords.size.height > 0) {
+                    onRowHeightMeasured(coords.size.height.toFloat())
+                }
+            }
+            .zIndex(if (isBeingDragged) 10f else 1f)
+            .graphicsLayer {
+                if (isBeingDragged) {
+                    translationY = dragOffsetY
+                    scaleX = 1.02f
+                    scaleY = 1.02f
+                    shadowElevation = 12f
+                }
+            }
+            .background(
+                if (isBeingDragged) Color.White.copy(alpha = 0.10f) else Color.Transparent
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1058,19 +1298,34 @@ private fun ExerciseRowCompact(
             Icon(
                 imageVector = Icons.Default.DragIndicator,
                 contentDescription = "Pindah Urutan",
-                tint = TextTertiary,
-                modifier = Modifier.size(18.dp)
+                tint = if (isBeingDragged) Color.White else TextTertiary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .pointerInput(blockIndex, exerciseIndex) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDragStart()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() }
+                        )
+                    }
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Vertical Accent Color Bar
+            // Vertical Accent Color Bar (Frosted White Glass)
             Box(
                 modifier = Modifier
-                    .width(4.dp)
+                    .width(3.dp)
                     .height(36.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(accentColor)
+                    .background(Color.White.copy(alpha = 0.22f))
             )
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -1131,7 +1386,7 @@ private fun ExerciseRowCompact(
                                     }
                                 ),
                                 contentDescription = null,
-                                tint = accentColor,
+                                tint = Color.White.copy(alpha = 0.75f),
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
@@ -1142,7 +1397,7 @@ private fun ExerciseRowCompact(
                                     IntervalType.COOLDOWN -> "Pendinginan"
                                 },
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = accentColor,
+                                    color = Color.White.copy(alpha = 0.85f),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp
                                 )
@@ -1152,10 +1407,10 @@ private fun ExerciseRowCompact(
                             DropdownMenu(
                                 expanded = true,
                                 onDismissRequest = { showTypeMenu = false },
-                                containerColor = SurfaceCard
+                                containerColor = Color(0xFF18181B)
                             ) {
                                 IntervalType.entries.forEach { type ->
-                                    val col = type.toAccentColor()
+                                    val isCurrent = type == exercise.type
                                     DropdownMenuItem(
                                         text = {
                                             Row(
@@ -1172,7 +1427,7 @@ private fun ExerciseRowCompact(
                                                         }
                                                     ),
                                                     contentDescription = null,
-                                                    tint = col,
+                                                    tint = if (isCurrent) Color.White else Color.White.copy(alpha = 0.65f),
                                                     modifier = Modifier.size(14.dp)
                                                 )
                                                 Text(
@@ -1182,7 +1437,7 @@ private fun ExerciseRowCompact(
                                                         IntervalType.WARMUP -> "Pemanasan (Warmup)"
                                                         IntervalType.COOLDOWN -> "Pendinginan (Cooldown)"
                                                     },
-                                                    color = if (type == exercise.type) col else TextPrimary
+                                                    color = if (isCurrent) Color.White else TextSecondary
                                                 )
                                             }
                                         },
@@ -1240,10 +1495,11 @@ private fun ExerciseRowCompact(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Big Athletic Duration Pill (Volt green or interval color with bold black text)
+            // Big Athletic Duration Pill (Frosted White Glass)
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = accentColor,
+                color = Color.White.copy(alpha = 0.09f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .clickable(onClick = onToggleDurationExpand)
@@ -1252,8 +1508,8 @@ private fun ExerciseRowCompact(
                     text = formatSeconds(exercise.durationSeconds),
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Black,
-                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
                         fontSize = 15.sp
                     )
                 )
@@ -1446,13 +1702,13 @@ private fun ExerciseRowCompact(
                                 Box(
                                     modifier = Modifier
                                         .size(30.dp)
-                                        .background(AccentWork.copy(alpha = 0.15f), RoundedCornerShape(6.dp)),
+                                        .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(6.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
                                         contentDescription = null,
-                                        tint = AccentWork,
+                                        tint = Color.White,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -1471,20 +1727,12 @@ private fun ExerciseRowCompact(
                                         template.difficulty?.let { diff ->
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = when (diff.lowercase()) {
-                                                    "beginner" -> AccentWork.copy(alpha = 0.2f)
-                                                    "intermediate" -> AccentWarmup.copy(alpha = 0.2f)
-                                                    else -> AccentRest.copy(alpha = 0.2f)
-                                                }
+                                                color = Color.White.copy(alpha = 0.12f)
                                             ) {
                                                 Text(
                                                     text = diff,
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = when (diff.lowercase()) {
-                                                        "beginner" -> AccentWork
-                                                        "intermediate" -> AccentWarmup
-                                                        else -> AccentRest
-                                                    },
+                                                    color = Color.White,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                                 )
                                             }
@@ -1504,7 +1752,7 @@ private fun ExerciseRowCompact(
                                 Icon(
                                     imageVector = Icons.Default.AddCircleOutline,
                                     contentDescription = "Pilih",
-                                    tint = AccentWork,
+                                    tint = Color.White,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -1896,8 +2144,8 @@ private fun MediaSourceBottomSheet(
             // Workout Validation Info Card
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = BackgroundPrimary,
-                border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.4f)),
+                color = Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -1911,13 +2159,13 @@ private fun MediaSourceBottomSheet(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = AccentWarmup,
+                            tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Ketentuan Validasi Media Workout:",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AccentWarmup,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }

@@ -1,11 +1,16 @@
 package com.workout.timer.ui.screen.player
 
+import android.Manifest
 import android.app.Activity
 import android.net.Uri
+import android.os.Build
 import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import com.workout.timer.util.DeviceReadinessManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -98,6 +103,7 @@ fun WorkoutPlayerScreen(
     val context = LocalContext.current
     val timerState by viewModel.timerState.collectAsStateWithLifecycle()
     var hasStarted by remember { mutableStateOf(false) }
+    var showStopConfirmDialog by remember { mutableStateOf(false) }
 
     // Jalankan timer saat layar pertama kali dibuka
     LaunchedEffect(routineId) {
@@ -136,10 +142,14 @@ fun WorkoutPlayerScreen(
         }
     }
 
-    // Intersep tombol back fisik
+    // Intersep tombol back fisik: tampilkan dialog konfirmasi jika sedang berolahraga
     BackHandler {
-        viewModel.stopWorkout()
-        onNavigateBack()
+        if (timerState is WorkoutTimerState.Running || timerState is WorkoutTimerState.Resting) {
+            showStopConfirmDialog = true
+        } else {
+            viewModel.stopWorkout(saveProgress = false)
+            onNavigateBack()
+        }
     }
 
     Scaffold(
@@ -153,6 +163,8 @@ fun WorkoutPlayerScreen(
             val isLandscape = maxWidth > maxHeight
 
             val isBgmEnabled by viewModel.isBgmEnabled.collectAsStateWithLifecycle()
+            val isVideoEnabled by viewModel.isVideoEnabled.collectAsStateWithLifecycle()
+            val isVoiceCoachEnabled by viewModel.isVoiceCoachEnabled.collectAsStateWithLifecycle()
 
             when (val state = timerState) {
                 is WorkoutTimerState.Idle -> {
@@ -174,7 +186,7 @@ fun WorkoutPlayerScreen(
                     PreparingView(
                         state = state,
                         onCancel = {
-                            viewModel.stopWorkout()
+                            viewModel.stopWorkout(saveProgress = false)
                             onNavigateBack()
                         }
                     )
@@ -195,13 +207,15 @@ fun WorkoutPlayerScreen(
                         isLandscape = isLandscape,
                         isBgmEnabled = isBgmEnabled,
                         onToggleBgm = { viewModel.toggleBgm() },
+                        isVideoEnabled = isVideoEnabled,
+                        onToggleVideo = { viewModel.toggleVideo() },
+                        isVoiceCoachEnabled = isVoiceCoachEnabled,
+                        onToggleVoiceCoach = { viewModel.toggleVoiceCoach() },
                         onTogglePause = { viewModel.togglePause() },
                         onSkip = { viewModel.skip() },
                         onPrevious = { viewModel.previous() },
-                        onStop = {
-                            viewModel.stopWorkout()
-                            onNavigateBack()
-                        }
+                        onAddRest = { viewModel.addWorkTime(15) },
+                        onStop = { showStopConfirmDialog = true }
                     )
                 }
                 is WorkoutTimerState.Resting -> {
@@ -220,25 +234,139 @@ fun WorkoutPlayerScreen(
                         isLandscape = isLandscape,
                         isBgmEnabled = isBgmEnabled,
                         onToggleBgm = { viewModel.toggleBgm() },
+                        isVideoEnabled = isVideoEnabled,
+                        onToggleVideo = { viewModel.toggleVideo() },
+                        isVoiceCoachEnabled = isVoiceCoachEnabled,
+                        onToggleVoiceCoach = { viewModel.toggleVoiceCoach() },
                         onTogglePause = { viewModel.togglePause() },
                         onSkip = { viewModel.skip() },
                         onPrevious = { viewModel.previous() },
                         onAddRest = { viewModel.addRestTime(15) },
-                        onStop = {
-                            viewModel.stopWorkout()
-                            onNavigateBack()
-                        }
+                        onStop = { showStopConfirmDialog = true }
                     )
                 }
                 is WorkoutTimerState.Completed -> {
                     CompletedWorkoutView(
                         state = state,
                         onFinish = {
-                            viewModel.stopWorkout()
+                            viewModel.stopWorkout(saveProgress = false)
                             onNavigateBack()
                         }
                     )
                 }
+            }
+
+            if (showStopConfirmDialog) {
+                val (elapsedSec, currentExNum, totalExCount) = when (val s = timerState) {
+                    is WorkoutTimerState.Running -> Triple(s.totalElapsedSeconds, s.exerciseIndex + 1, s.totalExercises)
+                    is WorkoutTimerState.Resting -> Triple(s.totalElapsedSeconds, s.exerciseIndex + 1, s.totalExercises)
+                    else -> Triple(0, 0, 0)
+                }
+                val elapsedMin = elapsedSec / 60
+                val elapsedRemSec = elapsedSec % 60
+                val timeString = String.format("%02d:%02d", elapsedMin, elapsedRemSec)
+
+                AlertDialog(
+                    onDismissRequest = { showStopConfirmDialog = false },
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = Color(0xFF14161F),
+                    title = {
+                        Text(
+                            text = "Akhiri Latihan?",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (elapsedSec > 0) {
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.06f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Waktu Latihan",
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 11.5.sp
+                                            )
+                                            Text(
+                                                text = timeString,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "Gerakan Selesai",
+                                                color = Color.White.copy(alpha = 0.6f),
+                                                fontSize = 11.5.sp
+                                            )
+                                            Text(
+                                                text = "$currentExNum / $totalExCount",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Text(
+                                text = "Apakah Anda ingin menyimpan sesi latihan sampai saat ini ke riwayat aktivitas?",
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    showStopConfirmDialog = false
+                                    viewModel.stopWorkout(saveProgress = false)
+                                    onNavigateBack()
+                                }
+                            ) {
+                                Text("Buang Sesi", color = Color(0xFFFF5252).copy(alpha = 0.9f), fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    showStopConfirmDialog = false
+                                    viewModel.stopWorkout(saveProgress = true)
+                                    onNavigateBack()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color(0xFF07080B)
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Simpan & Selesai", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showStopConfirmDialog = false }) {
+                            Text("Lanjutkan Latihan", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                        }
+                    }
+                )
             }
         }
     }
@@ -472,6 +600,10 @@ private fun ActiveWorkoutView(
     isLandscape: Boolean,
     isBgmEnabled: Boolean = true,
     onToggleBgm: (() -> Unit)? = null,
+    isVideoEnabled: Boolean = true,
+    onToggleVideo: (() -> Unit)? = null,
+    isVoiceCoachEnabled: Boolean = true,
+    onToggleVoiceCoach: (() -> Unit)? = null,
     onTogglePause: () -> Unit,
     onSkip: () -> Unit,
     onPrevious: () -> Unit,
@@ -495,6 +627,18 @@ private fun ActiveWorkoutView(
         if (com.workout.timer.data.catalog.AssetVideoResolver.isVideo(resolvedUri)) MediaType.VIDEO else (currentExercise.mediaType.takeIf { it != MediaType.NONE } ?: MediaType.VIDEO)
     } else {
         currentExercise.mediaType
+    }
+
+    val context = LocalContext.current
+    var isNotificationGranted by remember {
+        mutableStateOf(DeviceReadinessManager.isNotificationPermissionGranted(context))
+    }
+    var notificationPromptDismissed by remember { mutableStateOf(false) }
+
+    val requestNotificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isNotificationGranted = granted
     }
 
     // Ambient living background glow & watermark motion (isolated State to prevent recomposition storm)
@@ -574,8 +718,26 @@ private fun ActiveWorkoutView(
                     accentColor = accentColor,
                     isBgmEnabled = isBgmEnabled,
                     onToggleBgm = onToggleBgm,
+                    isVideoEnabled = isVideoEnabled,
+                    onToggleVideo = onToggleVideo,
+                    isVoiceCoachEnabled = isVoiceCoachEnabled,
+                    onToggleVoiceCoach = onToggleVoiceCoach,
                     onStop = onStop
                 )
+
+                if (!isNotificationGranted && !notificationPromptDismissed) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LockscreenNotificationPromptBanner(
+                        onDismiss = { notificationPromptDismissed = true },
+                        onRequestPermission = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                DeviceReadinessManager.openNotificationSettings(context)
+                            }
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -592,21 +754,31 @@ private fun ActiveWorkoutView(
                             .fillMaxHeight(),
                         contentAlignment = Alignment.Center
                     ) {
-                        WorkoutMediaContainer(
-                            mediaUri = displayMediaUri,
-                            mediaType = displayMediaType,
-                            nextMediaUri = nextExercise?.mediaUri,
-                            nextMediaType = nextExercise?.mediaType ?: MediaType.NONE,
-                            currentExercise = currentExercise,
-                            nextExercise = nextExercise,
-                            remainingSeconds = remainingSeconds,
-                            isPaused = isPaused,
-                            isRestPreview = false,
-                            previewTitle = nextExercise?.title,
-                            accentColor = accentColor,
-                            intervalType = intervalType,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        if (isVideoEnabled) {
+                            WorkoutMediaContainer(
+                                mediaUri = displayMediaUri,
+                                mediaType = displayMediaType,
+                                nextMediaUri = nextExercise?.mediaUri,
+                                nextMediaType = nextExercise?.mediaType ?: MediaType.NONE,
+                                currentExercise = currentExercise,
+                                nextExercise = nextExercise,
+                                remainingSeconds = remainingSeconds,
+                                isPaused = isPaused,
+                                isRestPreview = false,
+                                previewTitle = nextExercise?.title,
+                                accentColor = accentColor,
+                                intervalType = intervalType,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            DynamicExerciseIllustrationCard(
+                                currentExercise = currentExercise,
+                                nextExercise = nextExercise,
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
 
                     Column(
@@ -659,63 +831,174 @@ private fun ActiveWorkoutView(
                 }
             }
         } else {
-            // ── PORTRAIT LAYOUT (FULLSCREEN VIDEO & ULTRA-TRANSPARENT GLASS HUD) ──
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 1. FULLSCREEN VIDEO LAYER (EDGE-TO-EDGE)
-                WorkoutMediaContainer(
-                    mediaUri = displayMediaUri,
-                    mediaType = displayMediaType,
-                    nextMediaUri = nextExercise?.mediaUri,
-                    nextMediaType = nextExercise?.mediaType ?: MediaType.NONE,
-                    currentExercise = currentExercise,
-                    nextExercise = nextExercise,
-                    remainingSeconds = remainingSeconds,
-                    isPaused = isPaused,
-                    isRestPreview = false,
-                    previewTitle = nextExercise?.title,
-                    accentColor = accentColor,
-                    intervalType = intervalType,
-                    modifier = Modifier.fillMaxSize(),
-                    isFullscreen = true
-                )
-
-                // 2. ULTRA-SUBTLE VIGNETTE (Only top status bar protection & subtle bottom shade)
+            // ── PORTRAIT LAYOUT ──
+            if (isVideoEnabled) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp)
-                        .align(Alignment.TopCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
-                            )
-                        )
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.40f))
-                            )
-                        )
-                )
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // 1. FULLSCREEN VIDEO LAYER (EDGE-TO-EDGE)
+                    WorkoutMediaContainer(
+                        mediaUri = displayMediaUri,
+                        mediaType = displayMediaType,
+                        nextMediaUri = nextExercise?.mediaUri,
+                        nextMediaType = nextExercise?.mediaType ?: MediaType.NONE,
+                        currentExercise = currentExercise,
+                        nextExercise = nextExercise,
+                        remainingSeconds = remainingSeconds,
+                        isPaused = isPaused,
+                        isRestPreview = false,
+                        previewTitle = nextExercise?.title,
+                        accentColor = accentColor,
+                        intervalType = intervalType,
+                        modifier = Modifier.fillMaxSize(),
+                        isFullscreen = true
+                    )
 
-                // 3. FLOATING ULTRA-TRANSPARENT HUD OVERLAY
+                    // 2. ULTRA-SUBTLE VIGNETTE (Only top status bar protection & subtle bottom shade)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .align(Alignment.TopCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                                )
+                            )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.40f))
+                                )
+                            )
+                    )
+
+                    // 3. FLOATING ULTRA-TRANSPARENT HUD OVERLAY
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // TOP HEADER WITH SESSION PROGRESS & HEARTBEAT (GLASS MODE)
+                        TopHeaderBar(
+                            routineName = routineName,
+                            exerciseIndex = exerciseIndex,
+                            totalExercises = totalExercises,
+                            remainingSeconds = remainingSeconds,
+                            totalElapsedSeconds = totalElapsedSeconds,
+                            intervalType = intervalType,
+                            accentColor = accentColor,
+                            isBgmEnabled = isBgmEnabled,
+                            onToggleBgm = onToggleBgm,
+                            isVideoEnabled = isVideoEnabled,
+                            onToggleVideo = onToggleVideo,
+                            isVoiceCoachEnabled = isVoiceCoachEnabled,
+                            onToggleVoiceCoach = onToggleVoiceCoach,
+                            onStop = onStop,
+                            isGlassMode = true
+                        )
+
+                        if (!isNotificationGranted && !notificationPromptDismissed) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LockscreenNotificationPromptBanner(
+                                onDismiss = { notificationPromptDismissed = true },
+                                onRequestPermission = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        DeviceReadinessManager.openNotificationSettings(context)
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // 60FPS COMPACT CIRCULAR PROGRESS RING (130dp WITH ULTRA-TRANSPARENT GLASS DISC)
+                        Box(
+                            modifier = Modifier
+                                .size(130.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.10f))
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTogglePause()
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressRing(
+                                progress = progress,
+                                strokeWidth = 4.dp,
+                                accentColor = Color.White,
+                                trackColor = Color.White.copy(alpha = 0.18f),
+                                remainingSeconds = remainingSeconds,
+                                isGlassMode = true
+                            )
+                            RingCenterContent(
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                remainingSeconds = remainingSeconds,
+                                currentExercise = currentExercise,
+                                isPaused = isPaused,
+                                isCompact = true,
+                                isGlassMode = true
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // FLOATING UP NEXT BANNER & CONTROLS DOCK
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // UP NEXT BANNER (GLASS MODE)
+                            nextExercise?.let { next ->
+                                UpNextBanner(
+                                    next = next,
+                                    isGlassMode = true
+                                )
+                            }
+
+                            // BOTTOM CONTROLS DOCK (GLASS MODE)
+                            BottomPlaybackControls(
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                isPaused = isPaused,
+                                onTogglePause = onTogglePause,
+                                onSkip = onSkip,
+                                onPrevious = onPrevious,
+                                onAddRest = onAddRest,
+                                isGlassMode = true
+                            )
+                        }
+                    }
+                }
+            } else {
+                // ── PORTRAIT PURE FOCUS MODE (NO VIDEO, AMOLED POSTURE CARD & CHRONO DIAL) ──
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // TOP HEADER WITH SESSION PROGRESS & HEARTBEAT (GLASS MODE)
                     TopHeaderBar(
                         routineName = routineName,
                         exerciseIndex = exerciseIndex,
@@ -726,19 +1009,34 @@ private fun ActiveWorkoutView(
                         accentColor = accentColor,
                         isBgmEnabled = isBgmEnabled,
                         onToggleBgm = onToggleBgm,
+                        isVideoEnabled = isVideoEnabled,
+                        onToggleVideo = onToggleVideo,
+                        isVoiceCoachEnabled = isVoiceCoachEnabled,
+                        onToggleVoiceCoach = onToggleVoiceCoach,
                         onStop = onStop,
-                        isGlassMode = true
+                        isGlassMode = false
                     )
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    if (!isNotificationGranted && !notificationPromptDismissed) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LockscreenNotificationPromptBanner(
+                            onDismiss = { notificationPromptDismissed = true },
+                            onRequestPermission = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    DeviceReadinessManager.openNotificationSettings(context)
+                                }
+                            }
+                        )
+                    }
 
-                    // 60FPS COMPACT CIRCULAR PROGRESS RING (130dp WITH ULTRA-TRANSPARENT GLASS DISC)
+                    Spacer(modifier = Modifier.weight(0.5f))
+
+                    // 210dp Large Chrono Dial with tap-to-pause
                     Box(
                         modifier = Modifier
-                            .size(130.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.10f))
-                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), CircleShape)
+                            .size(210.dp)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -751,11 +1049,10 @@ private fun ActiveWorkoutView(
                     ) {
                         CircularProgressRing(
                             progress = progress,
-                            strokeWidth = 4.dp,
-                            accentColor = Color.White,
-                            trackColor = Color.White.copy(alpha = 0.18f),
-                            remainingSeconds = remainingSeconds,
-                            isGlassMode = true
+                            strokeWidth = 14.dp,
+                            accentColor = accentColor,
+                            trackColor = accentColor.copy(alpha = 0.16f),
+                            remainingSeconds = remainingSeconds
                         )
                         RingCenterContent(
                             intervalType = intervalType,
@@ -763,27 +1060,33 @@ private fun ActiveWorkoutView(
                             remainingSeconds = remainingSeconds,
                             currentExercise = currentExercise,
                             isPaused = isPaused,
-                            isCompact = true,
-                            isGlassMode = true
+                            isCompact = false
                         )
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.weight(0.5f))
 
-                    // FLOATING UP NEXT BANNER & CONTROLS DOCK
+                    // Dynamic Posture Guide Card
+                    DynamicExerciseIllustrationCard(
+                        currentExercise = currentExercise,
+                        nextExercise = nextExercise,
+                        intervalType = intervalType,
+                        accentColor = accentColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 135.dp, max = 175.dp)
+                    )
+
+                    Spacer(modifier = Modifier.weight(0.5f))
+
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // UP NEXT BANNER (GLASS MODE)
                         nextExercise?.let { next ->
-                            UpNextBanner(
-                                next = next,
-                                isGlassMode = true
-                            )
+                            UpNextBanner(next = next, isGlassMode = false)
                         }
 
-                        // BOTTOM CONTROLS DOCK (GLASS MODE)
                         BottomPlaybackControls(
                             intervalType = intervalType,
                             accentColor = accentColor,
@@ -792,7 +1095,7 @@ private fun ActiveWorkoutView(
                             onSkip = onSkip,
                             onPrevious = onPrevious,
                             onAddRest = onAddRest,
-                            isGlassMode = true
+                            isGlassMode = false
                         )
                     }
                 }
@@ -1166,7 +1469,11 @@ private fun TopHeaderBar(
     onStop: () -> Unit,
     isGlassMode: Boolean = false,
     isBgmEnabled: Boolean = true,
-    onToggleBgm: (() -> Unit)? = null
+    onToggleBgm: (() -> Unit)? = null,
+    isVideoEnabled: Boolean = true,
+    onToggleVideo: (() -> Unit)? = null,
+    isVoiceCoachEnabled: Boolean = true,
+    onToggleVoiceCoach: (() -> Unit)? = null
 ) {
     val overallProgress = if (totalExercises > 0) {
         ((exerciseIndex + 1).toFloat() / totalExercises.toFloat()).coerceIn(0f, 1f)
@@ -1231,13 +1538,17 @@ private fun TopHeaderBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(end = 10.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(R.drawable.ic_flame_streak),
                         contentDescription = null,
                         tint = if (isGlassMode) Color.White else AccentWarmup,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -1245,9 +1556,9 @@ private fun TopHeaderBar(
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = Color.White,
-                            letterSpacing = 1.sp,
+                            letterSpacing = 0.8.sp,
                             shadow = textShadow
                         ),
                         maxLines = 1,
@@ -1262,15 +1573,15 @@ private fun TopHeaderBar(
                     Surface(
                         shape = CircleShape,
                         color = if (isGlassMode) Color.White else accentColor,
-                        modifier = Modifier.size(7.dp)
+                        modifier = Modifier.size(6.dp)
                     ) {}
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = if (intervalType == IntervalType.REST) "PEMULIHAN / RECOVERY" else "LATIHAN AKTIF",
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp,
+                            fontSize = 10.5.sp,
                             color = if (isGlassMode) Color.White.copy(alpha = 0.85f) else TextSecondary,
                             shadow = textShadow
                         )
@@ -1278,36 +1589,183 @@ private fun TopHeaderBar(
                 }
             }
 
+            // Quick Actions Bar: Unified Frosted Media Dock + Stop Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (onToggleBgm != null) {
-                    IconButton(
-                        onClick = onToggleBgm,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(
-                                color = if (isGlassMode) Color.Black.copy(alpha = 0.25f) else SurfaceCard,
-                                shape = CircleShape
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (isBgmEnabled) (if (isGlassMode) Color.White.copy(alpha = 0.40f) else accentColor.copy(alpha = 0.5f))
-                                        else Color.White.copy(alpha = 0.15f),
-                                shape = CircleShape
-                            )
+                // Frosted Capsule Media Dock (Video, Voice, Music)
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (isGlassMode) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(0.8.dp, Color.White.copy(alpha = if (isGlassMode) 0.22f else 0.16f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isBgmEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
-                            contentDescription = if (isBgmEnabled) "Matikan Musik" else "Nyalakan Musik",
-                            tint = if (isBgmEnabled) (if (isGlassMode) Color.White else accentColor) else Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier.size(18.dp)
+                        // 1. Toggle Video (Videocam / VideocamOff)
+                        if (onToggleVideo != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = onToggleVideo),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isVideoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                                    contentDescription = if (isVideoEnabled) "Matikan Video" else "Nyalakan Video",
+                                    tint = if (isVideoEnabled) Color.White else Color.White.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+
+                        // Vertical micro-divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(12.dp)
+                                .background(Color.White.copy(alpha = 0.12f))
                         )
+
+                        // 2. Toggle Voice Coach (RecordVoiceOver / VoiceOverOff)
+                        if (onToggleVoiceCoach != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = onToggleVoiceCoach),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isVoiceCoachEnabled) Icons.Default.RecordVoiceOver else Icons.Default.VoiceOverOff,
+                                    contentDescription = if (isVoiceCoachEnabled) "Matikan Suara Coach" else "Nyalakan Suara Coach",
+                                    tint = if (isVoiceCoachEnabled) Color.White else Color.White.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+
+                        // Vertical micro-divider
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(12.dp)
+                                .background(Color.White.copy(alpha = 0.12f))
+                        )
+
+                        // 3. Toggle BGM (MusicNote / MusicOff)
+                        if (onToggleBgm != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .clickable(onClick = onToggleBgm),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isBgmEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                                    contentDescription = if (isBgmEnabled) "Matikan Musik" else "Nyalakan Musik",
+                                    tint = if (isBgmEnabled) Color.White else Color.White.copy(alpha = 0.35f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
-                HoldToStopButton(onStopConfirmed = onStop, isGlassMode = isGlassMode)
+                // 4. Tombol Akhiri / Stop Latihan (Distinct 'X' Button)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(if (isGlassMode) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f))
+                        .border(
+                            BorderStroke(
+                                0.8.dp,
+                                if (isGlassMode) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.16f)
+                            ),
+                            CircleShape
+                        )
+                        .clickable(onClick = onStop),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Akhiri Latihan",
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LockscreenNotificationPromptBanner(
+    onDismiss: () -> Unit,
+    onRequestPermission: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.Black.copy(alpha = 0.50f),
+        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.22f)),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.NotificationsActive,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = "Aktifkan notifikasi untuk kontrol timer saat HP di saku",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    lineHeight = 14.sp
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.White.copy(alpha = 0.15f),
+                border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.35f)),
+                modifier = Modifier.clickable(onClick = onRequestPermission)
+            ) {
+                Text(
+                    text = "Izinkan",
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = Color.White
+                    ),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.5.dp)
+                )
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Tutup",
+                    tint = Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(13.dp)
+                )
             }
         }
     }
@@ -1616,6 +2074,41 @@ private fun BottomPlaybackControls(
                     Text("Mulai Sekarang", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(Icons.Default.SkipNext, contentDescription = null, tint = if (isGlassMode) Color.White else AccentRest, modifier = Modifier.size(18.dp))
+                }
+            }
+        } else if (intervalType == IntervalType.WORK && onAddRest != null) {
+            // Tombol ergonomis +15 Detik saat fase WORK
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Surface(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onAddRest()
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isGlassMode) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.90f),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "+15s Tambah Durasi Gerakan",
+                            color = Color.White.copy(alpha = 0.90f),
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

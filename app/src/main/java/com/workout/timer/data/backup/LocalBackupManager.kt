@@ -40,6 +40,7 @@ class LocalBackupManager @Inject constructor(
     private val blockDao: WorkoutBlockDao,
     private val exerciseDao: WorkoutExerciseDao,
     private val templateDao: ExerciseTemplateDao,
+    private val sessionRecordDao: com.workout.timer.data.database.dao.WorkoutSessionRecordDao,
     private val mediaFileManager: MediaFileManager,
     private val gson: Gson
 ) {
@@ -69,7 +70,8 @@ class LocalBackupManager @Inject constructor(
         val routines: List<WorkoutRoutine> = emptyList(),
         val blocks: List<WorkoutBlock> = emptyList(),
         val exercises: List<WorkoutExercise> = emptyList(),
-        val templates: List<ExerciseTemplate> = emptyList()
+        val templates: List<ExerciseTemplate> = emptyList(),
+        val sessionRecords: List<WorkoutSessionRecord> = emptyList()
     )
 
     /**
@@ -82,6 +84,7 @@ class LocalBackupManager @Inject constructor(
             val blocks = blockDao.getAll()
             val exercises = exerciseDao.getAll()
             val templates = templateDao.getAll()
+            val sessionRecords = sessionRecordDao.getAll()
 
             val backupData = BackupData(
                 version = BACKUP_VERSION,
@@ -89,7 +92,8 @@ class LocalBackupManager @Inject constructor(
                 routines = routines,
                 blocks = blocks,
                 exercises = exercises,
-                templates = templates
+                templates = templates,
+                sessionRecords = sessionRecords
             )
 
             // 2. Serialize ke JSON
@@ -180,6 +184,7 @@ class LocalBackupManager @Inject constructor(
             blockDao.deleteAll()
             routineDao.deleteAll()
             templateDao.deleteAll()
+            sessionRecordDao.clearAll()
 
             if (data.templates.isNotEmpty()) {
                 templateDao.insertOrReplaceAll(data.templates)
@@ -192,6 +197,9 @@ class LocalBackupManager @Inject constructor(
             }
             if (data.exercises.isNotEmpty()) {
                 exerciseDao.insertAll(data.exercises)
+            }
+            if (data.sessionRecords.isNotEmpty()) {
+                sessionRecordDao.insertAll(data.sessionRecords)
             }
 
             RestoreResult.Success(data.routines.size)

@@ -28,6 +28,7 @@ class WorkoutRepository @Inject constructor(
     private val blockDao: WorkoutBlockDao,
     private val exerciseDao: WorkoutExerciseDao,
     private val templateDao: ExerciseTemplateDao,
+    private val sessionRecordDao: WorkoutSessionRecordDao,
     private val mediaFileManager: MediaFileManager
 ) {
 
@@ -50,9 +51,50 @@ class WorkoutRepository @Inject constructor(
     fun observeAllCategories(): Flow<List<String>> = routineDao.observeAllCategories()
 
     fun observeWeeklyStats(weekStartMs: Long) = Pair(
-        routineDao.observeWeeklyTotalSeconds(weekStartMs),
-        routineDao.observeWeeklySessionCount(weekStartMs)
+        sessionRecordDao.observeWeeklyTotalSeconds(weekStartMs),
+        sessionRecordDao.observeWeeklySessionCount(weekStartMs)
     )
+
+    fun observePerformedRoutines(): Flow<List<WorkoutRoutine>> =
+        routineDao.observePerformedRoutines()
+
+    fun observeFavoriteRoutines(): Flow<List<WorkoutRoutine>> =
+        routineDao.observeFavoriteRoutines()
+
+    fun observeAllRoutinesForHistory(): Flow<List<WorkoutRoutine>> =
+        routineDao.observeAllRoutinesForHistory()
+
+    fun observeAllTimeStats() = Pair(
+        sessionRecordDao.observeAllTimeTotalSeconds(),
+        sessionRecordDao.observeAllTimeSessionCount()
+    )
+
+    // ─── SESSION RECORDS (LOG RIWAYAT NYATA) ─────────────────────────────────
+
+    suspend fun recordWorkoutSession(record: WorkoutSessionRecord): Long {
+        val id = sessionRecordDao.insert(record)
+        routineDao.updateLastPerformed(record.routineId, record.completedAt)
+        return id
+    }
+
+    fun observeSessionRecords(): Flow<List<WorkoutSessionRecord>> =
+        sessionRecordDao.observeAll()
+
+    fun observeRecentSessionRecords(limit: Int = 10): Flow<List<WorkoutSessionRecord>> =
+        sessionRecordDao.observeRecent(limit)
+
+    suspend fun deleteSessionRecord(id: Long) {
+        sessionRecordDao.deleteById(id)
+    }
+
+    suspend fun clearRoutineHistory(routineId: Long) {
+        routineDao.clearRoutineHistory(routineId)
+    }
+
+    suspend fun clearAllHistory() {
+        routineDao.clearAllHistory()
+        sessionRecordDao.clearAll()
+    }
 
     /** Hapus semua blok (dan semua exercises-nya via CASCADE) berdasarkan routineId. */
     suspend fun deleteAllBlocksByRoutineId(routineId: Long) {
@@ -117,6 +159,32 @@ class WorkoutRepository @Inject constructor(
         val exercises = exerciseDao.getAllByRoutineId(routineId)
         routineDao.deleteById(routineId)
         runMediaGarbageCollection(exercises)
+    }
+
+    /**
+     * Menduplikasi rutinitas beserta semua blok dan gerakannya secara utuh.
+     * Mengembalikan ID dari rutinitas salinan baru.
+     */
+    suspend fun duplicateRoutine(routineId: Long): Long? = withContext(Dispatchers.IO) {
+        val originalRoutine = routineDao.getById(routineId) ?: return@withContext null
+        val blocks = blockDao.getByRoutineId(routineId)
+        val blocksWithExercises = blocks.map { block ->
+            val exercises = exerciseDao.getByBlockId(block.id)
+            block to exercises
+        }
+
+        val duplicatedRoutine = originalRoutine.copy(
+            id = 0,
+            name = "${originalRoutine.name} (Salinan)",
+            lastPerformedAt = null,
+            createdAt = System.currentTimeMillis()
+        )
+
+        saveFullRoutine(
+            routine = duplicatedRoutine,
+            blocksWithExercises = blocksWithExercises,
+            isEdit = false
+        )
     }
 
     suspend fun toggleFavorite(routineId: Long) = routineDao.toggleFavorite(routineId)

@@ -62,7 +62,16 @@ object CatalogImporter {
             val jsonString = context.assets.open(assetName).bufferedReader().use { it.readText() }
             val catalog = parseCatalogJson(jsonString)
             if (catalog != null) {
-                importCatalog(database, catalog, onlyIfMissing)
+                val userPrefs = com.workout.timer.data.preferences.UserPreferencesRepository(context)
+                val currentVer = userPrefs.getCatalogVersion()
+                val isNewVersion = catalog.catalogVersion > currentVer
+                val effectiveOnlyIfMissing = if (isNewVersion) false else onlyIfMissing
+                val count = importCatalog(database, catalog, effectiveOnlyIfMissing)
+                if (isNewVersion) {
+                    userPrefs.saveCatalogVersion(catalog.catalogVersion)
+                    Log.i(TAG, "Auto-upgraded catalog from v$currentVer to v${catalog.catalogVersion} ($count routines updated)")
+                }
+                count
             } else {
                 Log.w(TAG, "Katalog aset '$assetName' kosong atau gagal diparse.")
                 0
