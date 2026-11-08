@@ -302,13 +302,6 @@ fun WorkoutPlanScreen(
             reminderSummary = uiState.reminderSummary,
             customReminders = uiState.customReminders,
             onDismiss = { showReminderBottomSheet = false },
-            onTestClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                viewModel.testReminderNotification(context)
-            },
             onToggleEnable = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -343,7 +336,6 @@ private fun ScheduleReminderBottomSheet(
     reminderSummary: String,
     customReminders: List<WorkoutReminderItem>,
     onDismiss: () -> Unit,
-    onTestClick: () -> Unit,
     onToggleEnable: () -> Unit,
     onEditReminder: (WorkoutReminderItem) -> Unit,
     onAddReminder: () -> Unit
@@ -481,56 +473,23 @@ private fun ScheduleReminderBottomSheet(
                 }
             }
 
-            // Action Buttons: Uji Notifikasi & Selesai
-            Row(
+            // Selesai Action Button
+            Surface(
+                onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White
             ) {
-                Surface(
-                    onClick = onTestClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                Box(
+                    modifier = Modifier.padding(vertical = 13.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Uji Notifikasi",
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-
-                Surface(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White
-                ) {
-                    Box(
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Selesai",
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp
-                        )
-                    }
+                    Text(
+                        text = "Selesai",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
             }
 

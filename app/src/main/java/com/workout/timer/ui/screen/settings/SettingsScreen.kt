@@ -427,54 +427,24 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Action Buttons: + Tambah & Tes
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        // Action Button: + Tambah Pengingat
+                        Surface(
+                            onClick = { showAddReminderDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp)
                         ) {
-                            Surface(
-                                onClick = { showAddReminderDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White.copy(alpha = 0.08f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                                modifier = Modifier
-                                    .weight(1.3f)
-                                    .height(38.dp)
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Tambah Pengingat", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-
-                            Surface(
-                                onClick = {
-                                    if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                    viewModel.testReminderNotification(context)
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.White.copy(alpha = 0.05f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(38.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(15.dp))
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text("Uji Notif", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                                }
+                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Tambah Pengingat", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -635,7 +605,7 @@ fun SettingsScreen(
                     }
                 }
                 Text(
-                    text = "Workout Timer $appVersion • Offline First",
+                    text = "GasCount $appVersion • Offline First",
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                     color = Color.White.copy(alpha = 0.35f),
                     modifier = Modifier.align(Alignment.CenterHorizontally)

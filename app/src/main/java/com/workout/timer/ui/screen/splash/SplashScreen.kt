@@ -288,10 +288,10 @@ fun SplashScreen(
                             )
                     )
 
-                    // Hero Kinetic Pulse 'W' Emblem
+                    // GasCount Hero Emblem
                     Image(
                         painter = painterResource(id = R.drawable.ic_splash_emblem),
-                        contentDescription = "Pulse Workout Logo",
+                        contentDescription = "GasCount Logo",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .size(175.dp)
@@ -310,12 +310,12 @@ fun SplashScreen(
                         .padding(top = contentOffsetY.value.dp)
                 ) {
                     Text(
-                        text = "PULSE",
+                        text = "GASCOUNT",
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.Black,
-                            fontSize = 42.sp,
-                            letterSpacing = 8.sp,
+                            fontSize = 38.sp,
+                            letterSpacing = 6.sp,
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.White,

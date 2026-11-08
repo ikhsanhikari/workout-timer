@@ -405,9 +405,6 @@ fun HomeScreen(
                 onDeleteReminder = { id ->
                     viewModel.deleteCustomReminder(context, id)
                 },
-                onTestNotification = {
-                    viewModel.testReminderNotification(context)
-                },
                 onStartWorkout = onNavigateToStartWorkout,
                 onDismiss = { showNotificationSheet = false }
             )
@@ -2608,7 +2605,6 @@ private fun NotificationReminderBottomSheet(
     onUpdateReminder: (id: String, label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
     onAddReminder: (label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
     onDeleteReminder: (id: String) -> Unit,
-    onTestNotification: () -> Unit,
     onStartWorkout: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -2729,31 +2725,6 @@ private fun NotificationReminderBottomSheet(
                     text = "Tambah Pengingat Baru",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.5.sp,
-                    color = Color.White
-                )
-            }
-
-            // Quick Test Notification Row
-            OutlinedButton(
-                onClick = onTestNotification,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.NotificationsActive,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Tes Notifikasi Sekarang",
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Medium,
                     color = Color.White
                 )
             }

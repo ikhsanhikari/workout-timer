@@ -357,7 +357,7 @@ private fun OnboardingStep1Welcome(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_splash_emblem),
-                contentDescription = "Pulse Emblem",
+                contentDescription = "GasCount Emblem",
                 modifier = Modifier
                     .size(98.dp)
                     .graphicsLayer {
@@ -376,7 +376,7 @@ private fun OnboardingStep1Welcome(
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
             ) {
                 Text(
-                    text = "PULSE WORKOUT",
+                    text = "GASCOUNT",
                     style = TextStyle(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.Bold,

@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -32,10 +35,34 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                val properties = Properties().apply {
+                    FileInputStream(keystorePropertiesFile).use { load(it) }
+                }
+                storeFile = rootProject.file(properties.getProperty("storeFile") ?: "release.keystore")
+                storePassword = properties.getProperty("storePassword")
+                keyAlias = properties.getProperty("keyAlias")
+                keyPassword = properties.getProperty("keyPassword")
+            } else {
+                // Fallback ke debug keystore agar assembleRelease menghasilkan APK yang tertandatangani
+                // dan dapat langsung diinstal di perangkat saat pengujian rilis lokal
+                val debugSigning = getByName("debug")
+                storeFile = debugSigning.storeFile
+                storePassword = debugSigning.storePassword
+                keyAlias = debugSigning.keyAlias
+                keyPassword = debugSigning.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
