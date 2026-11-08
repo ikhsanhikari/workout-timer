@@ -55,6 +55,9 @@ class WorkoutRepository @Inject constructor(
         sessionRecordDao.observeWeeklySessionCount(weekStartMs)
     )
 
+    fun observeTotalSecondsInRange(startMs: Long, endMs: Long): Flow<Int> =
+        sessionRecordDao.observeTotalSecondsInRange(startMs, endMs)
+
     fun observePerformedRoutines(): Flow<List<WorkoutRoutine>> =
         routineDao.observePerformedRoutines()
 
@@ -165,7 +168,10 @@ class WorkoutRepository @Inject constructor(
      * Menduplikasi rutinitas beserta semua blok dan gerakannya secara utuh.
      * Mengembalikan ID dari rutinitas salinan baru.
      */
-    suspend fun duplicateRoutine(routineId: Long): Long? = withContext(Dispatchers.IO) {
+    suspend fun duplicateRoutine(
+        routineId: Long,
+        customName: String? = null
+    ): Long? = withContext(Dispatchers.IO) {
         val originalRoutine = routineDao.getById(routineId) ?: return@withContext null
         val blocks = blockDao.getByRoutineId(routineId)
         val blocksWithExercises = blocks.map { block ->
@@ -173,9 +179,16 @@ class WorkoutRepository @Inject constructor(
             block to exercises
         }
 
+        val finalName = if (!customName.isNullOrBlank()) {
+            customName.trim()
+        } else {
+            "${originalRoutine.name} (Salinan)"
+        }
+
         val duplicatedRoutine = originalRoutine.copy(
             id = 0,
-            name = "${originalRoutine.name} (Salinan)",
+            name = finalName,
+            isFavorite = false,
             lastPerformedAt = null,
             createdAt = System.currentTimeMillis()
         )

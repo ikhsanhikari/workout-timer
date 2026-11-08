@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,7 +32,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import android.app.TimePickerDialog
+import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -44,6 +48,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -58,7 +63,13 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import java.util.Calendar
+import com.workout.timer.data.model.WorkoutReminderItem
 import androidx.compose.ui.graphics.StrokeCap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,32 +93,42 @@ fun HomeScreen(
     onNavigateToBuilder: () -> Unit,
     onNavigateToRoutineDetail: (Long) -> Unit,
     onNavigateToStartWorkout: (Long) -> Unit,
+    onNavigateToWorkoutPlan: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val weeklyMinutes by viewModel.weeklyTotalMinutes.collectAsStateWithLifecycle()
     val weeklySessions by viewModel.weeklySessionCount.collectAsStateWithLifecycle()
+    val weeklyDeltaMinutes by viewModel.weeklyDeltaMinutes.collectAsStateWithLifecycle()
+    val customReminders by viewModel.customReminders.collectAsStateWithLifecycle()
+    val isAnyReminderActive by viewModel.isAnyReminderActive.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showBackupSheet by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showNotificationSheet by remember { mutableStateOf(false) }
 
     val hasActiveFilters = uiState.selectedDurationFilter != DurationFilter.ALL ||
         uiState.selectedSort != SortOption.CREATED_AT
 
     val dailyChallengeItems = remember(
+        uiState.todayScheduledRoutine,
         uiState.favoriteRoutines,
         uiState.latestPerformedRoutine,
         uiState.routines
     ) {
+        val scheduled = uiState.todayScheduledRoutine
         val favorites = uiState.favoriteRoutines
         val latest = uiState.latestPerformedRoutine
         when {
-            // Prioritas 1: HANYA yang di-like (favorit)
+            // Prioritas 1: Jadwal Latihan Hari Ini (jika ada jadwal di Workout Plan)
+            scheduled != null -> listOf(scheduled) to ChallengeSource.SCHEDULED_TODAY
+            // Prioritas 2: HANYA yang di-like (favorit)
             favorites.isNotEmpty() -> favorites to ChallengeSource.FAVORITE
-            // Prioritas 2: Terakhir kali dilakukan (jika belum ada yang di-like)
+            // Prioritas 3: Terakhir kali dilakukan (jika belum ada yang di-like)
             latest != null -> listOf(latest) to ChallengeSource.LATEST_PERFORMED
-            // Prioritas 3: Fallback rekomendasi katalog awal jika belum ada favorit & riwayat
+            // Prioritas 4: Fallback rekomendasi katalog awal jika belum ada favorit & riwayat
             uiState.routines.isNotEmpty() -> listOf(uiState.routines.first()) to ChallengeSource.RECOMMENDED
             else -> emptyList<WorkoutRoutine>() to ChallengeSource.NONE
         }
@@ -136,24 +157,18 @@ fun HomeScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = BackgroundPrimary,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNavigateToBuilder,
-                containerColor = Color.White,
-                contentColor = Color.Black,
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 4.dp),
-                modifier = Modifier
-                    .size(50.dp)
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.8f)), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Buat Rutinitas Baru",
-                    tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+        bottomBar = {
+            HomeBottomNavigation(
+                currentTab = HomeTab.BERANDA,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        HomeTab.BERANDA -> { /* Sedang di Beranda */ }
+                        HomeTab.LATIHAN -> onNavigateToWorkoutPlan()
+                        HomeTab.PROGRESS -> onNavigateToHistory()
+                        HomeTab.PROFIL -> onNavigateToSettings()
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Box(
@@ -161,96 +176,30 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // ── Generated Hero Athlete Background (Top-Right) ────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(310.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.bg_home_hero),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopEnd,
-                    modifier = Modifier
-                        .fillMaxWidth(0.92f)
-                        .fillMaxHeight()
-                        .align(Alignment.TopEnd)
-                        .alpha(0.70f)
-                )
-
-                // Diagonal subtle crystalline glass reflection
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.White.copy(alpha = 0.05f),
-                                    Color.Transparent
-                                ),
-                                start = Offset(150f, 0f),
-                                end = Offset(850f, 650f)
-                            )
-                        )
-                )
-
-                // Left Scrim Gradient: fades dark BackgroundPrimary from the left
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    BackgroundPrimary,
-                                    BackgroundPrimary,
-                                    BackgroundPrimary.copy(alpha = 0.75f),
-                                    BackgroundPrimary.copy(alpha = 0.20f),
-                                    Color.Transparent
-                                ),
-                                startX = 0f,
-                                endX = 640f
-                            )
-                        )
-                )
-
-                // Bottom Scrim Gradient: fades smoothly into BackgroundPrimary
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    BackgroundPrimary.copy(alpha = 0.55f),
-                                    BackgroundPrimary
-                                )
-                            )
-                        )
-                )
-            }
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
             // ── Header ──────────────────────────────────────────────────────
             item(key = "home_header") {
                 HomeHeader(
                     nickname = uiState.userNickname,
+                    isReminderActive = isAnyReminderActive,
                     onOpenBackup = { showBackupSheet = true },
                     onSyncCatalog = { viewModel.syncCatalog(isManual = true) },
                     onNavigateToSettings = onNavigateToSettings,
+                    onOpenNotifications = { showNotificationSheet = true },
                     isSyncing = uiState.isSyncing
                 )
             }
 
-            // ── Weekly Activity Ring ─────────────────────────────────────────
+            // ── Weekly Activity Section ─────────────────────────────────────
             item(key = "home_weekly_activity") {
                 WeeklyActivitySection(
                     totalMinutes = weeklyMinutes,
                     sessionCount = weeklySessions,
+                    weeklyDeltaMinutes = weeklyDeltaMinutes,
+                    targetMinutes = uiState.weeklyTargetMinutes,
                     onClick = onNavigateToHistory
                 )
             }
@@ -311,8 +260,9 @@ fun HomeScreen(
                 }
             }
 
-            // ── Section Label (Riwayat Latihan | Lihat Semua ➔) ─────────────
-            item(key = "home_history_header") {
+            // ── Section Label (Koleksi Rutinitas | + Buat Baru) ─────────────
+            item(key = "home_routines_header") {
+                val isSearchingOrFiltering = uiState.searchQuery.isNotBlank() || uiState.selectedCategory != null || hasActiveFilters
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -325,16 +275,16 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
+                            imageVector = if (isSearchingOrFiltering) Icons.Default.Tune else Icons.Outlined.GridView,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(19.dp)
                         )
                         Text(
-                            text = if (uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters)
-                                "Riwayat Latihan"
+                            text = if (isSearchingOrFiltering)
+                                "Hasil Pencarian (${uiState.routines.size})"
                             else
-                                "Hasil Pencarian",
+                                "Koleksi Rutinitas (${uiState.routines.size})",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 17.sp
@@ -343,9 +293,9 @@ fun HomeScreen(
                         )
                     }
 
-                    if (uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters) {
+                    if (!isSearchingOrFiltering) {
                         Surface(
-                            onClick = onNavigateToHistory,
+                            onClick = onNavigateToBuilder,
                             shape = RoundedCornerShape(12.dp),
                             color = Color.White.copy(alpha = 0.08f),
                             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
@@ -355,19 +305,19 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
                                 Text(
-                                    text = "Lihat Semua",
+                                    text = "Buat Baru",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 12.sp
                                     ),
                                     color = Color.White
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowForward,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(13.dp)
                                 )
                             }
                         }
@@ -437,6 +387,31 @@ fun HomeScreen(
                 onDismiss = { showFilterSheet = false }
             )
         }
+
+        if (showNotificationSheet) {
+            NotificationReminderBottomSheet(
+                reminders = customReminders,
+                spotlightRoutine = uiState.todayScheduledRoutine ?: challengeRoutines.firstOrNull(),
+                isTodayRestDay = uiState.isTodayRestDay,
+                onToggleReminder = { id, enabled ->
+                    viewModel.toggleReminder(context, id, enabled)
+                },
+                onUpdateReminder = { id, label, h, m, days ->
+                    viewModel.updateFullReminder(context, id, label, h, m, days)
+                },
+                onAddReminder = { label, h, m, days ->
+                    viewModel.addCustomReminder(context, label, h, m, days)
+                },
+                onDeleteReminder = { id ->
+                    viewModel.deleteCustomReminder(context, id)
+                },
+                onTestNotification = {
+                    viewModel.testReminderNotification(context)
+                },
+                onStartWorkout = onNavigateToStartWorkout,
+                onDismiss = { showNotificationSheet = false }
+            )
+        }
     }
 }
 
@@ -445,325 +420,121 @@ fun HomeScreen(
 @Composable
 private fun HomeHeader(
     nickname: String = "",
+    isReminderActive: Boolean = true,
     onOpenBackup: () -> Unit,
     onSyncCatalog: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     isSyncing: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .padding(top = 48.dp, bottom = 8.dp),
+            .padding(top = 48.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (nickname.isNotBlank()) {
-                    Text(
-                        text = "Halo, ",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 28.sp
-                        ),
-                        color = Color.White
-                    )
-                    Text(
-                        text = "$nickname 👋",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 28.sp
-                        ),
-                        color = AccentWork
-                    )
-                } else {
-                    Text(
-                        text = "Workout ",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 30.sp
-                        ),
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Timer",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 30.sp
-                        ),
-                        color = Color.White
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_flame_streak),
-                    contentDescription = "Streak",
-                    modifier = Modifier.size(15.dp)
-                )
-                Text(
-                    text = "Siap bergerak & bakar kalori hari ini?",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    color = TextSecondary
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+        // Left Section: Circular Profile Avatar with Frosted Glass Ring + Greeting
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            // Circular Athlete Avatar with Frosted White Glass Ring (Personalized Initial or Icon)
+            val initial = nickname.trim().take(1).uppercase()
             Box(
                 modifier = Modifier
-                    .width(32.dp)
-                    .height(3.5.dp)
-                    .background(Color.White.copy(alpha = 0.50f), RoundedCornerShape(2.dp))
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Tombol Sync Katalog Server (Actionable - Frosted White Glass)
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
-                    .clickable(enabled = !isSyncing, onClick = onSyncCatalog),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.CloudSync,
-                        contentDescription = "Sync Katalog Server",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-
-            // Tombol Backup & Restore (Actionable - Frosted White Glass)
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
-                    .clickable(onClick = onOpenBackup),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_cloud_backup_sleek),
-                    contentDescription = "Backup & Restore",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Tombol Pengaturan (Actionable - Frosted White Glass)
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape)
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.50f)), CircleShape)
                     .clickable(onClick = onNavigateToSettings),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Pengaturan",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                if (initial.isNotBlank()) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Black
+                        ),
+                        color = Color.White
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = "Profil Atlet",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Greeting Texts
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                val displayName = if (nickname.isNotBlank()) nickname else "Atlet"
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Halo, ",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.3).sp
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.3).sp
+                        ),
+                        color = Color.White
+                    )
+                }
+                Text(
+                    text = "Siap bergerak hari ini?",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 0.1.sp
+                    ),
+                    color = Color.White.copy(alpha = 0.60f)
                 )
             }
         }
-    }
-}
 
-@Composable
-private fun AthleticActivityRing(
-    progress: Float,
-    modifier: Modifier = Modifier
-) {
-    // 1. Smooth Progress Arc Interpolation
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress.coerceIn(0.08f, 1f),
-        animationSpec = tween(
-            durationMillis = 1100,
-            easing = FastOutSlowInEasing
-        ),
-        label = "ring_progress"
-    )
-
-    // 2. Smooth Floating Breathing Pulse for the Core Lens
-    val infiniteTransition = rememberInfiniteTransition(label = "runner_ambience")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.97f,
-        targetValue = 1.03f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "runner_scale"
-    )
-    val glowPulse by infiniteTransition.animateFloat(
-        initialValue = 0.14f,
-        targetValue = 0.30f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "runner_glow"
-    )
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        // High-Precision Biometric Dial Canvas
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 8.5.dp.toPx()
-            val radius = (size.minDimension - strokeWidth) / 2f
-            val center = Offset(size.width / 2f, size.height / 2f)
-
-            // Dynamic ambient radial aura behind ring
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = glowPulse * 0.25f),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = radius * 1.45f
-                ),
-                center = center,
-                radius = radius * 1.45f
-            )
-
-            // Outer dark frosted glass track
-            drawCircle(
-                color = Color(0xFF141822).copy(alpha = 0.85f),
-                radius = radius,
-                center = center,
-                style = Stroke(width = strokeWidth)
-            )
-
-            // Subtle inner track guide hairline
-            drawCircle(
-                color = Color.White.copy(alpha = 0.06f),
-                radius = radius - strokeWidth / 2f,
-                center = center,
-                style = Stroke(width = 0.8.dp.toPx())
-            )
-
-            // Dynamic Gradient Sweep Progress Arc (Pure Crystal White Arc)
-            val sweepAngle = 360f * animatedProgress
-            drawArc(
-                brush = Brush.sweepGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.50f),
-                        Color.White,
-                        Color.White.copy(alpha = 0.85f),
-                        Color.White
-                    )
-                ),
-                startAngle = -90f,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
-
-            // Glowing Leading Tip Flare (Pure White Spark)
-            val currentAngleDeg = -90f + sweepAngle
-            val angleRad = Math.toRadians(currentAngleDeg.toDouble())
-            val tipX = center.x + radius * cos(angleRad).toFloat()
-            val tipY = center.y + radius * sin(angleRad).toFloat()
-            val tipCenter = Offset(tipX, tipY)
-
-            // Radiant bloom around the tip cap
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White,
-                        Color.White.copy(alpha = 0.40f),
-                        Color.Transparent
-                    ),
-                    center = tipCenter,
-                    radius = strokeWidth * 1.4f
-                ),
-                center = tipCenter,
-                radius = strokeWidth * 1.4f
-            )
-
-            // Concentrated bright spark at the center of the tip
-            drawCircle(
-                color = Color.White,
-                center = tipCenter,
-                radius = strokeWidth * 0.32f
-            )
-        }
-
-        // Center Floating Frosted Glass Lens with Smooth Aerodynamic Sprinter
+        // Right Section: Sleek Notification Bell with White Glass Unread Indicator Dot
         Box(
             modifier = Modifier
-                .size(52.dp)
-                .graphicsLayer {
-                    scaleX = pulseScale
-                    scaleY = pulseScale
-                }
+                .size(42.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF1A2232).copy(alpha = 0.82f),
-                            Color(0xFF0D111A).copy(alpha = 0.94f)
-                        )
-                    )
-                )
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        Brush.linearGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.40f),
-                                Color.White.copy(alpha = 0.12f)
-                            )
-                        )
-                    ),
-                    CircleShape
-                ),
+                .clickable(onClick = onOpenNotifications),
             contentAlignment = Alignment.Center
         ) {
-            // Internal breathing core glow
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = glowPulse * 0.35f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+            Icon(
+                imageVector = Icons.Outlined.Notifications,
+                contentDescription = "Notifikasi & Pengingat Latihan",
+                tint = Color.White,
+                modifier = Modifier.size(26.dp)
             )
-
-            // Sleek Aerodynamic Runner Vector with smooth curves & speed trails
-            Image(
-                painter = painterResource(id = R.drawable.ic_runner_sleek),
-                contentDescription = "Aktivitas Lari",
-                modifier = Modifier.size(32.dp)
-            )
+            // Clean White Frosted Indicator Dot on Top-Right Corner of Bell
+            if (isReminderActive) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 7.dp, end = 7.dp)
+                        .size(7.5.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
         }
     }
 }
@@ -772,230 +543,243 @@ private fun AthleticActivityRing(
 private fun WeeklyActivitySection(
     totalMinutes: Int,
     sessionCount: Int,
+    weeklyDeltaMinutes: Int = 0,
+    targetMinutes: Int = 60,
     onClick: () -> Unit = {}
 ) {
+    val daysRemaining = remember {
+        val cal = Calendar.getInstance()
+        val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK) // Sunday = 1, Monday = 2, ..., Saturday = 7
+        if (dayOfWeek == Calendar.SUNDAY) 0 else (Calendar.SATURDAY - dayOfWeek + 1)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF131722).copy(alpha = 0.70f)),
-        border = BorderStroke(
-            width = 1.dp,
-            brush = Brush.linearGradient(
-                0.0f to Color.White.copy(alpha = 0.35f),    // Top-left crisp specular highlight
-                0.55f to Color.White.copy(alpha = 0.12f),   // Translucent body
-                1.0f to Color.White.copy(alpha = 0.04f),    // Bottom shadow bevel
-                start = Offset(0f, 0f),
-                end = Offset(1000f, 600f)
-            )
-        )
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1D25)),
+        border = BorderStroke(1.dp, Color(0xFF252934))
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            // 1. Subtle Athletic Workout Photography Backdrop (frosted underlay)
-            Image(
-                painter = painterResource(id = R.drawable.banner_weekly_activity),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .alpha(0.18f)
-            )
-
-            // 2. Multi-Directional Dark Frosted Glass Scrim
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF0F121A).copy(alpha = 0.94f),
-                                Color(0xFF0F121A).copy(alpha = 0.82f),
-                                Color(0xFF121724).copy(alpha = 0.60f)
-                            )
-                        )
-                    )
-            )
-
-            // 3. Ambient Glass Glows (Left Flame Aura & Right Athletic Neon Halo)
+            // Ambient soft green lighting radiating from the right edge
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFFFF8C42).copy(alpha = 0.12f),
+                                Color.White.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
-                            center = Offset(80f, 50f),
-                            radius = 280f
+                            center = Offset(1100f, 250f),
+                            radius = 420f
                         )
                     )
             )
 
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                AccentWork.copy(alpha = 0.16f),
-                                Color(0xFF00F5EA).copy(alpha = 0.06f),
-                                Color.Transparent
-                            ),
-                            center = Offset(720f, 120f),
-                            radius = 340f
-                        )
-                    )
-            )
-
-            // 4. Top Glass Specular Shine (Light Glare Reflection)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.10f),
-                                Color.White.copy(alpha = 0.02f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            // 5. Foreground Content
+            // Content Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    // Frosted Glass Streak Capsule
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White.copy(alpha = 0.07f),
-                        border = BorderStroke(
-                            1.dp,
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFFFF9E44).copy(alpha = 0.45f),
-                                    Color.White.copy(alpha = 0.18f)
-                                )
-                            )
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_flame_streak),
-                                contentDescription = null,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "AKTIVITAS MINGGU INI",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFFFF9E44),
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 1.sp,
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Stats with subtle frosted divider
+                // 1. Primary Progress Section (Left)
+                Column(
+                    modifier = Modifier.weight(1.35f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatItem(
-                            value = "$totalMinutes",
-                            unit = "Menit Latihan",
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_flame_streak),
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Minggu Ini",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = Color(0xFFA0A5B2)
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = "$totalMinutes",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.5).sp
+                            ),
                             color = Color.White
                         )
+                        Text(
+                            text = "/ $targetMinutes menit",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            color = Color(0xFF9DA3AF),
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
 
-                        // Vertical Glass Divider
+                    Spacer(modifier = Modifier.height(3.dp))
+
+                    // Horizontal Progress Bar with round pill caps
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xFF2B303C))
+                    ) {
+                        val progressFraction = (totalMinutes / targetMinutes.toFloat()).coerceIn(0f, 1f)
                         Box(
                             modifier = Modifier
-                                .width(1.dp)
-                                .height(38.dp)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.18f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                )
-                        )
-
-                        StatItem(
-                            value = "$sessionCount",
-                            unit = "Sesi Selesai",
-                            color = Color.White,
-                            icon = Icons.Default.CheckCircle
+                                .fillMaxWidth(if (progressFraction > 0f) progressFraction.coerceAtLeast(0.06f) else 0.04f)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(Color.White)
                         )
                     }
                 }
 
-                // Sleek Activity Dial with Smooth Animated Runner Lens
-                AthleticActivityRing(
-                    progress = (totalMinutes / 120f).coerceIn(0.18f, 1f),
-                    modifier = Modifier.size(92.dp)
+                // Vertical Divider between Progress and Middle Stats
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .width(1.dp)
+                        .height(42.dp)
+                        .background(Color(0xFF2B303C))
                 )
-            }
-        }
-    }
-}
 
-@Composable
-private fun StatItem(
-    value: String,
-    unit: String,
-    color: Color = Color.White,
-    unitColor: Color = Color(0xFFA6ABB8),
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
+                // 2. Sesi Selesai (Middle Left)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$sessionCount Sesi",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Selesai",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = Color(0xFF7E8494)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // 3. Hari Tersisa (Middle Right)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CalendarMonth,
+                        contentDescription = null,
+                        tint = Color(0xFFA0A5B2),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "$daysRemaining Hari",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Tersisa",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = Color(0xFF7E8494)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // 4. Trend Sub-Card (Right Elevated Glass Widget)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.12f),
+                                    Color.White.copy(alpha = 0.05f)
+                                )
+                            )
+                        )
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 11.dp, vertical = 9.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        val deltaLabel = if (weeklyDeltaMinutes >= 0) "+$weeklyDeltaMinutes mnt" else "$weeklyDeltaMinutes mnt"
+                        Text(
+                            text = deltaLabel,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = "dari minggu lalu",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            color = Color.White.copy(alpha = 0.65f)
+                        )
+                    }
+                }
             }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black
-                ),
-                color = color
-            )
         }
-        Text(
-            text = unit,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            color = unitColor
-        )
     }
 }
 
@@ -1003,9 +787,10 @@ private fun StatItem(
  * Sumber konten untuk Spotlight Tantangan Hari Ini.
  */
 enum class ChallengeSource {
-    FAVORITE,          // Prioritas 1: HANYA rutinitas yang di-like pengguna
-    LATEST_PERFORMED,  // Prioritas 2: Terakhir kali dilakukan (fallback jika belum ada like)
-    RECOMMENDED,       // Prioritas 3: Rekomendasi awal katalog (fallback saat app fresh install)
+    SCHEDULED_TODAY,   // Prioritas 1: Jadwal Latihan Hari Ini (dari Program / Kalender)
+    FAVORITE,          // Prioritas 2: HANYA rutinitas yang di-like pengguna
+    LATEST_PERFORMED,  // Prioritas 3: Terakhir kali dilakukan (fallback jika belum ada like)
+    RECOMMENDED,       // Prioritas 4: Rekomendasi awal katalog (fallback saat app fresh install)
     NONE
 }
 
@@ -1077,145 +862,226 @@ private fun SpotlightRoutineCard(
     onSelectPage: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(190.dp)
+            .height(215.dp)
             .clickable { onViewDetail(routine.id) },
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
-        border = BorderStroke(
-            1.dp,
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.35f),
-                    Color.White.copy(alpha = 0.08f)
-                )
-            )
-        )
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0C0E12)),
+        border = BorderStroke(1.dp, Color(0xFF222630).copy(alpha = 0.50f))
     ) {
         val bannerRes = getCategoryBannerRes(routine.category, isSpotlightDefault = true)
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background Athletic Banner Image
-            Image(
-                painter = painterResource(id = bannerRes),
-                contentDescription = "Spotlight Workout",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // Horizontal & Vertical Scrim Gradients for text legibility
+            // 1. Athlete Image positioned exclusively on the RIGHT HALF (like reference image)
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.92f),
-                                Color.Black.copy(alpha = 0.78f),
-                                Color.Black.copy(alpha = 0.35f),
-                                Color.Transparent
-                            ),
-                            startX = 0f,
-                            endX = 820f
-                        )
-                    )
-            )
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.68f)
+                    .align(Alignment.CenterEnd)
+            ) {
+                Image(
+                    painter = painterResource(id = bannerRes),
+                    contentDescription = "Spotlight Workout",
+                    contentScale = ContentScale.Crop,
+                    alignment = androidx.compose.ui.BiasAlignment(-0.25f, 0f),
+                    modifier = Modifier.fillMaxSize()
+                )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.65f)
+                // Smooth horizontal fade on the left edge of the photo blending into deep dark card body
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF0C0E12),
+                                    Color(0xFF0C0E12).copy(alpha = 0.65f),
+                                    Color.Transparent
+                                ),
+                                startX = 0f,
+                                endX = 260f
                             )
                         )
-                    )
-            )
+                )
 
-            // Foreground Content
+                // Subtle vertical top and bottom shadow
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF0C0E12).copy(alpha = 0.40f),
+                                    Color.Transparent,
+                                    Color(0xFF0C0E12).copy(alpha = 0.60f)
+                                )
+                            )
+                        )
+                )
+            }
+
+            // 2. Striking Angular Electric Green Geometric Flairs at the Bottom-Left Corner (Exact detail from reference image)
+            Box(
+                modifier = Modifier
+                    .size(width = 120.dp, height = 90.dp)
+                    .align(Alignment.BottomStart)
+            ) {
+                // Soft glow background
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.05f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(0f, 260f),
+                                radius = 260f
+                            )
+                        )
+                )
+
+                // Angular geometric slashes matching frosted glass styling
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+
+                    // Primary bold angled stripe
+                    val path1 = Path().apply {
+                        moveTo(0f, h)
+                        lineTo(w * 0.45f, h)
+                        lineTo(w * 0.85f, 0f)
+                        lineTo(w * 0.40f, 0f)
+                        close()
+                    }
+                    drawPath(
+                        path = path1,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.12f),
+                                Color.White.copy(alpha = 0.04f),
+                                Color.Transparent
+                            ),
+                            start = Offset(0f, h),
+                            end = Offset(w * 0.85f, 0f)
+                        )
+                    )
+
+                    // Secondary outer accent stripe
+                    val path2 = Path().apply {
+                        moveTo(w * 0.52f, h)
+                        lineTo(w * 0.65f, h)
+                        lineTo(w, h * 0.15f)
+                        lineTo(w * 0.87f, h * 0.15f)
+                        close()
+                    }
+                    drawPath(
+                        path = path2,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.08f),
+                                Color.White.copy(alpha = 0.02f),
+                                Color.Transparent
+                            ),
+                            start = Offset(w * 0.52f, h),
+                            end = Offset(w, h * 0.15f)
+                        )
+                    )
+                }
+            }
+
+            // 3. Foreground Content (Pure typography & clear layout)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(18.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Top Tag Row
+                // Top Tag Row: Frosted White Glass Capsule Badge (Kiri) & Tombol Like Kaca (Kanan)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val tagText = when (challengeSource) {
-                        ChallengeSource.FAVORITE -> "TANTANGAN HARI INI"
-                        ChallengeSource.LATEST_PERFORMED -> "TANTANGAN HARI INI • TERAKHIR DIGUNAKAN"
-                        ChallengeSource.RECOMMENDED -> "TANTANGAN HARI INI • REKOMENDASI"
-                        ChallengeSource.NONE -> "TANTANGAN HARI INI"
+                    val (badgeIcon, badgeText) = when (challengeSource) {
+                        ChallengeSource.SCHEDULED_TODAY -> Icons.Default.EventAvailable to "Jadwal Latihan Hari Ini"
+                        ChallengeSource.FAVORITE -> Icons.Filled.Favorite to "Rutinitas Favorit Anda"
+                        ChallengeSource.LATEST_PERFORMED -> Icons.Default.History to "Latihan Terakhir Dilakukan"
+                        ChallengeSource.RECOMMENDED -> Icons.Default.Bolt to "Rekomendasi Latihan"
+                        ChallengeSource.NONE -> Icons.Default.FitnessCenter to "Latihan Pilihan"
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color.White.copy(alpha = 0.10f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_flame_streak),
+                            Icon(
+                                imageVector = badgeIcon,
                                 contentDescription = null,
-                                modifier = Modifier.size(12.dp)
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = tagText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
-                                fontSize = 10.sp
+                                text = badgeText,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.5.sp
+                                ),
+                                color = Color.White
                             )
                         }
                     }
 
-                    // Like/Favorite Button on Spotlight Card
+                    // Tombol Favorit / Like Melayang di Sudut Kanan Atas Spotlight Card
                     Surface(
-                        onClick = onFavoriteClick,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onFavoriteClick()
+                        },
                         shape = CircleShape,
-                        color = if (routine.isFavorite) Color(0xFFFF3B30).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, if (routine.isFavorite) Color(0xFFFF3B30).copy(alpha = 0.60f) else Color.White.copy(alpha = 0.25f)),
-                        modifier = Modifier.size(28.dp)
+                        color = if (routine.isFavorite) Color(0xFF261318).copy(alpha = 0.88f) else Color(0xFF0F1116).copy(alpha = 0.60f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (routine.isFavorite) Color(0xFFFF453A).copy(alpha = 0.55f) else Color.White.copy(alpha = 0.25f)
+                        ),
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = if (routine.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = if (routine.isFavorite) "Disukai" else "Sukai",
                                 tint = if (routine.isFavorite) Color(0xFFFF453A) else Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
 
-                // Middle & Bottom Section with Dynamic Pagination Dots
-                Row(
+                // Middle & Bottom Section (Text on the left, Button on bottom left, Dots on bottom right)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                    // Title & Clean Inline Metadata
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = routine.name,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 24.sp,
+                                letterSpacing = (-0.5).sp
+                            ),
                             color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 20.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1224,77 +1090,91 @@ private fun SpotlightRoutineCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            StatChip(
-                                iconRes = R.drawable.ic_stat_timer,
+                            Icon(
+                                imageVector = Icons.Outlined.Timer,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
                                 text = formatDuration(routine.totalDurationSec),
-                                tint = Color.White.copy(alpha = 0.9f)
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = "|",
-                                color = Color(0xFF4A4E5C),
+                                color = Color(0xFF555966),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = 13.sp
                             )
-                            StatChip(
-                                iconRes = R.drawable.ic_intensity_lightning,
-                                text = routine.category.uppercase(),
-                                tint = Color.White.copy(alpha = 0.85f)
+                            Icon(
+                                imageVector = Icons.Outlined.FitnessCenter,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = routine.category,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        // Start Quick Button (Frosted White Capsule)
+                    // Bottom Row: CTA Button (Left) & Circular Pagination Dots (Right)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Start Workout Solid White Pill Button (Chunky & Bold)
                         Button(
                             onClick = { onStartWorkout(routine.id) },
-                            modifier = Modifier.height(36.dp),
-                            shape = RoundedCornerShape(18.dp),
+                            modifier = Modifier.height(42.dp),
+                            shape = RoundedCornerShape(21.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.White,
                                 contentColor = Color.Black
                             ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 0.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = null,
                                 tint = Color.Black,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(17.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Mulai Latihan",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.5.sp,
                                 color = Color.Black
                             )
                         }
-                    }
 
-                    // Dynamic Pagination indicator dots when pageCount > 1
-                    if (pageCount > 1) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        ) {
-                            for (i in 0 until pageCount) {
-                                val isSelected = i == currentPage
-                                val dotWidth by animateDpAsState(
-                                    targetValue = if (isSelected) 18.dp else 5.dp,
-                                    animationSpec = tween(durationMillis = 300),
-                                    label = "dotWidth"
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .width(dotWidth)
-                                        .height(5.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (isSelected) Color.White else Color.White.copy(alpha = 0.35f)
-                                        )
-                                        .clickable { onSelectPage(i) }
-                                )
+                        // Circular Pagination Dots (Active = Neon Green, Inactive = Muted Grey)
+                        if (pageCount > 1) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 6.dp, bottom = 4.dp)
+                            ) {
+                                for (i in 0 until pageCount) {
+                                    val isSelected = i == currentPage
+                                    Box(
+                                        modifier = Modifier
+                                            .size(if (isSelected) 7.5.dp else 6.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isSelected) Color.White else Color.White.copy(alpha = 0.25f)
+                                            )
+                                            .clickable { onSelectPage(i) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1511,7 +1391,7 @@ private fun resolveCategoryIcon(categoryName: String): CategoryIconSource {
         clean.contains("mobility") || clean.contains("recovery") || clean.contains("yoga") -> CategoryIconSource.DrawableRes(R.drawable.ic_cat_mobility)
         clean.contains("full body") || clean.contains("fullbody") -> CategoryIconSource.Vector(Icons.Default.AccessibilityNew)
         clean.contains("upper") -> CategoryIconSource.DrawableRes(R.drawable.ic_cat_strength)
-        clean.contains("lower") -> CategoryIconSource.Vector(Icons.Default.DirectionsRun)
+        clean.contains("lower") -> CategoryIconSource.Vector(Icons.AutoMirrored.Filled.DirectionsRun)
         else -> CategoryIconSource.Vector(Icons.Default.FitnessCenter)
     }
 }
@@ -1830,7 +1710,7 @@ private fun HomeFilterBottomSheet(
 
                 val sortItems = listOf(
                     SortItemData(SortOption.CREATED_AT, "Terbaru Dibuat", "Berdasarkan tanggal ditambahkan", Icons.Default.Schedule),
-                    SortItemData(SortOption.FAVORITE, "Favorit Teratas", "Rutinitas yang ditandai bintang", Icons.Default.Star),
+                    SortItemData(SortOption.FAVORITE, "Favorit Teratas", "Rutinitas yang Anda sukai", Icons.Filled.Favorite),
                     SortItemData(SortOption.DURATION, "Durasi Tercepat", "Dari latihan tersingkat ke terlama", Icons.Default.Timer),
                     SortItemData(SortOption.LAST_PERFORMED, "Terakhir Dilakukan", "Rutinitas yang baru diselesaikan", Icons.Default.History)
                 )
@@ -2077,10 +1957,11 @@ private fun WorkoutCard(
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val accentColor = try {
         Color(android.graphics.Color.parseColor(routine.accentColor))
     } catch (e: Exception) {
-        AccentWork
+        Color.White
     }
 
     val cardBgColor = Color(0xFF0F1115)
@@ -2106,7 +1987,7 @@ private fun WorkoutCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(118.dp)
+                .height(124.dp)
         ) {
             val bannerRes = getCategoryBannerRes(routine.category)
 
@@ -2174,158 +2055,161 @@ private fun WorkoutCard(
                 )
             }
 
-            // 3. Foreground content: Teks & Stats di kiri, Tombol Play Kaca Melayang di kanan
-            Row(
+            // 3. Sisi Kiri: Badge Kategori, Judul Rutinitas, Metadata
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.66f)
+                    .padding(start = 18.dp, top = 14.dp, bottom = 14.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Sisi Kiri: Badge Kategori, Judul Rutinitas, Metadata
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Category Pill Badge (Frosted White Glass)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
                 ) {
-                    // Category Pill Badge (Frosted White Glass)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.85f))
-                            )
-                            Text(
-                                text = routine.category,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
-                                ),
-                                color = Color.White
-                            )
-                        }
-                    }
-
-                    // Judul Rutinitas
-                    Text(
-                        text = routine.name,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
-                            letterSpacing = (-0.2).sp
-                        ),
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    // Stats: ⏱ 10m 30s | ✔ 31 Gerakan
                     Row(
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(13.5.dp)
-                            )
-                            Text(
-                                text = formatDuration(routine.totalDurationSec),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
-                        }
-
-                        Text(
-                            text = "|",
-                            color = Color(0xFF4A5162),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.85f))
                         )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(13.5.dp)
-                            )
-                            Text(
-                                text = "${routine.totalExercises} Gerakan",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                color = Color.White.copy(alpha = 0.85f)
-                            )
-                        }
+                        Text(
+                            text = routine.category,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp
+                            ),
+                            color = Color.White
+                        )
                     }
                 }
 
-                // Sisi Kanan: Frosted Glass Play Button melayang pas di atas tubuh foto atlet
-                Surface(
-                    onClick = onStartClick,
-                    shape = CircleShape,
-                    color = Color(0xFF0F1116).copy(alpha = 0.50f),
-                    border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.70f)),
-                    modifier = Modifier.size(46.dp)
+                // Judul Rutinitas
+                Text(
+                    text = routine.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        letterSpacing = (-0.2).sp
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                // Stats: ⏱ 10m 30s | ✔ 31 Gerakan
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Mulai Latihan",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(start = 2.dp)
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(13.5.dp)
+                        )
+                        Text(
+                            text = formatDuration(routine.totalDurationSec),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+
+                    Text(
+                        text = "|",
+                        color = Color(0xFF4A5162),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(13.5.dp)
+                        )
+                        Text(
+                            text = "${routine.totalExercises} Gerakan",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = Color.White.copy(alpha = 0.85f)
                         )
                     }
                 }
             }
 
-            // 3. Tombol Favorit / Like di pojok kanan atas kartu
-            Surface(
-                onClick = onFavoriteClick,
-                shape = CircleShape,
-                color = if (routine.isFavorite) Color(0xFF1E1418).copy(alpha = 0.85f) else Color(0xFF0F1116).copy(alpha = 0.65f),
-                border = BorderStroke(
-                    1.dp,
-                    if (routine.isFavorite) Color(0xFFFF453A).copy(alpha = 0.55f) else Color.White.copy(alpha = 0.22f)
-                ),
+            // 4. Dedicated Right Action Column: Favorite (Top-Right) & Play (Bottom-Right)
+            // Dipisahkan secara vertikal sehingga tidak pernah bertabrakan atau numpuk
+            Column(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(30.dp)
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .padding(top = 10.dp, bottom = 12.dp, end = 12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (routine.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (routine.isFavorite) "Disukai" else "Sukai",
-                        tint = if (routine.isFavorite) Color(0xFFFF453A) else Color.White.copy(alpha = 0.80f),
-                        modifier = Modifier.size(15.dp)
-                    )
+                // Tombol Favorit / Like di pojok kanan atas kartu
+                Surface(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onFavoriteClick()
+                    },
+                    shape = CircleShape,
+                    color = if (routine.isFavorite) Color(0xFF261318).copy(alpha = 0.90f) else Color(0xFF0F1116).copy(alpha = 0.65f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (routine.isFavorite) Color(0xFFFF453A).copy(alpha = 0.55f) else Color.White.copy(alpha = 0.22f)
+                    ),
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (routine.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (routine.isFavorite) "Disukai" else "Sukai",
+                            tint = if (routine.isFavorite) Color(0xFFFF453A) else Color.White.copy(alpha = 0.80f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                // Tombol Play / Quick Start di pojok kanan bawah kartu (Solid White pill-circle, high-contrast CTA)
+                Surface(
+                    onClick = onStartClick,
+                    shape = CircleShape,
+                    color = Color.White,
+                    modifier = Modifier.size(38.dp),
+                    shadowElevation = 4.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Mulai Latihan",
+                            tint = Color.Black,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(start = 2.dp)
+                        )
+                    }
                 }
             }
         }
@@ -2364,57 +2248,70 @@ private fun EmptyState(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(48.dp),
+            .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_empty_workout),
-            contentDescription = null,
-            modifier = Modifier.size(120.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FitnessCenter,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(36.dp)
+            )
+        }
         Text(
             text = "Belum Ada Rutinitas",
             style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
+            color = Color.White,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Mulai dengan 16 preset standar dunia atau racik rutinitas kustommu sendiri",
+            text = "Mulai dengan 40 preset standar ilmiah dunia atau racik rutinitas kustommu sendiri",
             style = MaterialTheme.typography.bodyMedium,
-            color = TextTertiary,
+            color = Color.White.copy(alpha = 0.60f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(modifier = Modifier.height(4.dp))
         Button(
             onClick = onRestoreStandard,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF24242A), contentColor = TextPrimary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ),
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(42.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_stat_exercises),
+            Icon(
+                imageVector = Icons.Default.Refresh,
                 contentDescription = null,
+                tint = Color.Black,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Muat 16 Preset Standar Dunia", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
+            Text("Muat 40 Preset Standar Ilmiah", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
         }
         OutlinedButton(
             onClick = onCreateNew,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color(0xFF383842)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(42.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = AccentWork, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Buat Rutinitas Kustom", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextPrimary)
+            Text("Buat Rutinitas Kustom", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
         }
     }
 }
@@ -2565,5 +2462,433 @@ private fun BackupBottomSheet(
                 lineHeight = 18.sp
             )
         }
+    }
+}
+
+// ── Bottom Navigation Bar (Matched to Reference Screenshot) ─────────────────
+
+enum class HomeTab {
+    BERANDA,
+    LATIHAN,
+    PROGRESS,
+    PROFIL
+}
+
+@Composable
+fun HomeBottomNavigation(
+    currentTab: HomeTab = HomeTab.BERANDA,
+    onTabSelected: (HomeTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+        color = Color(0xFF0F1217).copy(alpha = 0.95f),
+        border = BorderStroke(
+            1.dp,
+            Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.16f),
+                    Color.White.copy(alpha = 0.04f)
+                )
+            )
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(62.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HomeNavItem(
+                icon = Icons.Filled.Home,
+                label = "Beranda",
+                isSelected = currentTab == HomeTab.BERANDA,
+                onClick = { onTabSelected(HomeTab.BERANDA) },
+                modifier = Modifier.weight(1f)
+            )
+
+            HomeNavItem(
+                icon = Icons.Outlined.FitnessCenter,
+                label = "Latihan",
+                isSelected = currentTab == HomeTab.LATIHAN,
+                onClick = { onTabSelected(HomeTab.LATIHAN) },
+                modifier = Modifier.weight(1f)
+            )
+
+            HomeNavItem(
+                icon = Icons.Outlined.BarChart,
+                label = "Progress",
+                isSelected = currentTab == HomeTab.PROGRESS,
+                onClick = { onTabSelected(HomeTab.PROGRESS) },
+                modifier = Modifier.weight(1f)
+            )
+
+            HomeNavItem(
+                icon = Icons.Outlined.Person,
+                label = "Profil",
+                isSelected = currentTab == HomeTab.PROFIL,
+                onClick = { onTabSelected(HomeTab.PROFIL) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeNavItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeColor = Color.White
+    val inactiveColor = Color.White.copy(alpha = 0.45f)
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isSelected) activeColor else inactiveColor,
+            modifier = Modifier.size(23.dp)
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.5.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = 0.1.sp
+            ),
+            color = if (isSelected) activeColor else inactiveColor
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        // Horizontal pill indicator below active item
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .width(24.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(Color.White)
+            )
+        } else {
+            Spacer(modifier = Modifier.height(3.dp))
+        }
+    }
+}
+
+// ── Notification & Multi-Reminder Modal Bottom Sheet ────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotificationReminderBottomSheet(
+    reminders: List<WorkoutReminderItem>,
+    spotlightRoutine: WorkoutRoutine?,
+    isTodayRestDay: Boolean = false,
+    onToggleReminder: (id: String, Boolean) -> Unit,
+    onUpdateReminder: (id: String, label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
+    onAddReminder: (label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
+    onDeleteReminder: (id: String) -> Unit,
+    onTestNotification: () -> Unit,
+    onStartWorkout: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingReminder by remember { mutableStateOf<WorkoutReminderItem?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color(0xFF13151B),
+        scrimColor = Color.Black.copy(alpha = 0.65f),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp, bottom = 8.dp)
+                    .width(38.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF3E4452))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 36.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Pengingat Latihan",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            ),
+                            color = Color.White
+                        )
+                        Text(
+                            text = "${reminders.count { it.isEnabled }} dari ${reminders.size} pengingat aktif",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = Color(0xFF8E95A5)
+                        )
+                    }
+                }
+
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Tutup",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Reminders List (Ultra-clean Single-row Frosted Glass Cards)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                reminders.forEach { reminder ->
+                    FrostedReminderCard(
+                        reminder = reminder,
+                        onToggle = { onToggleReminder(reminder.id, it) },
+                        onClick = { editingReminder = reminder }
+                    )
+                }
+            }
+
+            // Button: Tambah Pengingat Baru (+)
+            Button(
+                onClick = { showAddDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White.copy(alpha = 0.08f),
+                    contentColor = Color.White
+                ),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Tambah Pengingat Baru",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.5.sp,
+                    color = Color.White
+                )
+            }
+
+            // Quick Test Notification Row
+            OutlinedButton(
+                onClick = onTestNotification,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.NotificationsActive,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Tes Notifikasi Sekarang",
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
+
+            // Card 2: Quick Action / Active Routine Preview (if available)
+            if (spotlightRoutine != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171A21)),
+                    border = BorderStroke(1.dp, Color(0xFF262A36))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.EventAvailable,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "Target Latihan Hari Ini",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = spotlightRoutine.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                onDismiss()
+                                onStartWorkout(spotlightRoutine.id)
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Mulai",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+            } else if (isTodayRestDay) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171A21)),
+                    border = BorderStroke(1.dp, Color(0xFF262A36))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "🧘", fontSize = 22.sp)
+                        Column {
+                            Text(
+                                text = "Hari Pemulihan (Rest Day)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Fokus pada peregangan ringan, tidur cukup, dan hidrasi optimal.",
+                                fontSize = 11.5.sp,
+                                color = Color.White.copy(alpha = 0.55f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Footer Notice
+            Text(
+                text = "💡 Alarm pengingat berjalan secara offline di perangkat Anda dan tetap berbunyi tepat waktu meskipun aplikasi sedang ditutup.",
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp),
+                color = Color.White.copy(alpha = 0.45f)
+            )
+        }
+    }
+
+    // Dialog Edit Pengingat (Multi-Reminder)
+    editingReminder?.let { reminder ->
+        EditReminderDialog(
+            reminder = reminder,
+            canDelete = reminders.size > 1,
+            onDismiss = { editingReminder = null },
+            onConfirm = { label, h, m, days ->
+                onUpdateReminder(reminder.id, label, h, m, days)
+                editingReminder = null
+            },
+            onDelete = {
+                onDeleteReminder(reminder.id)
+                editingReminder = null
+            }
+        )
+    }
+
+    // Dialog Tambah Pengingat Baru
+    if (showAddDialog) {
+        AddReminderDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { label, h, m, days ->
+                onAddReminder(label, h, m, days)
+                showAddDialog = false
+            }
+        )
     }
 }

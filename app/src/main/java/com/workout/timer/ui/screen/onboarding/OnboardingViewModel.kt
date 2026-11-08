@@ -19,31 +19,31 @@ enum class OnboardingGoal(
 ) {
     HIIT(
         id = "HIIT",
-        title = "HIIT & Fat Burning",
-        subtitle = "Maksimalkan denyut jantung & bakar kalori tinggi",
+        title = "HIIT & Pembakaran Lemak",
+        subtitle = "Tingkatkan denyut jantung & efisiensi metabolisme tubuh",
         iconRes = com.workout.timer.R.drawable.ic_cat_hiit,
-        accentHex = 0xFFA4FF00 // Volt Lime
+        accentHex = 0xFFFFFFFF
     ),
     STRENGTH(
         id = "Strength",
-        title = "Strength & Muscle",
-        subtitle = "Bentuk massa otot & tingkatkan daya tahan fisik",
+        title = "Kekuatan & Pembentukan Otot",
+        subtitle = "Bentuk massa otot & perkuat ketahanan fisik bertahap",
         iconRes = com.workout.timer.R.drawable.ic_cat_strength,
-        accentHex = 0xFFFFB800 // Amber
+        accentHex = 0xFFFFFFFF
     ),
     MOBILITY(
         id = "Mobility",
-        title = "Mobility & Yoga",
-        subtitle = "Lepaskan ketegangan sendi & perbaiki postur",
+        title = "Mobilitas & Fleksibilitas",
+        subtitle = "Pelepasan sendi kaku, elastisitas otot & perbaikan postur",
         iconRes = com.workout.timer.R.drawable.ic_cat_mobility,
-        accentHex = 0xFF00F5EA // Electric Cyan
+        accentHex = 0xFFFFFFFF
     ),
     CORE(
         id = "Core",
-        title = "Core & Abs Definition",
-        subtitle = "Perkuat stabilitas otot inti & perut kencang",
+        title = "Penguatan Otot Inti (Core)",
+        subtitle = "Stabilitas postur, kekuatan pinggang & definisi perut",
         iconRes = com.workout.timer.R.drawable.ic_cat_core,
-        accentHex = 0xFFFF3366 // Neon Rose
+        accentHex = 0xFFFFFFFF
     )
 }
 
@@ -52,9 +52,9 @@ enum class ExperienceLevel(
     val label: String,
     val description: String
 ) {
-    BEGINNER("Beginner", "Pemula", "Fokus pembentukan kebiasaan & tempo rileks"),
-    INTERMEDIATE("Intermediate", "Menengah", "Intensitas seimbang untuk hasil konsisten"),
-    ADVANCED("Advanced", "Lanjutan", "Daya tahan maksimal dengan jeda istirahat singkat")
+    BEGINNER("Beginner", "Pemula", "Fokus pembentukan kebiasaan dasar & tempo terkontrol"),
+    INTERMEDIATE("Intermediate", "Menengah", "Intensitas seimbang untuk progres bertahap"),
+    ADVANCED("Advanced", "Mahir", "Tantangan fisik optimal dengan tempo dinamis")
 }
 
 enum class ThemeAccent(
@@ -62,10 +62,10 @@ enum class ThemeAccent(
     val label: String,
     val colorHex: Long
 ) {
-    VOLT_LIME("VoltLime", "Volt Lime", 0xFFA4FF00),
-    ELECTRIC_CYAN("ElectricCyan", "Electric Cyan", 0xFF00F5EA),
-    AMBER("Amber", "Cyber Amber", 0xFFFFB800),
-    NEON_ROSE("NeonRose", "Neon Rose", 0xFFFF3366)
+    VOLT_LIME("VoltLime", "Pure Minimalist", 0xFFFFFFFF),
+    ELECTRIC_CYAN("ElectricCyan", "Silver Slate", 0xFF94A3B8),
+    AMBER("Amber", "Muted Amber", 0xFFF59E0B),
+    NEON_ROSE("NeonRose", "Crimson Frost", 0xFFF43F5E)
 }
 
 @HiltViewModel

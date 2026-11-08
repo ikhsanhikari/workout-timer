@@ -57,9 +57,12 @@ class RoutineDetailViewModel @Inject constructor(
     /**
      * Menduplikasi rutinitas saat ini beserta seluruh blok dan gerakannya.
      */
-    fun duplicateRoutine(onSuccess: (Long) -> Unit) {
+    fun duplicateRoutine(
+        customName: String? = null,
+        onSuccess: (Long) -> Unit
+    ) {
         viewModelScope.launch {
-            val newId = repository.duplicateRoutine(routineId)
+            val newId = repository.duplicateRoutine(routineId, customName)
             if (newId != null && newId > 0) {
                 onSuccess(newId)
             }

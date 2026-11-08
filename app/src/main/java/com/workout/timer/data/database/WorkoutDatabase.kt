@@ -94,7 +94,10 @@ abstract class WorkoutDatabase : RoomDatabase() {
         @Volatile
         private var appContext: Context? = null
 
-        fun getInstance(context: Context, scope: CoroutineScope): WorkoutDatabase {
+        fun getInstance(
+            context: Context,
+            scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+        ): WorkoutDatabase {
             appContext = context.applicationContext
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(

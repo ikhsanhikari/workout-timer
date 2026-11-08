@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -28,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +59,7 @@ fun RoutineDetailScreen(
     onNavigateToEdit: () -> Unit,
     onNavigateToPlayer: () -> Unit,
     onNavigateToNewRoutine: ((Long) -> Unit)? = null,
+    onNavigateToEditRoutine: ((Long) -> Unit)? = null,
     viewModel: RoutineDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +68,7 @@ fun RoutineDetailScreen(
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showDuplicateDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = BackgroundPrimary,
@@ -76,7 +82,8 @@ fun RoutineDetailScreen(
                             .padding(start = 8.dp)
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(SurfaceCard.copy(alpha = 0.8f))
+                            .background(Color(0xFF161922).copy(alpha = 0.85f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onNavigateBack()
@@ -84,9 +91,9 @@ fun RoutineDetailScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali",
-                            tint = TextPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -95,10 +102,11 @@ fun RoutineDetailScreen(
                     // Favorite toggle
                     Box(
                         modifier = Modifier
-                            .padding(end = 4.dp)
+                            .padding(end = 6.dp)
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(SurfaceCard.copy(alpha = 0.8f))
+                            .background(Color(0xFF161922).copy(alpha = 0.85f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 routine?.let { viewModel.toggleFavorite() }
@@ -109,37 +117,28 @@ fun RoutineDetailScreen(
                             imageVector = if (routine?.isFavorite == true) Icons.Filled.Favorite
                             else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Favorit",
-                            tint = if (routine?.isFavorite == true) AccentHighIntensity else TextPrimary,
+                            tint = if (routine?.isFavorite == true) Color(0xFFEF4444) else Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    // Duplicate button
+                    // Duplicate button (Interactive Frosted Glass Dialog)
                     Box(
                         modifier = Modifier
-                            .padding(end = 4.dp)
+                            .padding(end = 6.dp)
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(SurfaceCard.copy(alpha = 0.8f))
+                            .background(Color(0xFF161922).copy(alpha = 0.85f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
                             .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.duplicateRoutine { newId ->
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "Rutinitas berhasil diduplikasi!",
-                                            actionLabel = "Buka"
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            onNavigateToNewRoutine?.invoke(newId)
-                                        }
-                                    }
-                                }
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showDuplicateDialog = true
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = "Duplikat",
-                            tint = TextPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(19.dp)
                         )
                     }
@@ -149,7 +148,8 @@ fun RoutineDetailScreen(
                             .padding(end = 8.dp)
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(SurfaceCard.copy(alpha = 0.8f))
+                            .background(Color(0xFF161922).copy(alpha = 0.85f))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onNavigateToEdit()
@@ -159,7 +159,7 @@ fun RoutineDetailScreen(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit",
-                            tint = TextPrimary,
+                            tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -172,8 +172,8 @@ fun RoutineDetailScreen(
                 isReady = !uiState.isLoading && uiState.totalExercises > 0,
                 accentColor = routine?.let { r ->
                     runCatching { Color(android.graphics.Color.parseColor(r.accentColor)) }
-                        .getOrDefault(AccentWork)
-                } ?: AccentWork,
+                        .getOrDefault(Color.White)
+                } ?: Color.White,
                 onStart = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onNavigateToPlayer()
@@ -229,6 +229,28 @@ fun RoutineDetailScreen(
                 }
             }
         }
+    }
+
+    // ── Dialog Duplikasi Rutinitas (Interactive Pure Frosted Glass Modal) ──
+    if (showDuplicateDialog && routine != null) {
+        DuplicateRoutineDialog(
+            originalRoutine = routine,
+            totalDurationSec = uiState.totalDurationSec,
+            totalExercises = uiState.totalExercises,
+            onDismiss = { showDuplicateDialog = false },
+            onDuplicateAndEdit = { newName ->
+                showDuplicateDialog = false
+                viewModel.duplicateRoutine(newName) { newId ->
+                    onNavigateToEditRoutine?.invoke(newId)
+                }
+            },
+            onDuplicateAndView = { newName ->
+                showDuplicateDialog = false
+                viewModel.duplicateRoutine(newName) { newId ->
+                    onNavigateToNewRoutine?.invoke(newId)
+                }
+            }
+        )
     }
 }
 
@@ -686,4 +708,281 @@ private fun formatSeconds(seconds: Int): String {
     val m = seconds / 60
     val s = seconds % 60
     return if (m > 0) "${m}:${s.toString().padStart(2, '0')}" else "${s}s"
+}
+
+// ── Dialog Duplikasi Rutinitas (Pure White Frosted Glass Modal) ──────────────
+
+/**
+ * Dialog Duplikasi Rutinitas Pure White Frosted Glass.
+ *
+ * Menggantikan toast pasif dengan alur interaktif bernilai guna tinggi:
+ * - Menampilkan thumbnail & rangkuman rutinitas asli yang akan disalin.
+ * - Input kustomisasi nama baru yang fleksibel (default: "<Nama> (Salinan)").
+ * - Opsi tindakan dengan kejelasan intensi:
+ *   1. "Duplikat & Langsung Edit": Duplikasi dan langsung masuk ke Workout Builder untuk modifikasi.
+ *   2. "Duplikat & Lihat Detail": Duplikasi dan membuka halaman detail salinan baru.
+ *   3. "Batal": Menutup dialog tanpa menduplikasi data sembarangan.
+ */
+@Composable
+fun DuplicateRoutineDialog(
+    originalRoutine: WorkoutRoutine,
+    totalDurationSec: Int,
+    totalExercises: Int,
+    onDismiss: () -> Unit,
+    onDuplicateAndEdit: (customName: String) -> Unit,
+    onDuplicateAndView: (customName: String) -> Unit
+) {
+    var customName by remember { mutableStateOf("${originalRoutine.name} (Salinan)") }
+    val bannerRes = getCategoryBannerRes(originalRoutine.category)
+    val durationMinutes = (totalDurationSec / 60).coerceAtLeast(1)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(22.dp)),
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF13161E),
+            border = BorderStroke(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.08f)
+                    )
+                )
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header (Icon, Title, Close Button)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.White.copy(alpha = 0.10f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ContentCopy,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
+
+                        Column {
+                            Text(
+                                text = "Duplikat Rutinitas",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Buat salinan mandiri untuk dikustomisasi",
+                                fontSize = 11.5.sp,
+                                color = Color(0xFFA0A5B2)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Tutup",
+                            tint = Color.White.copy(alpha = 0.70f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Source Routine Preview Card
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White.copy(alpha = 0.05f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 64.dp, height = 52.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        ) {
+                            Image(
+                                painter = painterResource(id = bannerRes),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = originalRoutine.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${originalRoutine.category} • $durationMinutes mnt • $totalExercises gerakan",
+                                fontSize = 11.5.sp,
+                                color = Color(0xFFA0A5B2)
+                            )
+                        }
+                    }
+                }
+
+                // Custom Name Field
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Nama Salinan Baru",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFA0A5B2)
+                    )
+
+                    OutlinedTextField(
+                        value = customName,
+                        onValueChange = { customName = it },
+                        singleLine = true,
+                        placeholder = {
+                            Text("Beri nama rutinitas...", fontSize = 13.sp, color = Color(0xFF6B7280))
+                        },
+                        trailingIcon = {
+                            if (customName.isNotEmpty()) {
+                                IconButton(onClick = { customName = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Clear,
+                                        contentDescription = "Hapus",
+                                        tint = Color.White.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color.White,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
+                            focusedContainerColor = Color.White.copy(alpha = 0.04f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.02f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Action Buttons Column
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Option 1: Duplikat & Langsung Edit (Primary Button)
+                    Button(
+                        onClick = {
+                            val nameToUse = customName.ifBlank { "${originalRoutine.name} (Salinan)" }
+                            onDuplicateAndEdit(nameToUse)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Duplikat & Langsung Edit",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.Black
+                        )
+                    }
+
+                    // Option 2: Duplikat & Lihat Detail (Secondary Button)
+                    OutlinedButton(
+                        onClick = {
+                            val nameToUse = customName.ifBlank { "${originalRoutine.name} (Salinan)" }
+                            onDuplicateAndView(nameToUse)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Visibility,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Lihat Detail Rutinitas Baru",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.5.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    // Option 3: Batal
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp)
+                    ) {
+                        Text(
+                            text = "Batal",
+                            color = Color(0xFFA0A5B2),
+                            fontSize = 12.5.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

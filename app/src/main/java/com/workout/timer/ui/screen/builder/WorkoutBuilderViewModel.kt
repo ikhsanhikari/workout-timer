@@ -43,7 +43,7 @@ data class UiExercise(
 data class BuilderUiState(
     val routineName: String = "",
     val category: String = "HIIT",
-    val accentColor: String = "#A4FF00",
+    val accentColor: String = "#FFFFFF",
     val blocks: List<UiBlock> = emptyList(),
     val totalDurationSec: Int = 0,
     val totalExercises: Int = 0,
@@ -58,12 +58,12 @@ data class BuilderUiState(
 
 val PRESET_CATEGORIES = listOf("HIIT", "Strength", "Core", "Mobility", "Cardio", "Flexibility")
 val PRESET_ACCENT_COLORS = listOf(
-    "#A4FF00", // Volt Green (default)
-    "#FA114F", // Neon Crimson
-    "#00F5EA", // Electric Cyan
-    "#FFD60A", // Amber Yellow
-    "#BF5AF2", // Purple
-    "#FF9F0A"  // Orange
+    "#FFFFFF", // Pure White (Frosted Glass standard)
+    "#E2E8F0", // Platinum Silver
+    "#38BDF8", // Electric Blue
+    "#F43F5E", // Rose Red
+    "#F59E0B", // Amber Gold
+    "#A855F7"  // Royal Violet
 )
 
 // ── ViewModel ────────────────────────────────────────────────────────────────

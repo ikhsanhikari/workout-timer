@@ -1,13 +1,16 @@
 package com.workout.timer.ui.screen.settings
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.workout.timer.data.backup.LocalBackupManager
 import com.workout.timer.data.catalog.CatalogSyncManager
 import com.workout.timer.data.catalog.SyncResult
+import com.workout.timer.data.model.WorkoutReminderItem
 import com.workout.timer.data.preferences.UserPreferencesRepository
 import com.workout.timer.data.repository.WorkoutRepository
+import com.workout.timer.util.WorkoutReminderManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,8 +18,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -40,6 +47,13 @@ class SettingsViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5000),
             UserPreferencesRepository.UserPreferences()
         )
+
+    val customReminders: StateFlow<List<WorkoutReminderItem>> = preferencesRepository.customRemindersFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val isAnyReminderActive: StateFlow<Boolean> = customReminders
+        .map { list -> list.any { it.isEnabled } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -98,7 +112,121 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setReminderEnabled(context: android.content.Context, enabled: Boolean) {
+    fun toggleReminder(context: Context, reminderId: String, isEnabled: Boolean) {
+        viewModelScope.launch {
+            val currentList = customReminders.value
+            val updated = currentList.map {
+                if (it.id == reminderId) it.copy(isEnabled = isEnabled) else it
+            }
+            preferencesRepository.saveCustomReminders(updated)
+            val item = updated.find { it.id == reminderId }
+            if (item != null) {
+                if (isEnabled) {
+                    WorkoutReminderManager.scheduleReminderItem(context.applicationContext, item)
+                    _uiState.update { it.copy(snackbarMessage = "Pengingat '${item.label}' diaktifkan") }
+                } else {
+                    WorkoutReminderManager.cancelReminderItem(context.applicationContext, item.id)
+                    _uiState.update { it.copy(snackbarMessage = "Pengingat '${item.label}' dinonaktifkan") }
+                }
+            }
+        }
+    }
+
+    fun updateReminderTime(context: Context, reminderId: String, hour: Int, minute: Int) {
+        viewModelScope.launch {
+            val currentList = customReminders.value
+            val updated = currentList.map {
+                if (it.id == reminderId) it.copy(hour = hour, minute = minute, isEnabled = true) else it
+            }
+            preferencesRepository.saveCustomReminders(updated)
+            val item = updated.find { it.id == reminderId }
+            if (item != null) {
+                WorkoutReminderManager.scheduleReminderItem(context.applicationContext, item)
+                _uiState.update { it.copy(snackbarMessage = "Jam '${item.label}' diatur ke ${String.format(Locale.getDefault(), "%02d:%02d WIB", hour, minute)}") }
+            }
+        }
+    }
+
+    fun toggleReminderDay(context: Context, reminderId: String, dayOfWeek: Int) {
+        viewModelScope.launch {
+            val currentList = customReminders.value
+            val updated = currentList.map { item ->
+                if (item.id == reminderId) {
+                    val days = item.activeDays.toMutableList()
+                    if (days.contains(dayOfWeek)) {
+                        if (days.size > 1) days.remove(dayOfWeek)
+                    } else {
+                        days.add(dayOfWeek)
+                    }
+                    item.copy(activeDays = days.sorted())
+                } else item
+            }
+            preferencesRepository.saveCustomReminders(updated)
+            val item = updated.find { it.id == reminderId }
+            if (item != null && item.isEnabled) {
+                WorkoutReminderManager.scheduleReminderItem(context.applicationContext, item)
+            }
+        }
+    }
+
+    fun addCustomReminder(context: Context, label: String, hour: Int, minute: Int, days: List<Int> = listOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY)) {
+        viewModelScope.launch {
+            val newItem = WorkoutReminderItem(
+                label = label.ifBlank { "Latihan" },
+                hour = hour,
+                minute = minute,
+                activeDays = if (days.isEmpty()) listOf(Calendar.MONDAY) else days.sorted(),
+                isEnabled = true
+            )
+            val currentList = customReminders.value
+            val updated = currentList + newItem
+            preferencesRepository.saveCustomReminders(updated)
+            WorkoutReminderManager.scheduleReminderItem(context.applicationContext, newItem)
+            _uiState.update { it.copy(snackbarMessage = "Pengingat '${newItem.label}' (${String.format(Locale.getDefault(), "%02d:%02d WIB", hour, minute)}) ditambahkan!") }
+        }
+    }
+
+    fun updateFullReminder(context: Context, reminderId: String, label: String, hour: Int, minute: Int, days: List<Int>) {
+        viewModelScope.launch {
+            val currentList = customReminders.value
+            val updated = currentList.map { item ->
+                if (item.id == reminderId) {
+                    item.copy(
+                        label = label.ifBlank { "Latihan" },
+                        hour = hour,
+                        minute = minute,
+                        activeDays = if (days.isEmpty()) listOf(Calendar.MONDAY) else days.sorted(),
+                        isEnabled = true
+                    )
+                } else item
+            }
+            preferencesRepository.saveCustomReminders(updated)
+            val item = updated.find { it.id == reminderId }
+            if (item != null) {
+                WorkoutReminderManager.scheduleReminderItem(context.applicationContext, item)
+                _uiState.update { it.copy(snackbarMessage = "Pengingat '${item.label}' diperbarui!") }
+            }
+        }
+    }
+
+    fun deleteCustomReminder(context: Context, reminderId: String) {
+        viewModelScope.launch {
+            val currentList = customReminders.value
+            if (currentList.size <= 1) {
+                _uiState.update { it.copy(snackbarMessage = "Minimal harus ada 1 pengingat") }
+                return@launch
+            }
+            val itemToDelete = currentList.find { it.id == reminderId }
+            val updated = currentList.filterNot { it.id == reminderId }
+            preferencesRepository.saveCustomReminders(updated)
+            if (itemToDelete != null) {
+                WorkoutReminderManager.cancelReminderItem(context.applicationContext, itemToDelete.id)
+                _uiState.update { it.copy(snackbarMessage = "Pengingat '${itemToDelete.label}' dihapus") }
+            }
+        }
+    }
+
+    fun setReminderEnabled(context: Context, enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setReminderEnabled(enabled)
             val hour = preferencesRepository.reminderHourFlow.first()

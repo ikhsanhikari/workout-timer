@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.workout.timer.data.model.WorkoutReminderItem
+import android.util.Log
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
@@ -27,6 +31,7 @@ class UserPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore = context.dataStore
+    private val gson = Gson()
 
     companion object {
         val KEY_USER_NICKNAME = stringPreferencesKey("user_nickname")
@@ -48,6 +53,9 @@ class UserPreferencesRepository @Inject constructor(
         val KEY_REMINDER_ENABLED = booleanPreferencesKey("reminder_enabled")
         val KEY_REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val KEY_REMINDER_MINUTE = intPreferencesKey("reminder_minute")
+        val KEY_CUSTOM_REMINDERS_JSON = stringPreferencesKey("custom_reminders_json")
+        val KEY_WEEKLY_SCHEDULE_JSON = stringPreferencesKey("weekly_schedule_json")
+        val KEY_ACTIVE_PROGRAM_NAME = stringPreferencesKey("active_program_name")
     }
 
     val catalogVersionFlow: Flow<Int> = dataStore.data
@@ -234,6 +242,63 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit {
             it[KEY_REMINDER_HOUR] = hour
             it[KEY_REMINDER_MINUTE] = minute
+        }
+    }
+
+    val customRemindersFlow: Flow<List<WorkoutReminderItem>> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs ->
+            val json = prefs[KEY_CUSTOM_REMINDERS_JSON]
+            if (!json.isNullOrBlank()) {
+                try {
+                    val type = object : TypeToken<List<WorkoutReminderItem>>() {}.type
+                    val list: List<WorkoutReminderItem>? = gson.fromJson(json, type)
+                    if (!list.isNullOrEmpty()) return@map list
+                } catch (e: Exception) {
+                    Log.e("UserPreferences", "Gagal parse custom reminders", e)
+                }
+            }
+            val enabled = prefs[KEY_REMINDER_ENABLED] ?: false
+            val hour = prefs[KEY_REMINDER_HOUR] ?: 7
+            val minute = prefs[KEY_REMINDER_MINUTE] ?: 0
+            listOf(
+                WorkoutReminderItem(
+                    id = "default_reminder",
+                    label = "Latihan Harian",
+                    hour = hour,
+                    minute = minute,
+                    isEnabled = enabled
+                )
+            )
+        }
+
+    suspend fun saveCustomReminders(reminders: List<WorkoutReminderItem>) {
+        val json = gson.toJson(reminders)
+        dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_REMINDERS_JSON] = json
+            val firstEnabled = reminders.firstOrNull { it.isEnabled } ?: reminders.firstOrNull()
+            if (firstEnabled != null) {
+                prefs[KEY_REMINDER_ENABLED] = reminders.any { it.isEnabled }
+                prefs[KEY_REMINDER_HOUR] = firstEnabled.hour
+                prefs[KEY_REMINDER_MINUTE] = firstEnabled.minute
+            } else {
+                prefs[KEY_REMINDER_ENABLED] = false
+            }
+        }
+    }
+
+    val weeklyScheduleJsonFlow: Flow<String?> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_WEEKLY_SCHEDULE_JSON] }
+
+    val activeProgramNameFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_ACTIVE_PROGRAM_NAME] ?: "Athletic Split 4 Hari" }
+
+    suspend fun saveWeeklySchedule(json: String, programName: String = "Kustom") {
+        dataStore.edit {
+            it[KEY_WEEKLY_SCHEDULE_JSON] = json
+            it[KEY_ACTIVE_PROGRAM_NAME] = programName
         }
     }
 }

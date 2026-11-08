@@ -173,29 +173,110 @@ object WorkoutReminderManager {
     }
 
     fun rescheduleNextDay(context: Context) {
-        val appContext = context.applicationContext
-        CoroutineScope(Dispatchers.IO).launch {
-            val prefs = UserPreferencesRepository(appContext)
-            val isEnabled = prefs.reminderEnabledFlow.firstOrNull() ?: false
-            if (isEnabled) {
-                val hour = prefs.reminderHourFlow.firstOrNull() ?: 7
-                val minute = prefs.reminderMinuteFlow.firstOrNull() ?: 0
-                scheduleDailyReminder(appContext, hour, minute)
-            }
-        }
+        rescheduleAll(context)
     }
 
     fun rescheduleFromPreferences(context: Context) {
+        rescheduleAll(context)
+    }
+
+    fun scheduleReminderItem(context: Context, item: com.workout.timer.data.model.WorkoutReminderItem) {
+        val appContext = context.applicationContext
+        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+
+        if (!item.isEnabled || item.activeDays.isEmpty()) {
+            cancelReminderItem(context, item.id)
+            return
+        }
+
+        val intent = Intent(appContext, WorkoutReminderReceiver::class.java).apply {
+            action = WorkoutReminderReceiver.ACTION_REMINDER
+            putExtra(WorkoutReminderReceiver.EXTRA_REMINDER_ID, item.id)
+            putExtra(WorkoutReminderReceiver.EXTRA_REMINDER_LABEL, item.label)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            appContext,
+            item.requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val targetMs = calculateNextTriggerTime(item.hour, item.minute, item.activeDays)
+        Log.d(TAG, "Menjadwalkan alarm [${item.label}] pada epoch $targetMs (ReqCode: ${item.requestCode})")
+
+        scheduleAlarmInternal(alarmManager, targetMs, pendingIntent)
+    }
+
+    fun cancelReminderItem(context: Context, reminderId: String) {
+        val appContext = context.applicationContext
+        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val requestCode = reminderId.hashCode() and 0x7FFFFFFF
+
+        val intent = Intent(appContext, WorkoutReminderReceiver::class.java).apply {
+            action = WorkoutReminderReceiver.ACTION_REMINDER
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            appContext,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+            Log.d(TAG, "Alarm pengingat [$reminderId] dibatalkan.")
+        }
+    }
+
+    fun calculateNextTriggerTime(hour: Int, minute: Int, activeDays: List<Int>): Long {
+        val now = Calendar.getInstance()
+        var bestCandidate: Long = Long.MAX_VALUE
+
+        // Periksa 14 hari ke depan untuk menemukan hari dan jam berikutnya yang cocok
+        for (dayOffset in 0..14) {
+            val candidate = Calendar.getInstance().apply {
+                timeInMillis = now.timeInMillis
+                add(Calendar.DAY_OF_YEAR, dayOffset)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val dayOfWeek = candidate.get(Calendar.DAY_OF_WEEK)
+            if (activeDays.contains(dayOfWeek) && candidate.timeInMillis > now.timeInMillis) {
+                if (candidate.timeInMillis < bestCandidate) {
+                    bestCandidate = candidate.timeInMillis
+                    break
+                }
+            }
+        }
+
+        return if (bestCandidate != Long.MAX_VALUE) bestCandidate else {
+            now.apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }
+    }
+
+    fun rescheduleAll(context: Context) {
         val appContext = context.applicationContext
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = UserPreferencesRepository(appContext)
-            val isEnabled = prefs.reminderEnabledFlow.firstOrNull() ?: false
-            if (isEnabled) {
-                val hour = prefs.reminderHourFlow.firstOrNull() ?: 7
-                val minute = prefs.reminderMinuteFlow.firstOrNull() ?: 0
-                scheduleDailyReminder(appContext, hour, minute)
-            } else {
-                cancelReminder(appContext)
+            val list = prefs.customRemindersFlow.firstOrNull() ?: emptyList()
+            for (item in list) {
+                if (item.isEnabled) {
+                    scheduleReminderItem(appContext, item)
+                } else {
+                    cancelReminderItem(appContext, item.id)
+                }
             }
         }
     }
@@ -230,5 +311,34 @@ object WorkoutReminderManager {
             diffMin == 1 -> "Berbunyi dalam 1 menit lagi ($timeString)"
             else -> "Segera berbunyi ($timeString)"
         }
+    }
+
+    /**
+     * Memformat daftar hari aktif menjadi ringkasan yang rapi dan ringkas untuk UI.
+     * Contoh: "Setiap Hari", "Hari Kerja (Sen-Jum)", "Akhir Pekan (Sab-Min)", "Sen, Rab, Jum".
+     */
+    fun formatDaysSummary(activeDays: List<Int>): String {
+        if (activeDays.isEmpty()) return "Nonaktif"
+        if (activeDays.size >= 7) return "Setiap Hari"
+        val sorted = activeDays.sorted()
+        val weekdays = listOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
+        val weekends = listOf(Calendar.SATURDAY, Calendar.SUNDAY)
+        if (sorted == weekdays) return "Hari Kerja (Sen-Jum)"
+        if (sorted == weekends) return "Akhir Pekan (Sab-Min)"
+
+        val dayNames = mapOf(
+            Calendar.MONDAY to "Sen",
+            Calendar.TUESDAY to "Sel",
+            Calendar.WEDNESDAY to "Rab",
+            Calendar.THURSDAY to "Kam",
+            Calendar.FRIDAY to "Jum",
+            Calendar.SATURDAY to "Sab",
+            Calendar.SUNDAY to "Min"
+        )
+        val dayOrder = listOf(
+            Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+            Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY
+        )
+        return dayOrder.filter { sorted.contains(it) }.mapNotNull { dayNames[it] }.joinToString(", ")
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -783,7 +784,7 @@ private fun RoutineHeader(
 
             // Accent Color Chip (Frosted White Glass)
             val parsedColor = runCatching { Color(android.graphics.Color.parseColor(accentColor)) }
-                .getOrDefault(AccentWork)
+                .getOrDefault(Color.White)
             Box {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -825,7 +826,7 @@ private fun RoutineHeader(
                     ) {
                         PRESET_ACCENT_COLORS.forEach { colorHex ->
                             val col = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
-                                .getOrDefault(AccentWork)
+                                .getOrDefault(Color.White)
                             DropdownMenuItem(
                                 text = {
                                     Row(
@@ -1528,7 +1529,7 @@ private fun ExerciseRowCompact(
                     ) {
                         DropdownMenuItem(
                             text = { Text("Pilih dari Kamus Master", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.MenuBook, null, tint = Color.White) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = Color.White) },
                             onClick = { onOpenLibraryPicker(); showExerciseMenu = false }
                         )
                         DropdownMenuItem(
@@ -1794,7 +1795,7 @@ private fun BlockFooterCompact(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.MenuBook,
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
                     tint = TextPrimary,
                     modifier = Modifier.size(16.dp)

@@ -35,6 +35,9 @@ sealed class Screen(val route: String) {
         fun createRoute(routineId: Long) = "detail/$routineId"
     }
 
+    /** Jadwal & Program Latihan Mingguan Hybrid (Latihan Tab) */
+    data object WorkoutPlan : Screen("plan")
+
     /** Riwayat Latihan (History Screen) */
     data object WorkoutHistory : Screen("history")
 

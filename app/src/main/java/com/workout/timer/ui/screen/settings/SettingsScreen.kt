@@ -1,42 +1,42 @@
 package com.workout.timer.ui.screen.settings
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import kotlinx.coroutines.launch
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,25 +46,61 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workout.timer.R
-import com.workout.timer.ui.screen.onboarding.ThemeAccent
-import com.workout.timer.ui.theme.*
+import com.workout.timer.data.model.WorkoutReminderItem
+import com.workout.timer.ui.component.AddReminderDialog
+import com.workout.timer.ui.component.EditReminderDialog
+import com.workout.timer.ui.component.FrostedReminderCard
+import com.workout.timer.ui.screen.home.HomeBottomNavigation
+import com.workout.timer.ui.screen.home.HomeTab
 import com.workout.timer.util.DeviceReadinessManager
-import com.workout.timer.util.WorkoutReminderManager
+import java.util.Calendar
+import java.util.Locale
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pure Frosted Glass Theme Constants
+// ────────────────────────────────────────────────────────────────────────────
+
+private val TextMuted = Color(0xFF8E95A5)
+private val GlassBackground = Color(0xFF101217)
+private val GlassBorderBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.20f),
+        Color.White.copy(alpha = 0.08f),
+        Color.White.copy(alpha = 0.03f)
+    )
+)
+private val GlassBorderSelected = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.45f),
+        Color.White.copy(alpha = 0.15f)
+    )
+)
 
 /**
- * SettingsScreen — Layar Pengaturan & Preferensi Terpusat (Standard Frosted Glass).
+ * SettingsScreen — Layar Pengaturan & Profil (Streamlined Accordion Edition).
  *
- * Mengikuti pedoman desain AMOLED Pure Black (#07080B), Pure White Frosted Glass,
- * dan tipografi minimalis tanpa elemen warna-warni yang mengganggu fokus.
+ * Pembaruan esensial:
+ * 1. Seluruh accordion DEFAULT TERTUTUP (clean & tidak intimidating saat pertama dibuka).
+ * 2. Hanya menyisakan 4 kategori pengaturan yang benar-benar esensial dan fungsional:
+ *    - 👤 Profil & Target Kebugaran
+ *    - ⏰ Pengingat Latihan (Sinkron dengan Beranda, multi-reminder)
+ *    - 🔊 Audio & Tampilan Latihan (TTS, BGM, Beep, Haptic, Video)
+ *    - 💾 Cadangan & Kesiapan Sistem (Ekspor/Impor ZIP, Izin Notifikasi & Baterai)
+ * 3. Menghilangkan seluruh teks deskripsi panjang dan elemen fluff yang tidak terpakai.
+ * 4. Dilengkapi ikon-ikon hidup dan bottom bar persisten.
  */
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToWorkoutPlan: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val haptic = LocalHapticFeedback.current
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val reminders by viewModel.customReminders.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -88,10 +124,23 @@ fun SettingsScreen(
     }
 
     var showEditNameDialog by remember { mutableStateOf(false) }
+    var showAddReminderDialog by remember { mutableStateOf(false) }
+    var editingReminder by remember { mutableStateOf<WorkoutReminderItem?>(null) }
     var tempNickname by remember { mutableStateOf("") }
 
+    // DEFAULT: SEMUA ACCORDION TERTUTUP (emptySet)
+    var openSections by remember { mutableStateOf(emptySet<String>()) }
+
+    fun toggleSection(sectionKey: String) {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        openSections = if (openSections.contains(sectionKey)) {
+            openSections - sectionKey
+        } else {
+            openSections + sectionKey
+        }
+    }
+
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var isNotificationGranted by remember {
@@ -122,243 +171,335 @@ fun SettingsScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFF07080B)
+        containerColor = Color(0xFF07080B),
+        bottomBar = {
+            HomeBottomNavigation(
+                currentTab = HomeTab.PROFIL,
+                onTabSelected = { tab ->
+                    when (tab) {
+                        HomeTab.BERANDA -> onNavigateToHome()
+                        HomeTab.LATIHAN -> onNavigateToWorkoutPlan()
+                        HomeTab.PROGRESS -> onNavigateToHistory()
+                        HomeTab.PROFIL -> { /* Sedang di Profil */ }
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Ambient Radial Background Glow Canvas (Subtle Pure White Frosted Depth)
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val canvasW = size.width
-                val canvasH = size.height
-
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.035f),
-                            Color.Transparent
-                        ),
-                        center = Offset(canvasW * 0.5f, canvasH * 0.10f),
-                        radius = canvasW * 0.85f
-                    ),
-                    radius = canvasW * 0.85f,
-                    center = Offset(canvasW * 0.5f, canvasH * 0.10f)
-                )
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
-                    .padding(top = 44.dp, bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp)
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Top Header with Back button
+                // ── Top Header ───────────────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateBack()
-                        },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                    Column {
+                        Text(
+                            text = "Pengaturan & Profil",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 22.sp,
+                                letterSpacing = (-0.5).sp
+                            ),
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Preferensi mandiri & kustomisasi latihan",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = TextMuted
                         )
                     }
 
-                    Column {
-                        Text(
-                            text = "PENGATURAN",
-                            style = TextStyle(
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 22.sp,
-                                color = Color.White,
-                                letterSpacing = 1.2.sp
+                    // Settings badge icon
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(19.dp)
                             )
-                        )
-                        Text(
-                            text = "Kustomisasi Pengalaman Latihan Mandiri",
-                            style = TextStyle(
-                                fontFamily = FontFamily.SansSerif,
-                                fontWeight = FontWeight.Normal,
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.60f)
-                            )
-                        )
+                        }
                     }
                 }
 
-                // ── SECTION 1: PROFIL & IDENTITAS VISUAL ─────────────────────
-                SettingsSectionTitle("PROFIL & TEMA VISUAL")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // ── ACCORDION 1: PROFIL & TARGET KEBUGARAN ────────────────────
+                SettingsAccordionCard(
+                    icon = Icons.Default.Person,
+                    title = "Profil & Target Kebugaran",
+                    badgeText = prefs.nickname.ifBlank { "Atlet" },
+                    isExpanded = openSections.contains("profile"),
+                    onToggle = { toggleSection("profile") }
                 ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    // Profile Info & Edit Name
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Avatar + Name + Edit
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.08f))
-                                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_flame_streak),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_flame_streak),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
 
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = prefs.nickname.ifBlank { "Atlet" },
-                                    style = TextStyle(
-                                        fontFamily = FontFamily.SansSerif,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 17.sp,
-                                        color = Color.White
-                                    )
-                                )
-                                Text(
-                                    text = "Target: ${prefs.primaryGoal} • Level: ${prefs.experienceLevel}",
-                                    style = TextStyle(
-                                        fontFamily = FontFamily.SansSerif,
-                                        fontWeight = FontWeight.Normal,
-                                        fontSize = 11.5.sp,
-                                        color = Color.White.copy(alpha = 0.60f)
-                                    )
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = prefs.nickname.ifBlank { "Atlet" },
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                ),
+                                color = Color.White
+                            )
+                            Text(
+                                text = "${prefs.primaryGoal} • ${prefs.experienceLevel}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                color = TextMuted
+                            )
+                        }
 
-                            IconButton(
-                                onClick = {
-                                    tempNickname = prefs.nickname
-                                    showEditNameDialog = true
-                                },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                                    .border(BorderStroke(0.8.dp, Color.White.copy(alpha = 0.18f)), CircleShape)
+                        Surface(
+                            onClick = {
+                                tempNickname = prefs.nickname
+                                showEditNameDialog = true
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.White.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Ubah Nama",
-                                    tint = Color.White.copy(alpha = 0.85f),
-                                    modifier = Modifier.size(17.dp)
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
                                 )
+                                Text("Ubah", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
+                    }
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.06f))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                        // Theme Accent Palette
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "WARNA AKSEN ENERGI",
-                                style = TextStyle(
-                                    fontFamily = FontFamily.SansSerif,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.50f),
-                                    letterSpacing = 1.sp
-                                )
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Target Kebugaran Selector
+                    Text("Target Utama", fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = TextMuted)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("Kebugaran Umum", "Bakar Lemak", "Bentuk Otot").forEach { goal ->
+                            val isSelected = prefs.primaryGoal.equals(goal, ignoreCase = true)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.10f)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.updatePrimaryGoal(goal) }
                             ) {
-                                ThemeAccent.entries.forEach { accent ->
-                                    val isSelected = accent.id == prefs.themeAccent
-                                    val color = Color(accent.colorHex)
-
-                                    Surface(
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (isSelected) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f),
-                                        border = BorderStroke(
-                                            if (isSelected) 1.2.dp else 0.8.dp,
-                                            if (isSelected) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.12f)
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = goal,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 10.5.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         ),
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clickable {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                viewModel.updateThemeAccent(accent.id)
-                                            }
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(vertical = 10.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(18.dp)
-                                                    .clip(CircleShape)
-                                                    .background(color)
-                                                    .then(
-                                                        if (isSelected) Modifier.border(BorderStroke(1.5.dp, Color.White), CircleShape)
-                                                        else Modifier
-                                                    )
-                                            )
-                                            Text(
-                                                text = accent.label.substringBefore(" "),
-                                                style = TextStyle(
-                                                    fontFamily = FontFamily.SansSerif,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    fontSize = 10.5.sp,
-                                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f)
-                                                )
-                                            )
-                                        }
-                                    }
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.60f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Tingkat Pengalaman Selector
+                    Text("Tingkat Pengalaman", fontSize = 11.5.sp, fontWeight = FontWeight.Medium, color = TextMuted)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("Pemula", "Menengah", "Mahir").forEach { level ->
+                            val isSelected = prefs.experienceLevel.equals(level, ignoreCase = true)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) Color.White.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.10f)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.updateExperienceLevel(level) }
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = level,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.60f)
+                                    )
                                 }
                             }
                         }
                     }
                 }
 
-                // ── SECTION 2: AUDIO & PELATIH SUARA ─────────────────────────
-                SettingsSectionTitle("SUARA & PELATIH SUARA (OFFLINE)")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
+                // ── ACCORDION 2: PENGINGAT LATIHAN (MULTI-REMINDER) ───────────
+                val activeRemindersCount = reminders.count { it.isEnabled }
+                SettingsAccordionCard(
+                    icon = Icons.Default.NotificationsActive,
+                    title = "Pengingat Latihan",
+                    badgeText = "$activeRemindersCount Aktif",
+                    isExpanded = openSections.contains("reminders"),
+                    onToggle = { toggleSection("reminders") }
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        SettingsToggleRow(
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Reminders List (Ultra-clean Single-row Frosted Glass Card)
+                        reminders.forEach { reminder ->
+                            FrostedReminderCard(
+                                reminder = reminder,
+                                onToggle = { isEnabled ->
+                                    if (isEnabled && !isNotificationGranted) {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            DeviceReadinessManager.openNotificationSettings(context)
+                                        }
+                                    }
+                                    viewModel.toggleReminder(context, reminder.id, isEnabled)
+                                },
+                                onClick = {
+                                    editingReminder = reminder
+                                }
+                            )
+                        }
+
+                        // Action Buttons: + Tambah & Tes
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                onClick = { showAddReminderDialog = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(38.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Tambah Pengingat", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+
+                            Surface(
+                                onClick = {
+                                    if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    viewModel.testReminderNotification(context)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.05f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text("Uji Notif", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── ACCORDION 3: AUDIO & TAMPILAN LATIHAN ─────────────────────
+                val prefActiveCount = listOf(
+                    prefs.voiceCoachEnabled,
+                    prefs.bgmEnabled,
+                    prefs.beepEnabled,
+                    prefs.hapticEnabled,
+                    prefs.videoEnabled
+                ).count { it }
+
+                SettingsAccordionCard(
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                    title = "Audio & Tampilan Latihan",
+                    badgeText = "$prefActiveCount/5 Aktif",
+                    isExpanded = openSections.contains("preferences"),
+                    onToggle = { toggleSection("preferences") }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        SettingsToggleRowSimple(
                             icon = Icons.Default.RecordVoiceOver,
-                            title = "Pelatih Suara Lokal (TTS)",
-                            subtitle = "Aba-aba suara untuk persiapan, mulai, & setengah jalan",
+                            title = "Pelatih Suara (TTS)",
                             checked = prefs.voiceCoachEnabled,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -366,12 +507,11 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        SettingsToggleRow(
+                        SettingsToggleRowSimple(
                             icon = Icons.Default.MusicNote,
-                            title = "Musik Latar Adaptif (BGM)",
-                            subtitle = "Musik energik yang meredup otomatis saat istirahat",
+                            title = "Musik Latar (BGM)",
                             checked = prefs.bgmEnabled,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -379,12 +519,11 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        SettingsToggleRow(
-                            icon = Icons.AutoMirrored.Filled.VolumeUp,
+                        SettingsToggleRowSimple(
+                            icon = Icons.Default.Timer,
                             title = "Nada Hitung Mundur (Beep)",
-                            subtitle = "Suara chime studio pada detik 3, 2, 1",
                             checked = prefs.beepEnabled,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -392,230 +531,47 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        SettingsToggleRow(
+                        SettingsToggleRowSimple(
                             icon = Icons.Default.Vibration,
                             title = "Getaran Haptic Feedback",
-                            subtitle = "Sentuhan getaran presisi saat pergantian interval",
                             checked = prefs.hapticEnabled,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 viewModel.setHapticEnabled(it)
                             }
                         )
-                    }
-                }
 
-                // ── SECTION 3: PLAYER & VIDEO ────────────────────────────────
-                SettingsSectionTitle("LAYAR & PEMUTAR VIDEO")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        SettingsToggleRow(
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+
+                        SettingsToggleRowSimple(
                             icon = Icons.Default.Videocam,
-                            title = "Tampilkan Video Gerakan",
-                            subtitle = "Matikan untuk Pure Focus Mode (lebih hemat baterai)",
+                            title = "Video Gerakan Latihan",
                             checked = prefs.videoEnabled,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 viewModel.setVideoEnabled(it)
                             }
                         )
-
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(horizontal = 16.dp))
-
-                        SettingsInfoRow(
-                            icon = Icons.Default.WbSunny,
-                            title = "Layar Tetap Menyala",
-                            value = "Otomatis Aktif"
-                        )
                     }
                 }
 
-                // ── SECTION 4: PENGINGAT & KONSISTENSI HARIAN ─────────────────
-                SettingsSectionTitle("PENGINGAT & DISIPLIN HARIAN")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
+                // ── ACCORDION 4: CADANGAN & KESIAPAN SISTEM ──────────────────
+                val systemReady = isNotificationGranted && isBatteryOptimizationIgnored
+                SettingsAccordionCard(
+                    icon = Icons.Default.FolderZip,
+                    title = "Cadangan & Kesiapan Sistem",
+                    badgeText = if (systemReady) "Optimal ✓" else "Perlu Izin",
+                    isExpanded = openSections.contains("system_backup"),
+                    onToggle = { toggleSection("system_backup") }
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                        SettingsToggleRow(
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        // Kesiapan Sistem
+                        SettingsActionTileSimple(
                             icon = Icons.Default.Notifications,
-                            title = "Pengingat Latihan Harian",
-                            subtitle = "Alarm offline lokal untuk menjaga konsistensi streak Anda",
-                            checked = prefs.reminderEnabled,
-                            onCheckedChange = { isEnabled ->
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                if (isEnabled && !isNotificationGranted) {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        DeviceReadinessManager.openNotificationSettings(context)
-                                    }
-                                }
-                                viewModel.setReminderEnabled(context, isEnabled)
-                            }
-                        )
-
-                        if (prefs.reminderEnabled) {
-                            HorizontalDivider(
-                                color = Color.White.copy(alpha = 0.06f),
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-
-                            val reminderDesc = WorkoutReminderManager.getNextReminderDescription(
-                                prefs.reminderHour,
-                                prefs.reminderMinute
-                            )
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Waktu Pengingat",
-                                        style = TextStyle(
-                                            fontFamily = FontFamily.SansSerif,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp,
-                                            color = Color.White
-                                        )
-                                    )
-                                    Text(
-                                        text = reminderDesc,
-                                        style = TextStyle(
-                                            fontFamily = FontFamily.SansSerif,
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 12.sp,
-                                            color = Color.White.copy(alpha = 0.65f)
-                                        )
-                                    )
-                                }
-
-                                Surface(
-                                    onClick = {
-                                        android.app.TimePickerDialog(
-                                            context,
-                                            { _, hourOfDay, minute ->
-                                                viewModel.setReminderTime(context, hourOfDay, minute)
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar(
-                                                        "Pengingat diset ke ${String.format("%02d:%02d", hourOfDay, minute)} WIB"
-                                                    )
-                                                }
-                                            },
-                                            prefs.reminderHour,
-                                            prefs.reminderMinute,
-                                            true
-                                        ).show()
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = Color.White.copy(alpha = 0.12f),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
-                                ) {
-                                    Text(
-                                        text = String.format("%02d:%02d", prefs.reminderHour, prefs.reminderMinute),
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                        style = TextStyle(
-                                            fontFamily = FontFamily.SansSerif,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = Color.White
-                                        )
-                                    )
-                                }
-                            }
-
-                            HorizontalDivider(
-                                color = Color.White.copy(alpha = 0.06f),
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-
-                            // Quick Testing Buttons
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                            requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                        viewModel.testReminderNotification(context)
-                                    },
-                                    modifier = Modifier.weight(1f).height(38.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color.White.copy(alpha = 0.05f),
-                                        contentColor = Color.White
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 6.dp)
-                                ) {
-                                    Text("Tes Notif Langsung", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
-                                }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                            requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                        viewModel.testReminderIn10Seconds(context)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Alarm pengingat akan berbunyi dalam 10 detik!")
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f).height(38.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color.White.copy(alpha = 0.05f),
-                                        contentColor = Color.White
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 6.dp)
-                                ) {
-                                    Text("Uji Alarm 10 Detik", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── SECTION 5: KESIAPAN PERANGKAT & LATAR BELAKANG ───────────
-                SettingsSectionTitle("KESIAPAN PERANGKAT & LATAR BELAKANG")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        // 1. Izin Notifikasi (Live Lockscreen Timer)
-                        SettingsActionTile(
-                            icon = Icons.Default.NotificationsActive,
-                            title = "Notifikasi & Layar Kunci",
-                            subtitle = if (isNotificationGranted) {
-                                "Live timer & kontrol jeda/lanjut aktif di layar kunci"
-                            } else {
-                                "Diperlukan agar waktu timer terlihat saat HP terkunci di saku"
-                            },
+                            title = "Izin Notifikasi Layar Kunci",
                             actionLabel = if (isNotificationGranted) "Aktif ✓" else "Izinkan",
-                            isLoading = false,
                             onClick = {
                                 if (!isNotificationGranted) {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -629,205 +585,266 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        // 2. Proteksi Penghemat Baterai (Doze Mode)
-                        SettingsActionTile(
+                        SettingsActionTileSimple(
                             icon = Icons.Default.BatteryChargingFull,
                             title = "Proteksi Pembekuan Baterai",
-                            subtitle = if (isBatteryOptimizationIgnored) {
-                                "Kekebalan penuh: OS tidak akan membekukan timer saat layar padam"
-                            } else {
-                                "Dibatasi: Sistem dapat mematikan timer saat layar mati lama di saku"
-                            },
-                            actionLabel = if (isBatteryOptimizationIgnored) "Aman ✓" else "Buka Proteksi",
-                            isLoading = false,
+                            actionLabel = if (isBatteryOptimizationIgnored) "Aman ✓" else "Bebaskan",
                             onClick = {
                                 DeviceReadinessManager.requestIgnoreBatteryOptimization(context)
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        // 3. Foreground Health Service Status
-                        SettingsInfoRow(
-                            icon = Icons.Default.Security,
-                            title = "Layanan Timer Tingkat Sistem",
-                            value = "Foreground Health"
-                        )
-                    }
-                }
-
-                // ── SECTION 5: DATA, KATALOG & BACKUP ────────────────────────
-                SettingsSectionTitle("MANAJEMEN DATA & PEMULIHAN")
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        // Sinkronisasi Katalog
-                        SettingsActionTile(
-                            icon = Icons.Default.CloudSync,
-                            title = "Sinkronisasi Katalog 40+ Latihan",
-                            subtitle = "Periksa pembaruan rutinitas bawaan dari repository",
-                            actionLabel = if (uiState.isSyncing) "Menyinkronkan..." else "Sinkronkan",
-                            isLoading = uiState.isSyncing,
-                            onClick = { viewModel.syncCatalog() }
-                        )
-
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-
-                        // Ekspor Backup ZIP
-                        SettingsActionTile(
+                        // Cadangan Data
+                        SettingsActionTileSimple(
                             icon = Icons.Default.UploadFile,
-                            title = "Ekspor Cadangan Lokal (.zip)",
-                            subtitle = "Simpan semua rutinitas & riwayat ke file arsip ZIP",
-                            actionLabel = if (uiState.isExporting) "Mengekspor..." else "Ekspor",
+                            title = "Ekspor Cadangan (.zip)",
+                            actionLabel = if (uiState.isExporting) "..." else "Ekspor",
                             isLoading = uiState.isExporting,
                             onClick = {
                                 createDocumentLauncher.launch("workout_timer_backup_${System.currentTimeMillis()}.zip")
                             }
                         )
 
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
 
-                        // Impor Backup ZIP
-                        SettingsActionTile(
+                        SettingsActionTileSimple(
                             icon = Icons.Default.Download,
-                            title = "Impor / Pulihkan Cadangan (.zip)",
-                            subtitle = "Pulihkan database latihan Anda dari file cadangan",
-                            actionLabel = if (uiState.isImporting) "Memulihkan..." else "Pulihkan",
+                            title = "Pulihkan Cadangan (.zip)",
+                            actionLabel = if (uiState.isImporting) "..." else "Pulihkan",
                             isLoading = uiState.isImporting,
                             onClick = {
                                 openDocumentLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
                             }
                         )
-
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-
-                        // Muat Ulang 40 Katalog
-                        SettingsActionTile(
-                            icon = Icons.Default.Refresh,
-                            title = "Muat Ulang 40 Katalog Standar",
-                            subtitle = "Pulihkan 40 program latihan bawaan jika terhapus",
-                            actionLabel = "Muat Ulang",
-                            isLoading = false,
-                            onClick = { viewModel.reloadDefaultCatalog() }
-                        )
                     }
                 }
 
-                // ── SECTION 5: TENTANG APLIKASI ──────────────────────────────
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "WORKOUT TIMER • KELAS ATAS",
-                        style = TextStyle(
-                            fontFamily = FontFamily.SansSerif,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.45f),
-                            letterSpacing = 1.2.sp
-                        )
-                    )
-                    Text(
-                        text = "Versi 2.0 • 100% Offline & Privat • Bebas Server Pihak Ketiga",
-                        style = TextStyle(
-                            fontFamily = FontFamily.SansSerif,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.35f)
-                        )
-                    )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Footer (Dynamic Version)
+                val appVersion = remember {
+                    try {
+                        val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                        "v${pInfo.versionName}"
+                    } catch (e: Exception) {
+                        "v1.0.0"
+                    }
                 }
+                Text(
+                    text = "Workout Timer $appVersion • Offline First",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
 
-        // ── DIALOG UBAH NAMA PANGGILAN ────────────────────────────────────────
+        // ── Dialog Ubah Nama Panggilan ───────────────────────────────────────
         if (showEditNameDialog) {
             AlertDialog(
                 onDismissRequest = { showEditNameDialog = false },
-                shape = RoundedCornerShape(20.dp),
-                containerColor = Color(0xFF111319),
+                containerColor = Color(0xFF14171E),
+                shape = RoundedCornerShape(18.dp),
                 title = {
                     Text(
                         text = "Ubah Nama Panggilan",
-                        color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        fontSize = 17.sp,
+                        color = Color.White
                     )
                 },
                 text = {
                     OutlinedTextField(
                         value = tempNickname,
                         onValueChange = { tempNickname = it },
-                        placeholder = { Text("Nama panggilan Anda...", color = Color.White.copy(alpha = 0.35f)) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color.White.copy(alpha = 0.60f),
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
-                            cursorColor = Color.White
+                            focusedBorderColor = Color.White,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.20f)
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
-                    Button(
+                    Surface(
                         onClick = {
                             viewModel.updateNickname(tempNickname)
                             showEditNameDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color(0xFF07080B)
-                        ),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White
                     ) {
-                        Text("Simpan", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Simpan",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.5.sp,
+                            color = Color.Black,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEditNameDialog = false }) {
-                        Text("Batal", color = Color.White.copy(alpha = 0.70f))
+                        Text("Batal", color = TextMuted)
                     }
+                }
+            )
+        }
+
+        // ── Dialog Edit Pengingat (Multi-Reminder) ───────────────────────────
+        editingReminder?.let { reminder ->
+            EditReminderDialog(
+                reminder = reminder,
+                canDelete = reminders.size > 1,
+                onDismiss = { editingReminder = null },
+                onConfirm = { label, hour, minute, days ->
+                    viewModel.updateFullReminder(context, reminder.id, label, hour, minute, days)
+                    editingReminder = null
+                },
+                onDelete = {
+                    viewModel.deleteCustomReminder(context, reminder.id)
+                    editingReminder = null
+                }
+            )
+        }
+
+        // ── Dialog Tambah Pengingat Baru (Multi-Reminder) ────────────────────
+        if (showAddReminderDialog) {
+            AddReminderDialog(
+                onDismiss = { showAddReminderDialog = false },
+                onConfirm = { label, hour, minute, days ->
+                    viewModel.addCustomReminder(context, label, hour, minute, days)
+                    showAddReminderDialog = false
                 }
             )
         }
     }
 }
 
-// ─── REUSABLE SETTINGS SUBCOMPONENTS ─────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// Reusable Accordion Card Container
+// ────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = TextStyle(
-            fontFamily = FontFamily.SansSerif,
-            fontWeight = FontWeight.Bold,
-            fontSize = 11.5.sp,
-            color = Color.White.copy(alpha = 0.50f),
-            letterSpacing = 1.2.sp
-        ),
-        modifier = Modifier.padding(start = 4.dp)
-    )
-}
-
-@Composable
-private fun SettingsToggleRow(
+private fun SettingsAccordionCard(
     icon: ImageVector,
     title: String,
-    subtitle: String,
+    badgeText: String? = null,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        label = "chevron_rotation"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = GlassBackground,
+        border = BorderStroke(1.dp, if (isExpanded) GlassBorderSelected else GlassBorderBrush),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Accordion Header Row (Clickable)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                // Leading Icon Container
+                Surface(
+                    shape = RoundedCornerShape(11.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Title
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp
+                    ),
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Optional Status / Summary Badge
+                if (badgeText != null) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
+                    ) {
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 10.5.sp
+                            ),
+                            color = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                // Expand/Collapse Chevron
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Tutup" else "Buka",
+                    tint = Color.White.copy(alpha = 0.65f),
+                    modifier = Modifier
+                        .size(19.dp)
+                        .rotate(rotation)
+                )
+            }
+
+            // Animated Collapsible Content
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 14.dp, bottom = 14.dp),
+                    content = content
+                )
+            }
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Streamlined Single-Line Setting Rows (No Verbose Subtitles)
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SettingsToggleRowSimple(
+    icon: ImageVector,
+    title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -835,197 +852,118 @@ private fun SettingsToggleRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.07f))
-                .border(BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f)), CircleShape),
-            contentAlignment = Alignment.Center
+        Surface(
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.07f),
+            border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f)),
+            modifier = Modifier.size(32.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.90f),
-                modifier = Modifier.size(19.dp)
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.90f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp,
-                    color = Color.White
-                )
-            )
-            Text(
-                text = subtitle,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.55f),
-                    lineHeight = 15.sp
-                )
-            )
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.5.sp
+            ),
+            color = Color.White,
+            modifier = Modifier.weight(1f)
+        )
 
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF07080B),
+                checkedThumbColor = Color.Black,
                 checkedTrackColor = Color.White,
-                uncheckedThumbColor = Color.White.copy(alpha = 0.45f),
-                uncheckedTrackColor = Color.White.copy(alpha = 0.12f),
+                uncheckedThumbColor = Color.White.copy(alpha = 0.40f),
+                uncheckedTrackColor = Color.White.copy(alpha = 0.10f),
                 uncheckedBorderColor = Color.Transparent
-            )
+            ),
+            modifier = Modifier.height(22.dp)
         )
     }
 }
 
 @Composable
-private fun SettingsInfoRow(
+private fun SettingsActionTileSimple(
     icon: ImageVector,
     title: String,
-    value: String
+    actionLabel: String,
+    isLoading: Boolean = false,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.07f))
-                .border(BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f)), CircleShape),
-            contentAlignment = Alignment.Center
+        Surface(
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.07f),
+            border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f)),
+            modifier = Modifier.size(32.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.size(19.dp)
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.90f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
         Text(
             text = title,
-            style = TextStyle(
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.5.sp,
-                color = Color.White
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.5.sp
             ),
-            modifier = Modifier.weight(1f)
+            color = Color.White,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
         Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color.White.copy(alpha = 0.08f)
-        ) {
-            Text(
-                text = value,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.75f)
-                ),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsActionTile(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    actionLabel: String,
-    isLoading: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.07f))
-                .border(BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f)), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.90f),
-                modifier = Modifier.size(19.dp)
-            )
-        }
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp,
-                    color = Color.White
-                )
-            )
-            Text(
-                text = subtitle,
-                style = TextStyle(
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.55f),
-                    lineHeight = 15.sp
-                )
-            )
-        }
-
-        Surface(
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(9.dp),
             color = Color.White.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
             modifier = Modifier.clickable(enabled = !isLoading, onClick = onClick)
         ) {
             Box(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(12.dp),
                         strokeWidth = 2.dp,
                         color = Color.White
                     )
                 } else {
                     Text(
                         text = actionLabel,
-                        style = TextStyle(
-                            fontFamily = FontFamily.SansSerif,
+                        style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.5.sp,
-                            color = Color.White
-                        )
+                            fontSize = 11.sp
+                        ),
+                        color = Color.White
                     )
                 }
             }

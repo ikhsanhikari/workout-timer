@@ -44,6 +44,16 @@ interface WorkoutSessionRecordDao {
     fun observeWeeklyTotalSeconds(weekStartMs: Long): Flow<Int>
 
     /**
+     * Hitung total detik latihan dalam rentang waktu tertentu (misal: minggu lalu).
+     */
+    @Query("""
+        SELECT COALESCE(SUM(durationSeconds), 0)
+        FROM workout_session_records
+        WHERE completedAt >= :startMs AND completedAt < :endMs
+    """)
+    fun observeTotalSecondsInRange(startMs: Long, endMs: Long): Flow<Int>
+
+    /**
      * Hitung jumlah total sesi latihan dalam kurun waktu minggu ini.
      */
     @Query("""

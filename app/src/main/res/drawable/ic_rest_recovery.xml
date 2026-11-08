@@ -1,0 +1,85 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Layer 0: Ambient Frosted Glass Halo Disc -->
+    <path
+        android:fillColor="#0DFFFFFF"
+        android:strokeColor="#33FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M60,60m-52,0a52,52 0 1,0 104,0a52,52 0 1,0 -104,0" />
+
+    <!-- Layer 1: Majestic Solid White Crescent Moon (Centerpiece) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M56,22 C36,22 20,38 20,58 C20,78 36,94 56,94 C44,86 36,74 36,58 C36,42 44,30 56,22 Z" />
+
+    <!-- Layer 2: Cloud Negative Space Knockout (Creates crisp separation from Moon behind) -->
+    <path
+        android:strokeColor="#FF101217"
+        android:strokeWidth="6"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:fillColor="#FF101217"
+        android:pathData="M44,90 L90,90 C96.5,90 102,84.5 102,78 C102,72.2 97.8,67.4 92.2,66.3 C91,57.5 83.3,50.5 74,50.5 C66.8,50.5 60.5,55 57.8,61.2 C56,59.8 53.8,59 51.5,59 C45.2,59 40,64.2 40,70.5 C40,72.2 40.4,73.8 41.2,75.2 C38.1,77.2 36,80.8 36,85 C36,87.8 39.5,90 44,90 Z" />
+
+    <!-- Layer 3: Puffy Volumetric Slumber Cloud (Luminous Solid White) -->
+    <path
+        android:fillColor="#F2FFFFFF"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineJoin="round"
+        android:strokeLineCap="round"
+        android:pathData="M44,90 L90,90 C96.5,90 102,84.5 102,78 C102,72.2 97.8,67.4 92.2,66.3 C91,57.5 83.3,50.5 74,50.5 C66.8,50.5 60.5,55 57.8,61.2 C56,59.8 53.8,59 51.5,59 C45.2,59 40,64.2 40,70.5 C40,72.2 40.4,73.8 41.2,75.2 C38.1,77.2 36,80.8 36,85 C36,87.8 39.5,90 44,90 Z" />
+
+    <!-- Layer 4: Cloud Inner Contour Highlight -->
+    <path
+        android:strokeColor="#33101217"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,74 C64,71 76,71 86,74" />
+
+    <!-- Layer 5: Brilliant Twinkle Diamond Stars (✦ Solid Crisp White) -->
+    <!-- Star 1: Large (Top Right) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M90,20 C90,25 93,28 98,28 C93,28 90,31 90,36 C90,31 87,28 82,28 C87,28 90,25 90,20 Z" />
+
+    <!-- Star 2: Medium (Top Left) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M22,22 C22,26 24,28 28,28 C24,28 22,30 22,34 C22,30 20,28 16,28 C20,28 22,26 22,22 Z" />
+
+    <!-- Star 3: Small (Far Right) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M104,45 C104,48 105.5,50 109,50 C105.5,50 104,52 104,55 C104,52 102.5,50 99,50 C102.5,50 104,48 104,45 Z" />
+
+    <!-- Micro Star Sparkle (Center Subtle) -->
+    <path
+        android:fillColor="#B3FFFFFF"
+        android:pathData="M70,36 C70,37.5 71,38.5 72.5,38.5 C71,38.5 70,39.5 70,41 C70,39.5 69,38.5 67.5,38.5 C69,38.5 70,37.5 70,36 Z" />
+
+    <!-- Layer 6: Serene Sleep Waves (Zzz) -->
+    <!-- Big Z -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M68,18 L76,18 L68,26 L76,26" />
+
+    <!-- Small Z -->
+    <path
+        android:strokeColor="#E6FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M81,10 L87,10 L81,16 L87,16" />
+
+</vector>
