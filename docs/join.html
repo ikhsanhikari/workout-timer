@@ -2,9 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GasCount • Akses Awal</title>
-    <meta name="description" content="Timer olahraga tanpa iklan. 100% offline & gratis di Google Play.">
+    <meta name="description" content="Timer Olahraga Tanpa Iklan. 100% offline & audio coach di Google Play.">
     <link rel="icon" type="image/png" href="assets/app-icon.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,12 +13,15 @@
 
     <style>
         :root {
-            --bg: #090b10;
-            --card: rgba(18, 22, 32, 0.75);
-            --border: rgba(255, 255, 255, 0.1);
-            --accent: #38bdf8;
-            --text: #f8fafc;
-            --muted: #94a3b8;
+            --bg-base: #03060f;
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-card: rgba(13, 19, 33, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.10);
+            --accent-cyan: #38bdf8;
+            --accent-blue: #0284c7;
+            --accent-purple: #818cf8;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
         }
 
         * {
@@ -26,316 +29,647 @@
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
-        body {
+        html, body {
+            height: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            overflow: hidden;
+            background-color: var(--bg-base);
+            color: var(--text-main);
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            padding: 32px 20px 48px 20px;
+        }
+
+        /* Ambient background glow layers matching warm amber & cyan sparks */
+        .ambient-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .glow-blue {
+            position: absolute;
+            top: -10%;
+            left: -15%;
+            width: 75vw;
+            height: 75vw;
+            max-width: 550px;
+            max-height: 550px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, transparent 65%);
+            filter: blur(80px);
+        }
+        .glow-amber {
+            position: absolute;
+            top: 15%;
+            right: -20%;
+            width: 70vw;
+            height: 70vw;
+            max-width: 500px;
+            max-height: 500px;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 65%);
+            filter: blur(80px);
+        }
+        .glow-purple {
+            position: absolute;
+            bottom: -15%;
+            left: 20%;
+            width: 80vw;
+            height: 80vw;
+            max-width: 600px;
+            max-height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.10) 0%, transparent 70%);
+            filter: blur(90px);
+        }
+
+        /* Main Container: 100dvh zero-scroll */
+        .page-container {
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            height: 100dvh;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 10px 16px 12px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* On mobile: left-col unwraps so children can be ordered cleanly */
+        .left-col {
+            display: contents;
+        }
+
+        /* 1. Header Bar */
+        .header-bar {
+            order: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 2px 4px 2px;
+            flex-shrink: 0;
+        }
+        .brand-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: #ffffff;
+        }
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 3px;
+        }
+        .brand-name {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 100px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            color: #34d399;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        /* Desktop Title block (hidden on mobile to keep 100% compact) */
+        .desktop-intro {
+            display: none;
+        }
+
+        /* 2. Realistic 3D App Screenshots Slider */
+        .slider-wrapper {
+            order: 2;
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            margin: 4px 0 6px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+        }
+
+        .slider-stage {
             position: relative;
-            overflow-x: hidden;
-        }
-
-        /* Subtle Ambient Glow */
-        .glow {
-            position: fixed;
-            top: -120px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 500px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
-            filter: blur(60px);
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .wrapper {
             width: 100%;
-            max-width: 440px;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-
-        /* Header */
-        .icon {
-            width: 72px;
-            height: 72px;
-            margin: 0 auto 16px auto;
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.2);
-            display: block;
-        }
-
-        .tag {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.6px;
-            text-transform: uppercase;
-            padding: 4px 12px;
-            border-radius: 999px;
-            background: rgba(56, 189, 248, 0.12);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            color: var(--accent);
-            margin-bottom: 12px;
-        }
-
-        h1 {
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: -0.6px;
-            line-height: 1.2;
-            margin-bottom: 8px;
-            color: #ffffff;
-        }
-
-        .sub {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 28px;
-            line-height: 1.5;
-        }
-
-        /* Action Steps */
-        .action-box {
-            background: var(--card);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 18px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-            margin-bottom: 28px;
-        }
-
-        .btn-step {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px 16px;
-            border-radius: 14px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            text-align: left;
-            position: relative;
-        }
-
-        .btn-step.step-1 {
-            background: #ffffff;
-            color: #090b10;
-        }
-
-        .btn-step.step-1:hover {
-            background: #f1f5f9;
-            transform: scale(1.01);
-        }
-
-        .btn-step.step-2 {
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 20px rgba(2, 132, 199, 0.25);
-        }
-
-        .btn-step.step-2:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-            transform: scale(1.01);
-        }
-
-        .btn-num {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .slide-item {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.97);
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+        .slide-item.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .screenshot-img {
+            max-width: 100%;
+            max-height: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: 16px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(56, 189, 248, 0.12);
+        }
+
+        /* Slider Indicator Pills */
+        .slider-pills {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+        .pill-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pill-btn.active {
+            background: rgba(56, 189, 248, 0.18);
+            border-color: rgba(56, 189, 248, 0.55);
+            color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+        }
+
+        /* 3. Glass Action Card (High Conversion) */
+        .action-card {
+            order: 3;
+            background: var(--glass-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
             flex-shrink: 0;
         }
 
-        .step-1 .btn-num {
-            background: #090b10;
+        /* Buttons */
+        .step-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 12px;
+            border-radius: 13px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+            position: relative;
+        }
+        .step-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Step 1: Crisp Pure White Glass */
+        .btn-step1 {
+            background: #ffffff;
+            color: #050b18;
+            box-shadow: 0 6px 18px rgba(255, 255, 255, 0.15);
+        }
+        .btn-step1:hover {
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.3);
+            filter: brightness(1.03);
+        }
+
+        /* Step 2: Cyber Blue Neon Gradient */
+        .btn-step2 {
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
             color: #ffffff;
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
+        }
+        .btn-step2:hover {
+            box-shadow: 0 8px 26px rgba(56, 189, 248, 0.55);
+            filter: brightness(1.05);
         }
 
-        .step-2 .btn-num {
-            background: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
+        .btn-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-
-        .btn-text {
-            flex-grow: 1;
-        }
-
-        .btn-title {
-            display: block;
-            font-size: 14px;
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 2px;
-        }
-
-        .btn-caption {
-            display: block;
-            font-size: 11px;
-            opacity: 0.8;
-            font-weight: 600;
-        }
-
-        .btn-arrow {
-            font-size: 18px;
-            font-weight: bold;
-            opacity: 0.6;
-        }
-
-        .step-arrow-divider {
-            padding: 8px 0;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--muted);
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            font-size: 0.88rem;
+            font-weight: 900;
+            flex-shrink: 0;
+        }
+        .btn-step1 .step-num {
+            background: #0b1120;
+            color: #ffffff;
+        }
+        .btn-step2 .step-num {
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff;
+            backdrop-filter: blur(4px);
         }
 
-        /* Highlights Pills */
-        .pills {
+        .btn-texts {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
+            text-align: left;
+        }
+        .btn-title {
+            font-size: 0.88rem;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+        .btn-desc {
+            font-size: 0.67rem;
+            font-weight: 600;
+            opacity: 0.78;
+            margin-top: 1px;
+        }
+        .btn-arrow {
+            font-size: 1.05rem;
+            opacity: 0.8;
+            transition: transform 0.2s ease;
+        }
+        .step-btn:hover .btn-arrow {
+            transform: translateX(3px);
+        }
+
+        /* Connector "lalu" */
+        .step-connector {
+            display: flex;
+            align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-bottom: 32px;
-        }
-
-        .pill {
-            font-size: 12px;
+            color: var(--text-muted);
+            font-size: 0.62rem;
             font-weight: 700;
-            color: #e2e8f0;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            padding: 6px 14px;
-            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: -2px 0;
+            opacity: 0.55;
+        }
+        .step-connector::before, .step-connector::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
         }
 
-        /* Mockup */
-        .mockup {
-            max-width: 290px;
-            margin: 0 auto 36px auto;
-            border-radius: 36px;
-            padding: 8px;
-            background: linear-gradient(145deg, #1f2533 0%, #0d0f14 100%);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.1);
+        /* Feature Pills */
+        .feature-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+        .feature-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 4px 2px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            font-size: 0.64rem;
+            font-weight: 700;
+            color: #cbd5e1;
         }
 
-        .mockup-inner {
-            border-radius: 28px;
-            overflow: hidden;
-            background: #000;
-            position: relative;
+        /* 4. Footer Bar */
+        .footer-bar {
+            order: 4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 2px 0 2px;
+            font-size: 0.64rem;
+            color: #64748b;
+            flex-shrink: 0;
         }
-
-        .notch {
-            position: absolute;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 12px;
-            background: #000;
-            border-radius: 50%;
-            border: 1.5px solid #1a1e28;
-            z-index: 2;
-        }
-
-        .mockup-img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        /* Footer */
-        footer {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        footer a {
-            color: var(--muted);
+        .footer-link {
+            color: #94a3b8;
             text-decoration: none;
+            transition: color 0.15s;
+        }
+        .footer-link:hover {
+            color: #38bdf8;
         }
 
-        footer a:hover {
-            color: #ffffff;
-            text-decoration: underline;
+        /* Desktop Mode (min-width: 860px) */
+        @media (min-width: 860px) {
+            .page-container {
+                max-width: 980px;
+                flex-direction: row;
+                align-items: center;
+                gap: 48px;
+                padding: 32px 48px;
+            }
+            .left-col {
+                display: flex;
+                flex: 1.1;
+                flex-direction: column;
+                gap: 20px;
+                justify-content: center;
+            }
+            .desktop-intro {
+                display: block;
+            }
+            .desktop-title {
+                font-size: 2.3rem;
+                font-weight: 900;
+                line-height: 1.15;
+                letter-spacing: -0.03em;
+            }
+            .title-gradient {
+                background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #a78bfa 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .desktop-subtitle {
+                font-size: 0.95rem;
+                color: var(--text-muted);
+                line-height: 1.5;
+                margin-top: 8px;
+            }
+            .slider-wrapper {
+                flex: 1;
+                height: 86vh;
+                max-height: 680px;
+                margin: 0;
+            }
+            .slider-stage {
+                max-height: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="glow"></div>
 
-    <div class="wrapper">
-        <!-- Logo & Header -->
-        <img src="assets/app-icon.png" alt="GasCount Icon" class="icon">
-        <span class="tag">Beta Android</span>
-        <h1>Timer Olahraga Tanpa Iklan.</h1>
-        <p class="sub">Fokus latihan tanpa gangguan video pop-up.<br>100% offline & audio coach.</p>
-
-        <!-- 2 Langkah Langsung Aksi -->
-        <div class="action-box">
-            <a href="https://groups.google.com/g/gascount" target="_blank" class="btn-step step-1">
-                <div class="btn-num">1</div>
-                <div class="btn-text">
-                    <span class="btn-title">Buka Akses Tester</span>
-                    <span class="btn-caption">Klik 'Join group' di Google</span>
-                </div>
-                <div class="btn-arrow">→</div>
-            </a>
-
-            <div class="step-arrow-divider">
-                <span>↓ lalu</span>
-            </div>
-
-            <a href="https://play.google.com/apps/testing/com.workout.timer" target="_blank" class="btn-step step-2">
-                <div class="btn-num">2</div>
-                <div class="btn-text">
-                    <span class="btn-title">Download di Play Store</span>
-                    <span class="btn-caption">Klik 'Become a tester' & unduh</span>
-                </div>
-                <div class="btn-arrow">→</div>
-            </a>
-        </div>
-
-        <!-- 4 Keunggulan Singkat -->
-        <div class="pills">
-            <span class="pill">🚫 0 Iklan</span>
-            <span class="pill">⚡ 100% Offline</span>
-            <span class="pill">🎙️ Audio Coach</span>
-            <span class="pill">🖤 AMOLED</span>
-        </div>
-
-        <!-- Cover Preview Premium -->
-        <div class="mockup">
-            <div class="mockup-inner">
-                <div class="notch"></div>
-                <img src="assets/preview-analytics.jpg" alt="GasCount App Preview" class="mockup-img">
-            </div>
-        </div>
-
-        <!-- Footer Ringkas -->
-        <footer>
-            <a href="privacy-policy.html">Privacy Policy</a> • GasCount 2026
-        </footer>
+    <!-- Ambient glow lights -->
+    <div class="ambient-layer">
+        <div class="glow-blue"></div>
+        <div class="glow-amber"></div>
+        <div class="glow-purple"></div>
     </div>
+
+    <!-- Main Container -->
+    <main class="page-container">
+
+        <!-- Left Column (Desktop: left block; Mobile: display contents) -->
+        <div class="left-col">
+            
+            <!-- 1. Header -->
+            <header class="header-bar">
+                <a href="#" class="brand-pill">
+                    <img src="assets/app-icon.png" alt="GasCount Logo" class="brand-icon">
+                    <span class="brand-name">GasCount</span>
+                </a>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span>Akses Awal</span>
+                </div>
+            </header>
+
+            <!-- Desktop Heading Intro -->
+            <div class="desktop-intro">
+                <h1 class="desktop-title">
+                    Timer Olahraga.<br>
+                    <span class="title-gradient">Tanpa Iklan.</span>
+                </h1>
+                <p class="desktop-subtitle">
+                    Fokus repetisi tanpa video pop-up. 100% offline dengan audio coach & visual panduan.
+                </p>
+            </div>
+
+            <!-- 3. Glass Action Card -->
+            <section class="action-card">
+                
+                <!-- Step 1: Join Google Group -->
+                <a href="https://groups.google.com/g/gascount" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="step-btn btn-step1"
+                   title="Langkah 1: Klik untuk gabung grup tester Google">
+                    <div class="btn-content">
+                        <div class="step-num">1</div>
+                        <div class="btn-texts">
+                            <span class="btn-title">Buka Akses Tester</span>
+                            <span class="btn-desc">Klik 'Join group' di Google</span>
+                        </div>
+                    </div>
+                    <span class="btn-arrow">›</span>
+                </a>
+
+                <!-- Divider -->
+                <div class="step-connector">lalu</div>
+
+                <!-- Step 2: Download on Play Store -->
+                <a href="https://play.google.com/apps/testing/com.workout.timer" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   class="step-btn btn-step2"
+                   title="Langkah 2: Klik untuk unduh di Google Play Store">
+                    <div class="btn-content">
+                        <div class="step-num">2</div>
+                        <div class="btn-texts">
+                            <span class="btn-title">Download di Play Store</span>
+                            <span class="btn-desc">Pilih 'Become a tester' & unduh</span>
+                        </div>
+                    </div>
+                    <span class="btn-arrow">›</span>
+                </a>
+
+                <!-- Feature Pills -->
+                <div class="feature-bar">
+                    <div class="feature-item">
+                        <span>🛡️</span>
+                        <span>0 Iklan</span>
+                    </div>
+                    <div class="feature-item">
+                        <span>⚡</span>
+                        <span>Offline</span>
+                    </div>
+                    <div class="feature-item">
+                        <span>🎧</span>
+                        <span>Coach</span>
+                    </div>
+                    <div class="feature-item">
+                        <span>🖤</span>
+                        <span>AMOLED</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 4. Footer -->
+            <footer class="footer-bar">
+                <span>GasCount 2026</span>
+                <a href="privacy-policy.html" class="footer-link">Kebijakan Privasi ›</a>
+            </footer>
+
+        </div>
+
+        <!-- 2. Realistic 3D App Screenshots Slider -->
+        <section class="slider-wrapper" aria-label="Tampilan Aplikasi GasCount">
+            <div class="slider-stage" id="sliderStage" title="Klik atau swipe untuk melihat fitur berikutnya">
+                
+                <!-- Slide 1: Beranda -->
+                <div class="slide-item active" data-index="0">
+                    <img src="assets/screen-home.jpg" alt="GasCount - Latihan Kapan Saja & Di Mana Saja" class="screenshot-img">
+                </div>
+
+                <!-- Slide 2: Rutinitas -->
+                <div class="slide-item" data-index="1">
+                    <img src="assets/screen-routine.jpg" alt="GasCount - Struktur Latihan Yang Jelas" class="screenshot-img">
+                </div>
+
+                <!-- Slide 3: Video Player -->
+                <div class="slide-item" data-index="2">
+                    <img src="assets/screen-workout.jpg" alt="GasCount - Panduan Video Yang Interaktif" class="screenshot-img">
+                </div>
+
+                <!-- Slide 4: Progres & Riwayat -->
+                <div class="slide-item" data-index="3">
+                    <img src="assets/screen-progress.jpg" alt="GasCount - Pantau Progress & Riwayat" class="screenshot-img">
+                </div>
+
+            </div>
+
+            <!-- Slide Switcher Pills -->
+            <nav class="slider-pills" aria-label="Pilih Tangkapan Layar">
+                <button class="pill-btn active" data-target="0">Beranda</button>
+                <button class="pill-btn" data-target="1">Rutinitas</button>
+                <button class="pill-btn" data-target="2">Video</button>
+                <button class="pill-btn" data-target="3">Progres</button>
+            </nav>
+        </section>
+
+    </main>
+
+    <!-- Slider Script (Touch Swipe + Auto Rotation + Manual Click) -->
+    <script>
+        (function() {
+            const slides = document.querySelectorAll('.slide-item');
+            const pills = document.querySelectorAll('.pill-btn');
+            const stage = document.getElementById('sliderStage');
+            let currentIndex = 0;
+            let timer = null;
+            const total = slides.length;
+
+            function goTo(index) {
+                currentIndex = (index + total) % total;
+                slides.forEach((s, i) => {
+                    s.classList.toggle('active', i === currentIndex);
+                });
+                pills.forEach((p, i) => {
+                    p.classList.toggle('active', i === currentIndex);
+                });
+            }
+
+            function next() {
+                goTo(currentIndex + 1);
+            }
+
+            function startTimer() {
+                clearInterval(timer);
+                timer = setInterval(next, 3800);
+            }
+
+            // Click pills
+            pills.forEach(p => {
+                p.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const target = parseInt(p.getAttribute('data-target'), 10);
+                    goTo(target);
+                    startTimer();
+                });
+            });
+
+            // Tap stage to go next
+            stage.addEventListener('click', () => {
+                next();
+                startTimer();
+            });
+
+            // Touch Swipe Support
+            let startX = 0;
+            let endX = 0;
+
+            stage.addEventListener('touchstart', (e) => {
+                startX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            stage.addEventListener('touchend', (e) => {
+                endX = e.changedTouches[0].screenX;
+                const diff = endX - startX;
+                if (Math.abs(diff) > 40) {
+                    if (diff < 0) {
+                        next(); // Swipe left -> next
+                    } else {
+                        goTo(currentIndex - 1); // Swipe right -> prev
+                    }
+                    startTimer();
+                }
+            }, { passive: true });
+
+            // Start auto rotation
+            startTimer();
+        })();
+    </script>
 </body>
 </html>
