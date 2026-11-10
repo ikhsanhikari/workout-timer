@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GasCount • Beta Tester</title>
     <meta name="description" content="Timer Olahraga Tanpa Iklan. 100% offline & audio coach di Google Play.">
     <link rel="icon" type="image/png" href="assets/app-icon.png">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
     <style>
         :root {
@@ -32,7 +35,8 @@
             user-select: none;
         }
 
-        html, body {
+        html,
+        body {
             height: 100%;
             height: 100dvh;
             max-height: 100dvh;
@@ -50,6 +54,7 @@
             z-index: 0;
             overflow: hidden;
         }
+
         .glow-blue {
             position: absolute;
             top: -10%;
@@ -61,6 +66,7 @@
             background: radial-gradient(circle, rgba(56, 189, 248, 0.16) 0%, transparent 65%);
             filter: blur(80px);
         }
+
         .glow-amber {
             position: absolute;
             top: 15%;
@@ -72,6 +78,7 @@
             background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 65%);
             filter: blur(80px);
         }
+
         .glow-purple {
             position: absolute;
             bottom: -15%;
@@ -112,6 +119,7 @@
             padding: 2px 2px 4px 2px;
             flex-shrink: 0;
         }
+
         .brand-pill {
             display: flex;
             align-items: center;
@@ -119,6 +127,7 @@
             text-decoration: none;
             color: #ffffff;
         }
+
         .brand-icon {
             width: 28px;
             height: 28px;
@@ -127,11 +136,13 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 3px;
         }
+
         .brand-name {
             font-size: 1.05rem;
             font-weight: 800;
             letter-spacing: -0.02em;
         }
+
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -145,6 +156,7 @@
             letter-spacing: 0.07em;
             text-transform: uppercase;
         }
+
 
         /* Desktop Title block (hidden on mobile to keep 100% compact) */
         .desktop-intro {
@@ -185,6 +197,7 @@
             transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: none;
         }
+
         .slide-item.active {
             opacity: 1;
             transform: scale(1);
@@ -208,6 +221,7 @@
             margin-top: 6px;
             flex-shrink: 0;
         }
+
         .pill-btn {
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.10);
@@ -219,6 +233,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
+
         .pill-btn.active {
             background: rgba(56, 189, 248, 0.18);
             border-color: rgba(56, 189, 248, 0.55);
@@ -254,6 +269,7 @@
             transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
             position: relative;
         }
+
         .step-btn:active {
             transform: scale(0.98);
         }
@@ -264,6 +280,7 @@
             color: #050b18;
             box-shadow: 0 6px 18px rgba(255, 255, 255, 0.15);
         }
+
         .btn-step1:hover {
             box-shadow: 0 8px 24px rgba(255, 255, 255, 0.3);
             filter: brightness(1.03);
@@ -275,6 +292,7 @@
             color: #ffffff;
             box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
         }
+
         .btn-step2:hover {
             box-shadow: 0 8px 26px rgba(56, 189, 248, 0.55);
             filter: brightness(1.05);
@@ -285,6 +303,7 @@
             align-items: center;
             gap: 10px;
         }
+
         .step-num {
             width: 26px;
             height: 26px;
@@ -296,10 +315,12 @@
             font-weight: 900;
             flex-shrink: 0;
         }
+
         .btn-step1 .step-num {
             background: #0b1120;
             color: #ffffff;
         }
+
         .btn-step2 .step-num {
             background: rgba(255, 255, 255, 0.22);
             color: #ffffff;
@@ -311,23 +332,27 @@
             flex-direction: column;
             text-align: left;
         }
+
         .btn-title {
             font-size: 0.88rem;
             font-weight: 800;
             line-height: 1.2;
             letter-spacing: -0.01em;
         }
+
         .btn-desc {
             font-size: 0.67rem;
             font-weight: 600;
             opacity: 0.78;
             margin-top: 1px;
         }
+
         .btn-arrow {
             font-size: 1.05rem;
             opacity: 0.8;
             transition: transform 0.2s ease;
         }
+
         .step-btn:hover .btn-arrow {
             transform: translateX(3px);
         }
@@ -346,7 +371,9 @@
             margin: -2px 0;
             opacity: 0.55;
         }
-        .step-connector::before, .step-connector::after {
+
+        .step-connector::before,
+        .step-connector::after {
             content: '';
             flex: 1;
             height: 1px;
@@ -362,6 +389,7 @@
             margin-top: 4px;
             flex-shrink: 0;
         }
+
         .feature-item {
             flex: 1;
             display: flex;
@@ -388,11 +416,13 @@
             color: #64748b;
             flex-shrink: 0;
         }
+
         .footer-link {
             color: #94a3b8;
             text-decoration: none;
             transition: color 0.15s;
         }
+
         .footer-link:hover {
             color: #38bdf8;
         }
@@ -406,6 +436,7 @@
                 gap: 48px;
                 padding: 32px 48px;
             }
+
             .left-col {
                 display: flex;
                 flex: 1.1;
@@ -413,38 +444,45 @@
                 gap: 20px;
                 justify-content: center;
             }
+
             .desktop-intro {
                 display: block;
             }
+
             .desktop-title {
                 font-size: 2.3rem;
                 font-weight: 900;
                 line-height: 1.15;
                 letter-spacing: -0.03em;
             }
+
             .title-gradient {
                 background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #a78bfa 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
+
             .desktop-subtitle {
                 font-size: 0.95rem;
                 color: var(--text-muted);
                 line-height: 1.5;
                 margin-top: 8px;
             }
+
             .slider-wrapper {
                 flex: 1;
                 height: 86vh;
                 max-height: 680px;
                 margin: 0;
             }
+
             .slider-stage {
                 max-height: 100%;
             }
         }
     </style>
 </head>
+
 <body>
 
     <!-- Ambient glow lights -->
@@ -459,7 +497,7 @@
 
         <!-- Left Column (Desktop: left block; Mobile: display contents) -->
         <div class="left-col">
-            
+
             <!-- 1. Header -->
             <header class="header-bar">
                 <a href="#" class="brand-pill">
@@ -482,13 +520,10 @@
 
             <!-- 3. Glass Action Card -->
             <section class="action-card">
-                
+
                 <!-- Step 1: Join Google Group -->
-                <a href="https://groups.google.com/g/gascount" 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   class="step-btn btn-step1"
-                   title="Langkah 1: Klik untuk gabung grup tester Google">
+                <a href="https://groups.google.com/g/gascount" target="_blank" rel="noopener noreferrer"
+                    class="step-btn btn-step1" title="Langkah 1: Klik untuk gabung grup tester Google">
                     <div class="btn-content">
                         <div class="step-num">1</div>
                         <div class="btn-texts">
@@ -503,11 +538,9 @@
                 <div class="step-connector">lalu</div>
 
                 <!-- Step 2: Download on Play Store -->
-                <a href="https://play.google.com/apps/testing/com.workout.timer" 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   class="step-btn btn-step2"
-                   title="Langkah 2: Klik untuk unduh di Google Play Store">
+                <a href="https://play.google.com/apps/testing/com.workout.timer" target="_blank"
+                    rel="noopener noreferrer" class="step-btn btn-step2"
+                    title="Langkah 2: Klik untuk unduh di Google Play Store">
                     <div class="btn-content">
                         <div class="step-num">2</div>
                         <div class="btn-texts">
@@ -551,25 +584,29 @@
         <!-- 2. Realistic 3D App Screenshots Slider -->
         <section class="slider-wrapper" aria-label="Tampilan Aplikasi GasCount">
             <div class="slider-stage" id="sliderStage" title="Klik atau swipe untuk melihat fitur berikutnya">
-                
+
                 <!-- Slide 1: Beranda -->
                 <div class="slide-item active" data-index="0">
-                    <img src="assets/screen-home.jpg" alt="GasCount - Latihan Kapan Saja & Di Mana Saja" class="screenshot-img">
+                    <img src="assets/screen-home.jpg" alt="GasCount - Latihan Kapan Saja & Di Mana Saja"
+                        class="screenshot-img">
                 </div>
 
                 <!-- Slide 2: Rutinitas -->
                 <div class="slide-item" data-index="1">
-                    <img src="assets/screen-routine.jpg" alt="GasCount - Struktur Latihan Yang Jelas" class="screenshot-img">
+                    <img src="assets/screen-routine.jpg" alt="GasCount - Struktur Latihan Yang Jelas"
+                        class="screenshot-img">
                 </div>
 
                 <!-- Slide 3: Video Player -->
                 <div class="slide-item" data-index="2">
-                    <img src="assets/screen-workout.jpg" alt="GasCount - Panduan Video Yang Interaktif" class="screenshot-img">
+                    <img src="assets/screen-workout.jpg" alt="GasCount - Panduan Video Yang Interaktif"
+                        class="screenshot-img">
                 </div>
 
                 <!-- Slide 4: Progres & Riwayat -->
                 <div class="slide-item" data-index="3">
-                    <img src="assets/screen-progress.jpg" alt="GasCount - Pantau Progress & Riwayat" class="screenshot-img">
+                    <img src="assets/screen-progress.jpg" alt="GasCount - Pantau Progress & Riwayat"
+                        class="screenshot-img">
                 </div>
 
             </div>
@@ -587,7 +624,7 @@
 
     <!-- Slider Script (Touch Swipe + Auto Rotation + Manual Click) -->
     <script>
-        (function() {
+        (function () {
             const slides = document.querySelectorAll('.slide-item');
             const pills = document.querySelectorAll('.pill-btn');
             const stage = document.getElementById('sliderStage');
@@ -656,4 +693,5 @@
         })();
     </script>
 </body>
+
 </html>
