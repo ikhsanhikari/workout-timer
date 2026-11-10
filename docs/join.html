@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gabung Early Access Beta - GasCount Workout Timer</title>
-    <meta name="description" content="Dapatkan akses awal gratis aplikasi GasCount di Google Play Store. Timer interval & sirkuit latihan presisi tinggi, 100% tanpa iklan & offline.">
+    <title>GasCount • Akses Awal</title>
+    <meta name="description" content="Timer olahraga tanpa iklan. 100% offline & gratis di Google Play.">
     <link rel="icon" type="image/png" href="assets/app-icon.png">
     
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-base: #07090e;
-            --bg-card: rgba(18, 22, 33, 0.75);
-            --card-border: rgba(255, 255, 255, 0.12);
-            --card-border-hover: rgba(56, 189, 248, 0.4);
-            --primary: #ffffff;
+            --bg: #090b10;
+            --card: rgba(18, 22, 32, 0.75);
+            --border: rgba(255, 255, 255, 0.1);
             --accent: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.25);
-            --accent-green: #10b981;
-            --text-main: #f9fafb;
-            --text-muted: #94a3b8;
-            --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --text: #f8fafc;
+            --muted: #94a3b8;
         }
 
         * {
@@ -35,513 +29,313 @@
         }
 
         body {
-            font-family: var(--font);
-            background-color: var(--bg-base);
-            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            line-height: 1.6;
-            overflow-x: hidden;
+            padding: 32px 20px 48px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             position: relative;
+            overflow-x: hidden;
         }
 
-        /* Ambient Background Glow */
-        .ambient-glow {
+        /* Subtle Ambient Glow */
+        .glow {
             position: fixed;
-            top: -150px;
+            top: -120px;
             left: 50%;
             transform: translateX(-50%);
-            width: 700px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(12, 14, 20, 0) 70%);
-            filter: blur(80px);
+            width: 500px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+            filter: blur(60px);
             z-index: 0;
             pointer-events: none;
         }
 
-        .container {
-            max-width: 680px;
-            margin: 0 auto;
-            padding: 40px 20px 80px 20px;
+        .wrapper {
+            width: 100%;
+            max-width: 440px;
             position: relative;
             z-index: 1;
-        }
-
-        /* Header & Brand */
-        header {
             text-align: center;
-            margin-bottom: 36px;
         }
 
-        .badge-live {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(16, 185, 129, 0.12);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: #34d399;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.8px;
-            padding: 6px 16px;
-            border-radius: 999px;
-            margin-bottom: 24px;
-            text-transform: uppercase;
-        }
-
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #10b981;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #10b981;
-            animation: pulse 1.8s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.4); opacity: 0.5; }
-        }
-
-        .brand-icon-wrapper {
-            width: 84px;
-            height: 84px;
-            margin: 0 auto 20px auto;
-            border-radius: 22px;
-            padding: 2px;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.05));
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.2);
-        }
-
-        .brand-icon {
-            width: 100%;
-            height: 100%;
-            border-radius: 20px;
-            object-fit: cover;
+        /* Header */
+        .icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 16px auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.2);
             display: block;
         }
 
-        h1 {
-            font-size: 32px;
-            font-weight: 900;
-            letter-spacing: -0.8px;
-            line-height: 1.25;
-            margin-bottom: 14px;
-            background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-desc {
-            font-size: 16px;
-            color: var(--text-muted);
-            max-width: 520px;
-            margin: 0 auto;
-        }
-
-        /* Steps Section (The Action Cards) */
-        .steps-container {
-            margin: 36px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .step-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 24px;
-            position: relative;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .step-card:hover {
-            border-color: var(--card-border-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 24px var(--accent-glow);
-        }
-
-        .step-card.active-step {
-            border-color: rgba(56, 189, 248, 0.45);
-            background: linear-gradient(180deg, rgba(20, 26, 42, 0.85) 0%, rgba(14, 18, 29, 0.8) 100%);
-        }
-
-        .step-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            color: var(--accent);
             margin-bottom: 12px;
         }
 
-        .step-badge {
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            padding: 4px 12px;
-            border-radius: 8px;
-            background: rgba(56, 189, 248, 0.15);
-            color: var(--accent);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-        }
-
-        .step-badge.final {
-            background: rgba(255, 255, 255, 0.15);
+        h1 {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -0.6px;
+            line-height: 1.2;
+            margin-bottom: 8px;
             color: #ffffff;
-            border-color: rgba(255, 255, 255, 0.25);
         }
 
-        .step-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 6px;
-        }
-
-        .step-text {
+        .sub {
             font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 20px;
+            color: var(--muted);
+            margin-bottom: 28px;
             line-height: 1.5;
         }
 
-        /* Buttons */
-        .btn-action {
+        /* Action Steps */
+        .action-box {
+            background: var(--card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+            margin-bottom: 28px;
+        }
+
+        .btn-step {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 12px;
-            width: 100%;
-            padding: 16px 20px;
+            gap: 14px;
+            padding: 14px 16px;
             border-radius: 14px;
-            font-size: 15px;
-            font-weight: 800;
             text-decoration: none;
-            cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
+            text-align: left;
             position: relative;
         }
 
-        .btn-primary {
+        .btn-step.step-1 {
             background: #ffffff;
             color: #090b10;
-            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
         }
 
-        .btn-primary:hover {
+        .btn-step.step-1:hover {
             background: #f1f5f9;
             transform: scale(1.01);
-            box-shadow: 0 10px 28px rgba(255, 255, 255, 0.25);
         }
 
-        .btn-playstore {
+        .btn-step.step-2 {
             background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
             color: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.3);
+            box-shadow: 0 8px 20px rgba(2, 132, 199, 0.25);
         }
 
-        .btn-playstore:hover {
+        .btn-step.step-2:hover {
             background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
             transform: scale(1.01);
-            box-shadow: 0 10px 30px rgba(2, 132, 199, 0.45);
         }
 
-        .btn-icon {
-            width: 22px;
-            height: 22px;
-        }
-
-        /* Connector arrow */
-        .connector-indicator {
+        .btn-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            color: var(--text-muted);
-            font-size: 13px;
-            font-weight: 600;
-            padding: 4px 0;
-        }
-
-        .connector-arrow {
-            font-size: 18px;
-            color: var(--accent);
-            animation: bounce 1.8s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(4px); }
-        }
-
-        /* Premium Device Mockup Cover */
-        .showcase-section {
-            margin: 54px 0 36px 0;
-            text-align: center;
-        }
-
-        .showcase-title {
             font-size: 14px;
+            font-weight: 900;
+            flex-shrink: 0;
+        }
+
+        .step-1 .btn-num {
+            background: #090b10;
+            color: #ffffff;
+        }
+
+        .step-2 .btn-num {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .btn-text {
+            flex-grow: 1;
+        }
+
+        .btn-title {
+            display: block;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 2px;
+        }
+
+        .btn-caption {
+            display: block;
+            font-size: 11px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .btn-arrow {
+            font-size: 18px;
+            font-weight: bold;
+            opacity: 0.6;
+        }
+
+        .step-arrow-divider {
+            padding: 8px 0;
+            font-size: 12px;
             font-weight: 700;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
-        .device-wrapper {
-            position: relative;
-            max-width: 330px;
-            margin: 0 auto;
-            border-radius: 42px;
-            padding: 10px;
-            background: linear-gradient(145deg, #2a3142 0%, #0f1219 50%, #1e2433 100%);
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 50px rgba(56, 189, 248, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        /* Highlights Pills */
+        .pills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 32px;
         }
 
-        .device-inner {
-            position: relative;
-            border-radius: 34px;
+        .pill {
+            font-size: 12px;
+            font-weight: 700;
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 999px;
+        }
+
+        /* Mockup */
+        .mockup {
+            max-width: 290px;
+            margin: 0 auto 36px auto;
+            border-radius: 36px;
+            padding: 8px;
+            background: linear-gradient(145deg, #1f2533 0%, #0d0f14 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.1);
+        }
+
+        .mockup-inner {
+            border-radius: 28px;
             overflow: hidden;
-            background: #000000;
-            border: 2px solid #141721;
+            background: #000;
+            position: relative;
         }
 
-        .camera-notch {
+        .notch {
             position: absolute;
-            top: 10px;
+            top: 8px;
             left: 50%;
             transform: translateX(-50%);
-            width: 14px;
-            height: 14px;
-            background: #0d0f15;
+            width: 12px;
+            height: 12px;
+            background: #000;
             border-radius: 50%;
-            border: 1.5px solid #1e2430;
-            z-index: 10;
+            border: 1.5px solid #1a1e28;
+            z-index: 2;
         }
 
-        .device-screen-img {
+        .mockup-img {
             width: 100%;
             height: auto;
             display: block;
-            border-radius: 32px;
-        }
-
-        /* Feature Pills */
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-top: 36px;
-        }
-
-        .feature-card {
-            background: rgba(18, 22, 33, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            padding: 16px;
-            text-align: left;
-        }
-
-        .feature-card h4 {
-            font-size: 14px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .feature-card p {
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        /* Troubleshooting / FAQ Box */
-        .troubleshooting-box {
-            margin-top: 40px;
-            background: rgba(22, 27, 40, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 20px;
-            text-align: left;
-        }
-
-        .troubleshooting-box h3 {
-            font-size: 15px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .troubleshooting-box p {
-            font-size: 13px;
-            color: var(--text-muted);
-            line-height: 1.5;
         }
 
         /* Footer */
         footer {
-            margin-top: 60px;
-            text-align: center;
-            font-size: 13px;
-            color: var(--text-muted);
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            padding-top: 28px;
+            font-size: 12px;
+            color: var(--muted);
         }
 
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 18px;
-            margin-bottom: 12px;
-        }
-
-        .footer-links a {
-            color: var(--text-muted);
+        footer a {
+            color: var(--muted);
             text-decoration: none;
-            transition: color 0.2s;
         }
 
-        .footer-links a:hover {
+        footer a:hover {
             color: #ffffff;
             text-decoration: underline;
-        }
-
-        @media (max-width: 480px) {
-            h1 { font-size: 26px; }
-            .features-grid { grid-template-columns: 1fr; }
-            .step-title { font-size: 18px; }
         }
     </style>
 </head>
 <body>
-    <div class="ambient-glow"></div>
+    <div class="glow"></div>
 
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <div class="badge-live">
-                <span class="pulse-dot"></span>
-                Closed Beta • Rilis Awal
-            </div>
+    <div class="wrapper">
+        <!-- Logo & Header -->
+        <img src="assets/app-icon.png" alt="GasCount Icon" class="icon">
+        <span class="tag">Beta Android</span>
+        <h1>Timer Olahraga Tanpa Iklan.</h1>
+        <p class="sub">Fokus latihan tanpa gangguan video pop-up.<br>100% offline & audio coach.</p>
 
-            <div class="brand-icon-wrapper">
-                <img src="assets/app-icon.png" alt="GasCount Icon" class="brand-icon">
-            </div>
-
-            <h1>GasCount Workout Timer</h1>
-            <p class="hero-desc">
-                Timer interval & sirkuit presisi tinggi dengan audio coach. 100% tanpa iklan, offline-first, dan gratis.
-            </p>
-        </header>
-
-        <!-- Action Step Cards -->
-        <div class="steps-container">
-            <!-- Step 1 -->
-            <div class="step-card active-step">
-                <div class="step-header">
-                    <span class="step-badge">Langkah 1 (Wajib)</span>
-                    <span style="font-size: 13px; color: #94a3b8;">1 Kali Klik</span>
+        <!-- 2 Langkah Langsung Aksi -->
+        <div class="action-box">
+            <a href="https://groups.google.com/g/gascount" target="_blank" class="btn-step step-1">
+                <div class="btn-num">1</div>
+                <div class="btn-text">
+                    <span class="btn-title">Buka Akses Tester</span>
+                    <span class="btn-caption">Klik 'Join group' di Google</span>
                 </div>
-                <h2 class="step-title">Gabung Grup Tester Google</h2>
-                <p class="step-text">
-                    Google Play mewajibkan akun Anda terdaftar di grup agar tautan download resmi dapat dibuka. Klik tombol di bawah lalu tekan <strong>"Join group / Gabung ke grup"</strong>.
-                </p>
-                <a href="https://groups.google.com/g/gascount" target="_blank" rel="noopener noreferrer" class="btn-action btn-primary">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                    1. Gabung Google Group (Buka Tab Baru)
-                </a>
+                <div class="btn-arrow">→</div>
+            </a>
+
+            <div class="step-arrow-divider">
+                <span>↓ lalu</span>
             </div>
 
-            <!-- Connector -->
-            <div class="connector-indicator">
-                <span class="connector-arrow">↓</span>
-                <span>Setelah gabung, lanjut ke langkah 2</span>
-                <span class="connector-arrow">↓</span>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="step-card">
-                <div class="step-header">
-                    <span class="step-badge final">Langkah 2</span>
-                    <span style="font-size: 13px; color: #38bdf8;">Play Store</span>
+            <a href="https://play.google.com/apps/testing/com.workout.timer" target="_blank" class="btn-step step-2">
+                <div class="btn-num">2</div>
+                <div class="btn-text">
+                    <span class="btn-title">Download di Play Store</span>
+                    <span class="btn-caption">Klik 'Become a tester' & unduh</span>
                 </div>
-                <h2 class="step-title">Unduh di Google Play Store</h2>
-                <p class="step-text">
-                    Buka tautan opt-in resmi Play Store, klik tombol <strong>"Become a tester"</strong>, lalu klik tautan <strong>"Download it on Google Play"</strong>.
-                </p>
-                <a href="https://play.google.com/apps/testing/com.workout.timer" target="_blank" rel="noopener noreferrer" class="btn-action btn-playstore">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3.609 1.814L13.792 12 3.61 22.186a2.023 2.023 0 0 1-1.61-.418c-.37-.323-.5-.776-.5-1.268V3.5c0-.492.13-.945.5-1.268.423-.37 1.05-.53 1.609-.418zm11.605 11.604l2.58 2.58-12.026 6.942 9.446-9.522zm0-2.836L5.768 1.06 17.794 8l-2.58 2.582zm1.414 1.418l4.47-2.58a1.97 1.97 0 0 1 1.902 0c.606.35.9.99.9 1.584 0 .594-.294 1.234-.9 1.584l-4.47 2.58-1.902-1.902 1.9-1.866z"/>
-                    </svg>
-                    2. Unduh GasCount di Play Store
-                </a>
+                <div class="btn-arrow">→</div>
+            </a>
+        </div>
+
+        <!-- 4 Keunggulan Singkat -->
+        <div class="pills">
+            <span class="pill">🚫 0 Iklan</span>
+            <span class="pill">⚡ 100% Offline</span>
+            <span class="pill">🎙️ Audio Coach</span>
+            <span class="pill">🖤 AMOLED</span>
+        </div>
+
+        <!-- Cover Preview Premium -->
+        <div class="mockup">
+            <div class="mockup-inner">
+                <div class="notch"></div>
+                <img src="assets/preview-analytics.jpg" alt="GasCount App Preview" class="mockup-img">
             </div>
         </div>
 
-        <!-- Premium Showcase Section -->
-        <div class="showcase-section">
-            <div class="showcase-title">Tampilan Antarmuka Eksklusif</div>
-
-            <div class="device-wrapper">
-                <div class="device-inner">
-                    <div class="camera-notch"></div>
-                    <img src="assets/preview-analytics.jpg" alt="GasCount App Screenshot Preview" class="device-screen-img">
-                </div>
-            </div>
-
-            <!-- Features Grid -->
-            <div class="features-grid">
-                <div class="feature-card">
-                    <h4>🚫 100% Bebas Iklan</h4>
-                    <p>Fokus penuh pada repetisi dan set Anda tanpa jeda iklan video yang mengganggu.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>⚡ Offline First</h4>
-                    <p>Berjalan lancar di gym bawah tanah atau outdoor tanpa memerlukan koneksi kuota.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>🎙️ Audio Coach Cerdas</h4>
-                    <p>Aba-aba hitung mundur suara dan getaran haptik di setiap transisi interval.</p>
-                </div>
-                <div class="feature-card">
-                    <h4>🖤 AMOLED Obsidian</h4>
-                    <p>Desain kontras tinggi yang nyaman di mata dan hemat konsumsi baterai ponsel.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Troubleshooting Box -->
-        <div class="troubleshooting-box">
-            <h3>💡 Ada Kendala?</h3>
-            <p>
-                Jika muncul pesan <em>"App not available for this account"</em> saat membuka Langkah 2, pastikan Anda <strong>sudah menekan tombol 'Join group' di Langkah 1</strong> menggunakan akun Google yang sama dengan akun Play Store di HP Anda.
-            </p>
-        </div>
-
-        <!-- Footer -->
+        <!-- Footer Ringkas -->
         <footer>
-            <div class="footer-links">
-                <a href="privacy-policy.html">Kebijakan Privasi</a>
-                <span>•</span>
-                <a href="https://github.com/ikhsanhikari/workout-timer" target="_blank" rel="noopener">GitHub</a>
-            </div>
-            <p>&copy; 2026 GasCount • Dikembangkan oleh Ikhsan. All rights reserved.</p>
+            <a href="privacy-policy.html">Privacy Policy</a> • GasCount 2026
         </footer>
     </div>
 </body>
 </html>
-
