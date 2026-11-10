@@ -68,6 +68,7 @@ class WorkoutTimerService : Service() {
         const val ACTION_STOP = "com.workout.timer.ACTION_STOP"
 
         const val EXTRA_ROUTINE_ID = "extra_routine_id"
+        const val EXTRA_SAVE_PROGRESS = "extra_save_progress"
 
         fun startIntent(context: Context, routineId: Long): Intent {
             return Intent(context, WorkoutTimerService::class.java).apply {
@@ -85,8 +86,11 @@ class WorkoutTimerService : Service() {
         fun skipIntent(context: Context): Intent =
             Intent(context, WorkoutTimerService::class.java).apply { action = ACTION_SKIP }
 
-        fun stopIntent(context: Context): Intent =
-            Intent(context, WorkoutTimerService::class.java).apply { action = ACTION_STOP }
+        fun stopIntent(context: Context, saveProgress: Boolean = false): Intent =
+            Intent(context, WorkoutTimerService::class.java).apply {
+                action = ACTION_STOP
+                putExtra(EXTRA_SAVE_PROGRESS, saveProgress)
+            }
     }
 
     private val notificationActionReceiver = object : BroadcastReceiver() {
@@ -96,7 +100,10 @@ class WorkoutTimerService : Service() {
                 ACTION_RESUME -> timerEngine.resume()
                 ACTION_SKIP -> timerEngine.skip()
                 ACTION_ADD_REST -> timerEngine.addRestTime(15)
-                ACTION_STOP -> stopWorkoutSession()
+                ACTION_STOP -> {
+                    val saveProgress = intent.getBooleanExtra(EXTRA_SAVE_PROGRESS, false)
+                    stopWorkoutSession(saveProgress)
+                }
             }
         }
     }
@@ -149,7 +156,8 @@ class WorkoutTimerService : Service() {
             ACTION_SKIP -> timerEngine.skip()
             ACTION_ADD_REST -> timerEngine.addRestTime(15)
             ACTION_STOP -> {
-                stopWorkoutSession()
+                val saveProgress = intent.getBooleanExtra(EXTRA_SAVE_PROGRESS, false)
+                stopWorkoutSession(saveProgress)
                 return START_NOT_STICKY
             }
         }
@@ -181,12 +189,14 @@ class WorkoutTimerService : Service() {
 
         serviceScope.launch {
             try {
+                workoutRepository.markRoutinePerformed(routineId)
                 val routine = workoutRepository.getRoutineById(routineId)
                 val routineName = routine?.name ?: "Workout"
                 val flatExercises = flattenRoutineUseCase(routineId)
+                val routineCategory = routine?.category ?: (flatExercises.firstOrNull()?.category ?: "Full Body")
 
                 if (flatExercises.isNotEmpty()) {
-                    timerEngine.startWorkout(routineId, routineName, flatExercises)
+                    timerEngine.startWorkout(routineId, routineName, flatExercises, routineCategory)
                 } else {
                     Log.w("WorkoutTimerService", "flatExercises is empty for routineId=$routineId")
                     stopWorkoutSession()
@@ -198,7 +208,19 @@ class WorkoutTimerService : Service() {
         }
     }
 
-    private fun stopWorkoutSession() {
+    private fun stopWorkoutSession(saveProgress: Boolean = false) {
+        if (saveProgress) {
+            val snapshot = timerEngine.getCurrentSessionSnapshot(isCompletedFully = false)
+            if (snapshot != null && snapshot.durationSeconds >= 5) {
+                serviceScope.launch {
+                    try {
+                        workoutRepository.recordWorkoutSession(snapshot)
+                    } catch (e: Exception) {
+                        Log.e("WorkoutTimerService", "Failed to record partial session: ${e.message}")
+                    }
+                }
+            }
+        }
         timerEngine.stop()
         if (wakeLock?.isHeld == true) {
             try {
@@ -332,9 +354,26 @@ class WorkoutTimerService : Service() {
                     is WorkoutTimerState.Completed -> {
                         if (lastNotifiedPhase != "completed") {
                             lastNotifiedPhase = "completed"
-                            workoutRepository.markRoutinePerformed(state.routineId)
+                            serviceScope.launch {
+                                try {
+                                    workoutRepository.recordWorkoutSession(
+                                        com.workout.timer.data.model.WorkoutSessionRecord(
+                                            routineId = state.routineId,
+                                            routineName = state.routineName,
+                                            category = state.category,
+                                            completedAt = System.currentTimeMillis(),
+                                            durationSeconds = state.totalDurationSeconds,
+                                            totalExercisesCompleted = state.totalExercisesCompleted,
+                                            totalExercisesPlanned = state.totalExercisesCompleted,
+                                            isCompletedFully = true
+                                        )
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("WorkoutTimerService", "Failed to record completed session: ${e.message}")
+                                }
+                            }
 
-                            val totalMin = state.totalDurationSeconds / 60
+                            val totalMin = (state.totalDurationSeconds / 60).coerceAtLeast(1)
                             updateNotification(
                                 title = "Latihan Selesai! 🎉",
                                 content = "${state.routineName} • Selesai dalam $totalMin menit",

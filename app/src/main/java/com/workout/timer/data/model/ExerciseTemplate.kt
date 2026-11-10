@@ -55,5 +55,90 @@ data class ExerciseTemplate(
     val lastUsedAt: Long = System.currentTimeMillis(),
 
     /** Berapa kali template ini sudah digunakan di berbagai rutinitas. */
-    val usageCount: Int = 0
+    val usageCount: Int = 0,
+
+    /** Kategori gerakan (Cardio, Strength, Core, Mobility, Recovery). */
+    val category: String? = null,
+
+    /** Target otot spesifik (misal: "Dada • Bahu • Trisep"). */
+    val targetMuscle: String? = null,
+
+    /** Grup otot utama untuk filter (Chest, Legs / Glutes, Abs / Core, Back, Full Body / Cardio). */
+    val primaryMuscle: String? = null,
+
+    /** Peralatan yang dibutuhkan (misal: "Tanpa Alat (Bodyweight)", "Matras", "Dumbbell"). */
+    val equipment: String? = null,
+
+    /** Tingkat kesulitan (Beginner, Intermediate, Advanced). */
+    val difficulty: String? = null,
+
+    /** Tips instruktur profesional saat melakukan gerakan ini. */
+    val coachTip: String? = null,
+
+    /** Manfaat kesehatan / biomekanik dari gerakan ini. */
+    val benefits: String? = null
 )
+
+/**
+ * Resolusi otomatis tipe interval [IntervalType] berdasarkan nama dan kategori template.
+ */
+fun ExerciseTemplate.resolveIntervalType(): IntervalType {
+    val cat = category?.lowercase()?.trim().orEmpty()
+    val lowerName = name.lowercase().trim()
+
+    return when {
+        // 1. REST / RECOVERY
+        cat in listOf("recovery", "rest", "istirahat", "pemulihan") ||
+        lowerName.contains("istirahat") ||
+        lowerName == "rest" ||
+        lowerName.startsWith("rest ") ||
+        lowerName.endsWith(" rest") ||
+        lowerName.contains("pemulihan") ||
+        lowerName.contains("pause") ||
+        lowerName.contains("jeda") -> IntervalType.REST
+
+        // 2. WARMUP
+        cat in listOf("warmup", "pemanasan", "warm-up", "warm up") ||
+        lowerName.contains("pemanasan") ||
+        lowerName.contains("warmup") ||
+        lowerName.contains("warm up") ||
+        lowerName.contains("warm-up") -> IntervalType.WARMUP
+
+        // 3. COOLDOWN
+        cat in listOf("cooldown", "pendinginan", "cool-down", "cool down") ||
+        lowerName.contains("pendinginan") ||
+        lowerName.contains("cooldown") ||
+        lowerName.contains("cool down") ||
+        lowerName.contains("cool-down") -> IntervalType.COOLDOWN
+
+        // 4. Default: WORK (Latihan / Gerakan Aktif)
+        else -> IntervalType.WORK
+    }
+}
+
+/**
+ * Resolusi otomatis tipe interval berdasarkan teks judul yang diketik pengguna.
+ */
+fun resolveIntervalTypeFromTitle(title: String): IntervalType? {
+    val lower = title.lowercase().trim()
+    return when {
+        lower.contains("istirahat") ||
+        lower == "rest" ||
+        lower.startsWith("rest ") ||
+        lower.endsWith(" rest") ||
+        lower.contains("pemulihan") ||
+        lower.contains("jeda") -> IntervalType.REST
+
+        lower.contains("pemanasan") ||
+        lower.contains("warmup") ||
+        lower.contains("warm up") ||
+        lower.contains("warm-up") -> IntervalType.WARMUP
+
+        lower.contains("pendinginan") ||
+        lower.contains("cooldown") ||
+        lower.contains("cool down") ||
+        lower.contains("cool-down") -> IntervalType.COOLDOWN
+
+        else -> null
+    }
+}

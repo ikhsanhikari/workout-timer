@@ -7,8 +7,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -17,6 +25,8 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.onFocusChanged
+import com.workout.timer.R
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -41,6 +51,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.workout.timer.data.model.*
 import com.workout.timer.ui.theme.*
+import com.workout.timer.ui.component.*
+import androidx.compose.ui.res.painterResource
 
 /**
  * Layar Workout Builder (F-04) — Implementasi Milestone 2.
@@ -68,6 +80,19 @@ fun WorkoutBuilderScreen(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Master Library Picker state: Pair(blockIndex, exerciseIndex?)
+    var libraryPickerTarget by remember { mutableStateOf<Pair<Int, Int?>?>(null) }
+    var focusedExerciseTarget by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var expandedDurationTarget by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var showDeleteRoutineConfirm by remember { mutableStateOf(false) }
+    var renamingBlockIndex by remember { mutableStateOf<Int?>(null) }
+    var renameBlockText by remember { mutableStateOf("") }
+
+    // Block Drag & Drop states
+    var draggedBlockIndex by remember { mutableStateOf<Int?>(null) }
+    var blockDragOffsetY by remember { mutableFloatStateOf(0f) }
+    var blockItemHeightPx by remember { mutableFloatStateOf(0f) }
 
     // Media picker & Camera recording state
     var pendingMediaBlockIndex by remember { mutableIntStateOf(-1) }
@@ -139,6 +164,13 @@ fun WorkoutBuilderScreen(
         }
     }
 
+    // Handle smooth back navigation on successful save
+    LaunchedEffect(uiState.isSaved) {
+        if (uiState.isSaved) {
+            onNavigateBack()
+        }
+    }
+
     // Handle snackbar
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { msg ->
@@ -154,125 +186,295 @@ fun WorkoutBuilderScreen(
             BuilderTopBar(
                 isEditing = routineId != null,
                 isSaving = uiState.isSaving,
+                onBack = onNavigateBack,
+                onDelete = { showDeleteRoutineConfirm = true },
+                onSave = { viewModel.saveRoutine(startImmediately = false) }
+            )
+        },
+        bottomBar = {
+            BuilderBottomBar(
                 totalDurationSec = uiState.totalDurationSec,
                 totalExercises = uiState.totalExercises,
-                onBack = onNavigateBack,
-                onSave = { viewModel.saveRoutine(startImmediately = false) },
-                onStartNow = { viewModel.saveRoutine(startImmediately = true) }
+                isSaving = uiState.isSaving,
+                onSaveAndStart = { viewModel.saveRoutine(startImmediately = true) }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // ── Routine Metadata Card ────────────────────────────────────────
-            item {
-                RoutineMetadataCard(
-                    name = uiState.routineName,
-                    category = uiState.category,
-                    accentColor = uiState.accentColor,
-                    onNameChange = viewModel::onNameChanged,
-                    onCategoryChange = viewModel::onCategoryChanged,
-                    onColorChange = viewModel::onAccentColorChanged
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(36.dp)
                 )
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // ── Routine Header ───────────────────────────────────────────
+                item {
+                    RoutineHeader(
+                        name = uiState.routineName,
+                        category = uiState.category,
+                        accentColor = uiState.accentColor,
+                        onNameChange = viewModel::onNameChanged,
+                        onCategoryChange = viewModel::onCategoryChanged,
+                        onColorChange = viewModel::onAccentColorChanged
+                    )
+                }
 
-            // ── Section header ───────────────────────────────────────────────
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // ── Section Header ───────────────────────────────────────────
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "STRUKTUR LATIHAN",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary
+                            )
+                        )
+                        Text(
+                            text = "${uiState.blocks.size} Blok",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = TextTertiary
+                            )
+                        )
+                    }
+                }
+
+                // ── Blocks List ──────────────────────────────────────────────
+                uiState.blocks.forEachIndexed { blockIndex, uiBlock ->
+                    val isBlockDragged = (draggedBlockIndex == blockIndex)
+                    item(key = "block_${uiBlock.block.id}_${blockIndex}") {
+                        WorkoutBlockCard(
+                            uiBlock = uiBlock,
+                            blockIndex = blockIndex,
+                            totalBlocks = uiState.blocks.size,
+                            isBlockDragged = isBlockDragged,
+                            blockDragOffsetY = if (isBlockDragged) blockDragOffsetY else 0f,
+                            focusedExerciseTarget = focusedExerciseTarget,
+                            expandedDurationTarget = expandedDurationTarget,
+                            autocompleteSuggestions = if (focusedExerciseTarget?.first == blockIndex) uiState.autocompleteSuggestions else emptyList(),
+                            onBlockDragStart = { idx ->
+                                draggedBlockIndex = idx
+                                blockDragOffsetY = 0f
+                            },
+                            onBlockDrag = { deltaY ->
+                                blockDragOffsetY += deltaY
+                                val current = draggedBlockIndex ?: return@WorkoutBlockCard
+                                val h = if (blockItemHeightPx > 0f) blockItemHeightPx else 350f
+                                if (blockDragOffsetY > h * 0.5f) {
+                                    val next = current + 1
+                                    if (next < uiState.blocks.size) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.moveBlock(current, next)
+                                        draggedBlockIndex = next
+                                        blockDragOffsetY -= h
+                                    }
+                                } else if (blockDragOffsetY < -h * 0.5f) {
+                                    val prev = current - 1
+                                    if (prev >= 0) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.moveBlock(current, prev)
+                                        draggedBlockIndex = prev
+                                        blockDragOffsetY += h
+                                    }
+                                }
+                            },
+                            onBlockDragEnd = {
+                                draggedBlockIndex = null
+                                blockDragOffsetY = 0f
+                            },
+                            onBlockHeightMeasured = { h ->
+                                if (blockItemHeightPx == 0f) blockItemHeightPx = h
+                            },
+                            onExerciseMove = { bIdx, from, to ->
+                                viewModel.moveExercise(bIdx, from, to)
+                            },
+                            onRenameBlock = {
+                                renamingBlockIndex = blockIndex
+                                renameBlockText = uiBlock.block.label ?: "Blok ${blockIndex + 1}"
+                            },
+                            onRepeatCountChange = { viewModel.updateBlockRepeatCount(blockIndex, it) },
+                            onMoveUp = { viewModel.moveBlockUp(blockIndex) },
+                            onMoveDown = { viewModel.moveBlockDown(blockIndex) },
+                            onDuplicateBlock = { viewModel.duplicateBlock(blockIndex) },
+                            onDeleteBlock = { viewModel.removeBlock(blockIndex) },
+                            onExerciseFocus = { exIdx ->
+                                focusedExerciseTarget = blockIndex to exIdx
+                                viewModel.onExerciseFocused(blockIndex, exIdx)
+                            },
+                            onToggleDurationExpand = { exIdx ->
+                                expandedDurationTarget = if (expandedDurationTarget == (blockIndex to exIdx)) null else (blockIndex to exIdx)
+                            },
+                            onTitleChange = { exIdx, title -> viewModel.updateExerciseTitle(blockIndex, exIdx, title) },
+                            onTypeChange = { exIdx, type -> viewModel.updateExerciseType(blockIndex, exIdx, type) },
+                            onDurationChange = { exIdx, sec -> viewModel.updateExerciseDuration(blockIndex, exIdx, sec) },
+                            onDurationAdd = { exIdx, addSec -> viewModel.addDurationPreset(blockIndex, exIdx, addSec) },
+                            onDurationSet = { exIdx, sec -> viewModel.setDurationPreset(blockIndex, exIdx, sec) },
+                            onOpenLibraryPicker = { exIdx -> libraryPickerTarget = blockIndex to exIdx },
+                            onPickMedia = { exIdx, hasMedia ->
+                                pendingMediaBlockIndex = blockIndex
+                                pendingMediaExerciseIndex = exIdx
+                                targetExerciseHasMedia = hasMedia
+                                showMediaSourceSheet = true
+                            },
+                            onRemoveMedia = { exIdx -> viewModel.removeMediaFromExercise(blockIndex, exIdx) },
+                            onDuplicateExercise = { exIdx -> viewModel.duplicateExercise(blockIndex, exIdx) },
+                            onDeleteExercise = { exIdx -> viewModel.removeExercise(blockIndex, exIdx) },
+                            onApplyTemplate = { exIdx, template ->
+                                viewModel.applyTemplate(blockIndex, exIdx, template)
+                                focusedExerciseTarget = null
+                            },
+                            onClearAutocomplete = {
+                                viewModel.clearAutocomplete()
+                                focusedExerciseTarget = null
+                            },
+                            onAddMovement = { libraryPickerTarget = blockIndex to null },
+                            onQuickAdd = { type -> viewModel.addExercise(blockIndex, type) }
+                        )
+                    }
+                }
+
+                // ── Add Block Button (Outside Card) ──────────────────────────
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.addBlock() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.06f),
+                            contentColor = TextPrimary
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "+ Tambah Blok / Superset Baru",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+            }
+        }
+
+        // ── Dialogs ──────────────────────────────────────────────────────────
+        if (showDeleteRoutineConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteRoutineConfirm = false },
+                containerColor = SurfaceCard,
+                title = {
                     Text(
-                        text = "Struktur Latihan",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = if (routineId != null) "Hapus Rutinitas?" else "Buang Rutinitas?",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = if (routineId != null)
+                            "Apakah Anda yakin ingin menghapus rutinitas ini? Tindakan ini tidak dapat dibatalkan."
+                        else
+                            "Perubahan yang belum disimpan akan dibuang.",
                         color = TextSecondary
                     )
-                    Text(
-                        text = "${uiState.blocks.size} Blok",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextTertiary
-                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteRoutineConfirm = false
+                            if (routineId != null) {
+                                viewModel.deleteRoutine(onSuccess = onNavigateBack)
+                            } else {
+                                onNavigateBack()
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (routineId != null) "Hapus" else "Buang",
+                            color = ColorDanger,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteRoutineConfirm = false }) {
+                        Text("Batal", color = TextSecondary)
+                    }
                 }
-            }
+            )
+        }
 
-            // ── Blocks ───────────────────────────────────────────────────────
-            uiState.blocks.forEachIndexed { blockIndex, uiBlock ->
-                item(key = "block_${blockIndex}_${uiBlock.block.id}") {
-                    BlockCard(
-                        uiBlock = uiBlock,
-                        blockIndex = blockIndex,
-                        totalBlocks = uiState.blocks.size,
-                        autocompleteSuggestions = uiState.autocompleteSuggestions,
-                        onToggleExpand = { viewModel.toggleBlockExpanded(blockIndex) },
-                        onLabelChange = { viewModel.updateBlockLabel(blockIndex, it) },
-                        onRepeatCountChange = { viewModel.updateBlockRepeatCount(blockIndex, it) },
-                        onMoveUp = { viewModel.moveBlockUp(blockIndex) },
-                        onMoveDown = { viewModel.moveBlockDown(blockIndex) },
-                        onDuplicate = { viewModel.duplicateBlock(blockIndex) },
-                        onDelete = { viewModel.removeBlock(blockIndex) },
-                        onAddExercise = { type -> viewModel.addExercise(blockIndex, type) },
-                        onExerciseTitleChange = { exIdx, title ->
-                            viewModel.updateExerciseTitle(blockIndex, exIdx, title)
-                        },
-                        onExerciseDurationChange = { exIdx, sec ->
-                            viewModel.updateExerciseDuration(blockIndex, exIdx, sec)
-                        },
-                        onExerciseDurationAdd = { exIdx, addSec ->
-                            viewModel.addDurationPreset(blockIndex, exIdx, addSec)
-                        },
-                        onExerciseDurationSet = { exIdx, sec ->
-                            viewModel.setDurationPreset(blockIndex, exIdx, sec)
-                        },
-                        onExerciseTypeChange = { exIdx, type ->
-                            viewModel.updateExerciseType(blockIndex, exIdx, type)
-                        },
-                        onExerciseDuplicate = { exIdx -> viewModel.duplicateExercise(blockIndex, exIdx) },
-                        onExerciseDelete = { exIdx -> viewModel.removeExercise(blockIndex, exIdx) },
-                        onApplyTemplate = { exIdx, template ->
-                            viewModel.applyTemplate(blockIndex, exIdx, template)
-                        },
-                        onClearAutocomplete = viewModel::clearAutocomplete,
-                        onExercisePickMedia = { exIdx ->
-                            pendingMediaBlockIndex = blockIndex
-                            pendingMediaExerciseIndex = exIdx
-                            val currentEx = uiBlock.exercises.getOrNull(exIdx)
-                            targetExerciseHasMedia = currentEx?.resolvedMediaUri != null
-                            showMediaSourceSheet = true
-                        },
-                        onExerciseRemoveMedia = { exIdx ->
-                            viewModel.removeMediaFromExercise(blockIndex, exIdx)
-                        },
-                        modifier = Modifier.animateItem()
-                    )
+        if (renamingBlockIndex != null) {
+            AlertDialog(
+                onDismissRequest = { renamingBlockIndex = null },
+                containerColor = SurfaceCard,
+                title = { Text("Ubah Nama Blok", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Beri nama atau label khusus untuk blok latihan ini:", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                        OutlinedTextField(
+                            value = renameBlockText,
+                            onValueChange = { renameBlockText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Contoh: Pemanasan, Superset A, Cooldown", color = TextTertiary) },
+                            colors = builderTextFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            renamingBlockIndex?.let { bIdx ->
+                                viewModel.updateBlockLabel(bIdx, renameBlockText.trim())
+                            }
+                            renamingBlockIndex = null
+                        }
+                    ) {
+                        Text("Simpan", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            renamingBlockIndex?.let { bIdx ->
+                                viewModel.updateBlockLabel(bIdx, "")
+                            }
+                            renamingBlockIndex = null
+                        }
+                    ) {
+                        Text("Reset Default", color = TextTertiary)
+                    }
                 }
-            }
-
-            // ── Add Block Button ─────────────────────────────────────────────
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { viewModel.addBlock() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(40.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, Color(0xFF383842)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = AccentWork, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tambah Blok / Set Baru", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                }
-            }
+            )
         }
 
         // ── Media Source Selector Bottom Sheet (Rekam Langsung / Galeri) ──
@@ -298,6 +500,23 @@ fun WorkoutBuilderScreen(
                 }
             )
         }
+
+        // ── Exercise Library Picker Bottom Sheet (Kamus Gerakan Master 73 Gerakan) ──
+        libraryPickerTarget?.let { (targetBlockIndex, targetExerciseIndex) ->
+            val allTemplates by viewModel.allTemplates.collectAsStateWithLifecycle()
+            ExerciseLibraryPickerBottomSheet(
+                templates = allTemplates,
+                onDismiss = { libraryPickerTarget = null },
+                onSelectTemplate = { selectedTemplate ->
+                    if (targetExerciseIndex != null) {
+                        viewModel.applyTemplate(targetBlockIndex, targetExerciseIndex, selectedTemplate)
+                    } else {
+                        viewModel.addExerciseFromTemplate(targetBlockIndex, selectedTemplate)
+                    }
+                    libraryPickerTarget = null
+                }
+            )
+        }
     }
 }
 
@@ -308,157 +527,254 @@ fun WorkoutBuilderScreen(
 private fun BuilderTopBar(
     isEditing: Boolean,
     isSaving: Boolean,
-    totalDurationSec: Int,
-    totalExercises: Int,
     onBack: () -> Unit,
-    onSave: () -> Unit,
-    onStartNow: () -> Unit
+    onDelete: () -> Unit,
+    onSave: () -> Unit
 ) {
-    Column {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(
-                        text = if (isEditing) "Edit Rutinitas" else "Rutinitas Baru",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
+    TopAppBar(
+        title = {
+            Text(
+                text = if (isEditing) "Perbarui Rutinitas" else "Buat Rutinitas",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Kembali",
+                    tint = TextPrimary
+                )
+            }
+        },
+        actions = {
+            if (isEditing) {
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Hapus Rutinitas",
+                        tint = ColorDanger
                     )
                 }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, "Kembali", tint = TextPrimary)
+            }
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(8.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                IconButton(onClick = onSave) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Simpan",
+                        tint = Color.White
+                    )
                 }
-            },
-            actions = {
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundPrimary)
+    )
+}
+
+// ── Sticky Bottom Bar ────────────────────────────────────────────────────────
+
+@Composable
+private fun BuilderBottomBar(
+    totalDurationSec: Int,
+    totalExercises: Int,
+    isSaving: Boolean,
+    onSaveAndStart: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+        color = Color.White.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Total Estimasi:",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = TextTertiary,
+                        fontSize = 11.sp
+                    )
+                )
+                Text(
+                    text = "${formatDuration(totalDurationSec)} ($totalExercises item)",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 15.sp
+                    )
+                )
+            }
+
+            Button(
+                onClick = onSaveAndStart,
+                enabled = !isSaving,
+                shape = RoundedCornerShape(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black
+                ),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+            ) {
                 if (isSaving) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp).padding(4.dp),
-                        color = AccentWork,
+                        modifier = Modifier.size(18.dp),
+                        color = Color.Black,
                         strokeWidth = 2.dp
                     )
                 } else {
-                    IconButton(onClick = onSave) {
-                        Icon(Icons.Default.Check, "Simpan", tint = AccentWork)
-                    }
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundPrimary)
-        )
-        // Real-time stats bar (PRD 4.1.4)
-        Surface(color = SurfaceCard) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StatBadge(
-                    label = "Total Estimasi",
-                    value = formatDuration(totalDurationSec),
-                    color = AccentWork
-                )
-                StatBadge(
-                    label = "Total Gerakan",
-                    value = "$totalExercises item",
-                    color = AccentRest
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                // Quick start button
-                if (totalExercises > 0) {
-                    Button(
-                        onClick = onStartNow,
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(34.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF24242A), contentColor = TextPrimary),
-                        border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.45f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, null, tint = AccentWork, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Mulai", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(
+                            text = "Simpan & Mulai",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
         }
-        HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
     }
 }
 
-@Composable
-private fun StatBadge(label: String, value: String, color: Color) {
-    Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = TextTertiary)
-        Text(text = value, style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
-    }
-}
-
-// ── Routine Metadata Card ────────────────────────────────────────────────────
+// ── Routine Header (In-Place Title + 2 Capsule Chips) ─────────────────────────
 
 @Composable
-private fun RoutineMetadataCard(
+private fun RoutineHeader(
     name: String,
     category: String,
     accentColor: String,
     onNameChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
-    onColorChange: (String) -> Unit
+    onColorChange: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showCategoryMenu by remember { mutableStateOf(false) }
+    var showColorMenu by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Detail Rutinitas", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-
-            // Name field
-            OutlinedTextField(
-                value = name,
-                onValueChange = onNameChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Nama rutinitas...", color = TextTertiary) },
-                label = { Text("Nama", color = TextSecondary) },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next
-                ),
-                colors = builderTextFieldColors(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-
-            // Category + Color row
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Category dropdown
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = category,
-                        onValueChange = {},
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Kategori", color = TextSecondary) },
-                        readOnly = true,
-                        trailingIcon = {
-                            Icon(Icons.Default.ArrowDropDown, null, tint = TextSecondary,
-                                modifier = Modifier.clickable { showCategoryMenu = true })
-                        },
-                        colors = builderTextFieldColors(),
-                        shape = RoundedCornerShape(12.dp)
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Direct in-place title
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                if (name.isEmpty()) {
+                    Text(
+                        text = "Ketuk untuk beri nama rutinitas...",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextTertiary
+                        )
                     )
+                }
+                BasicTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    ),
+                    cursorBrush = SolidColor(Color.White),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Done
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = null,
+                tint = TextTertiary,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        // Two Capsule Chips: [ ⚡ HIIT ▾ ] and [ 🟢 Warna Aksen ▾ ]
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Category Chip (Frosted White Glass)
+            Box {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                    modifier = Modifier.clickable { showCategoryMenu = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.70f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                if (showCategoryMenu) {
                     DropdownMenu(
-                        expanded = showCategoryMenu,
+                        expanded = true,
                         onDismissRequest = { showCategoryMenu = false },
                         containerColor = SurfaceCard
                     ) {
                         PRESET_CATEGORIES.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat, color = if (cat == category) AccentWork else TextPrimary) },
+                                text = { Text(cat, color = if (cat == category) Color.White else TextSecondary) },
                                 onClick = { onCategoryChange(cat); showCategoryMenu = false }
                             )
                         }
@@ -466,31 +782,70 @@ private fun RoutineMetadataCard(
                 }
             }
 
-            // Accent color picker
-            Text("Warna Aksen", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PRESET_ACCENT_COLORS.forEach { colorHex ->
-                    val color = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
-                        .getOrDefault(AccentWork)
-                    val isSelected = accentColor == colorHex
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(
-                                width = if (isSelected) 3.dp else 0.dp,
-                                color = if (isSelected) Color.White else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable { onColorChange(colorHex) }
+            // Accent Color Chip (Frosted White Glass)
+            val parsedColor = runCatching { Color(android.graphics.Color.parseColor(accentColor)) }
+                .getOrDefault(Color.White)
+            Box {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                    modifier = Modifier.clickable { showColorMenu = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (isSelected) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.align(Alignment.Center).size(18.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(parsedColor)
+                        )
+                        Text(
+                            text = "Warna Aksen",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.70f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                if (showColorMenu) {
+                    DropdownMenu(
+                        expanded = true,
+                        onDismissRequest = { showColorMenu = false },
+                        containerColor = Color(0xFF18181B)
+                    ) {
+                        PRESET_ACCENT_COLORS.forEach { colorHex ->
+                            val col = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
+                                .getOrDefault(Color.White)
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(14.dp)
+                                                .clip(CircleShape)
+                                                .background(col)
+                                        )
+                                        Text(
+                                            text = colorHex,
+                                            color = if (colorHex == accentColor) Color.White else TextSecondary
+                                        )
+                                    }
+                                },
+                                onClick = { onColorChange(colorHex); showColorMenu = false }
                             )
                         }
                     }
@@ -500,576 +855,1022 @@ private fun RoutineMetadataCard(
     }
 }
 
-// ── Block Card ───────────────────────────────────────────────────────────────
+// ── Workout Block Card ──────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BlockCard(
+private fun WorkoutBlockCard(
     uiBlock: UiBlock,
     blockIndex: Int,
     totalBlocks: Int,
+    isBlockDragged: Boolean,
+    blockDragOffsetY: Float,
+    focusedExerciseTarget: Pair<Int, Int>?,
+    expandedDurationTarget: Pair<Int, Int>?,
     autocompleteSuggestions: List<ExerciseTemplate>,
-    onToggleExpand: () -> Unit,
-    onLabelChange: (String) -> Unit,
+    onBlockDragStart: (Int) -> Unit,
+    onBlockDrag: (Float) -> Unit,
+    onBlockDragEnd: () -> Unit,
+    onBlockHeightMeasured: (Float) -> Unit,
+    onExerciseMove: (Int, Int, Int) -> Unit,
+    onRenameBlock: () -> Unit,
+    onRepeatCountChange: (Int) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onDuplicateBlock: () -> Unit,
+    onDeleteBlock: () -> Unit,
+    onExerciseFocus: (Int) -> Unit,
+    onToggleDurationExpand: (Int) -> Unit,
+    onTitleChange: (Int, String) -> Unit,
+    onTypeChange: (Int, IntervalType) -> Unit,
+    onDurationChange: (Int, Int) -> Unit,
+    onDurationAdd: (Int, Int) -> Unit,
+    onDurationSet: (Int, Int) -> Unit,
+    onOpenLibraryPicker: (Int) -> Unit,
+    onPickMedia: (Int, Boolean) -> Unit,
+    onRemoveMedia: (Int) -> Unit,
+    onDuplicateExercise: (Int) -> Unit,
+    onDeleteExercise: (Int) -> Unit,
+    onApplyTemplate: (Int, ExerciseTemplate) -> Unit,
+    onClearAutocomplete: () -> Unit,
+    onAddMovement: () -> Unit,
+    onQuickAdd: (IntervalType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var draggedExerciseIndex by remember { mutableStateOf<Int?>(null) }
+    var exerciseDragOffsetY by remember { mutableFloatStateOf(0f) }
+    var exerciseItemHeightPx by remember { mutableFloatStateOf(0f) }
+    val haptic = LocalHapticFeedback.current
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .onGloballyPositioned { coords ->
+                if (coords.size.height > 0) {
+                    onBlockHeightMeasured(coords.size.height.toFloat())
+                }
+            }
+            .zIndex(if (isBlockDragged) 10f else 1f)
+            .graphicsLayer {
+                if (isBlockDragged) {
+                    translationY = blockDragOffsetY
+                    scaleX = 1.02f
+                    scaleY = 1.02f
+                    shadowElevation = 16f
+                }
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isBlockDragged) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.06f)
+        ),
+        border = BorderStroke(
+            if (isBlockDragged) 1.5.dp else 1.dp,
+            if (isBlockDragged) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.14f)
+        )
+    ) {
+        Column {
+            // Block Header Row
+            BlockHeaderRow(
+                uiBlock = uiBlock,
+                blockIndex = blockIndex,
+                totalBlocks = totalBlocks,
+                isBeingDragged = isBlockDragged,
+                onDragStart = { onBlockDragStart(blockIndex) },
+                onDrag = onBlockDrag,
+                onDragEnd = onBlockDragEnd,
+                onRenameBlock = onRenameBlock,
+                onRepeatCountChange = onRepeatCountChange,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
+                onDuplicate = onDuplicateBlock,
+                onDelete = onDeleteBlock
+            )
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
+
+            // Exercises in this block
+            uiBlock.exercises.forEachIndexed { exIdx, uiExercise ->
+                val isFocused = focusedExerciseTarget == (blockIndex to exIdx)
+                val isDurationExpanded = expandedDurationTarget == (blockIndex to exIdx)
+                val isExerciseDragged = (draggedExerciseIndex == exIdx)
+
+                ExerciseRowCompact(
+                    uiExercise = uiExercise,
+                    exerciseIndex = exIdx,
+                    blockIndex = blockIndex,
+                    isActive = isFocused,
+                    isDurationExpanded = isDurationExpanded,
+                    autocompleteSuggestions = if (isFocused) autocompleteSuggestions else emptyList(),
+                    isBeingDragged = isExerciseDragged,
+                    dragOffsetY = if (isExerciseDragged) exerciseDragOffsetY else 0f,
+                    onDragStart = {
+                        draggedExerciseIndex = exIdx
+                        exerciseDragOffsetY = 0f
+                    },
+                    onDrag = { deltaY ->
+                        exerciseDragOffsetY += deltaY
+                        val current = draggedExerciseIndex ?: return@ExerciseRowCompact
+                        val h = if (exerciseItemHeightPx > 0f) exerciseItemHeightPx else 180f
+                        if (exerciseDragOffsetY > h * 0.5f) {
+                            val next = current + 1
+                            if (next < uiBlock.exercises.size) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onExerciseMove(blockIndex, current, next)
+                                draggedExerciseIndex = next
+                                exerciseDragOffsetY -= h
+                            }
+                        } else if (exerciseDragOffsetY < -h * 0.5f) {
+                            val prev = current - 1
+                            if (prev >= 0) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onExerciseMove(blockIndex, current, prev)
+                                draggedExerciseIndex = prev
+                                exerciseDragOffsetY += h
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        draggedExerciseIndex = null
+                        exerciseDragOffsetY = 0f
+                    },
+                    onRowHeightMeasured = { h ->
+                        if (exerciseItemHeightPx == 0f) exerciseItemHeightPx = h
+                    },
+                    onFocus = { onExerciseFocus(exIdx) },
+                    onToggleDurationExpand = { onToggleDurationExpand(exIdx) },
+                    onTitleChange = { title -> onTitleChange(exIdx, title) },
+                    onTypeChange = { type -> onTypeChange(exIdx, type) },
+                    onDurationChange = { sec -> onDurationChange(exIdx, sec) },
+                    onDurationAdd = { addSec -> onDurationAdd(exIdx, addSec) },
+                    onDurationSet = { sec -> onDurationSet(exIdx, sec) },
+                    onOpenLibraryPicker = { onOpenLibraryPicker(exIdx) },
+                    onPickMedia = { onPickMedia(exIdx, uiExercise.resolvedMediaUri != null) },
+                    onRemoveMedia = { onRemoveMedia(exIdx) },
+                    onDuplicate = { onDuplicateExercise(exIdx) },
+                    onDelete = { onDeleteExercise(exIdx) },
+                    onApplyTemplate = { template -> onApplyTemplate(exIdx, template) },
+                    onClearAutocomplete = onClearAutocomplete
+                )
+
+                if (exIdx < uiBlock.exercises.size - 1) {
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.05f),
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
+
+            // Block Footer (Tambah Gerakan & Sisipan Cepat)
+            BlockFooterCompact(
+                onAddMovement = onAddMovement,
+                onQuickAdd = onQuickAdd
+            )
+        }
+    }
+}
+
+// ── Block Header Row ─────────────────────────────────────────────────────────
+
+@Composable
+private fun BlockHeaderRow(
+    uiBlock: UiBlock,
+    blockIndex: Int,
+    totalBlocks: Int,
+    isBeingDragged: Boolean = false,
+    onDragStart: () -> Unit = {},
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onRenameBlock: () -> Unit,
     onRepeatCountChange: (Int) -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
-    onAddExercise: (IntervalType) -> Unit,
-    onExerciseTitleChange: (Int, String) -> Unit,
-    onExerciseDurationChange: (Int, Int) -> Unit,
-    onExerciseDurationAdd: (Int, Int) -> Unit,
-    onExerciseDurationSet: (Int, Int) -> Unit,
-    onExerciseTypeChange: (Int, IntervalType) -> Unit,
-    onExerciseDuplicate: (Int) -> Unit,
-    onExerciseDelete: (Int) -> Unit,
-    onApplyTemplate: (Int, ExerciseTemplate) -> Unit,
-    onClearAutocomplete: () -> Unit,
-    onExercisePickMedia: (Int) -> Unit,
-    onExerciseRemoveMedia: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showBlockMenu by remember { mutableStateOf(false) }
-    var focusedExerciseIndex by remember { mutableStateOf<Int?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    val label = uiBlock.block.label?.takeIf { it.isNotBlank() } ?: "Blok ${blockIndex + 1}"
+    val haptic = LocalHapticFeedback.current
 
-    val isLoop = uiBlock.block.repeatCount > 1
-
-    Card(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            // ── Block Header ─────────────────────────────────────────────────
-            Row(
+        // Drag handle (⠿) for block reorder
+        if (totalBlocks > 1) {
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Pindah Urutan Blok",
+                tint = if (isBeingDragged) Color.White else TextTertiary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggleExpand)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(28.dp)
+                    .padding(end = 4.dp)
+                    .pointerInput(blockIndex, totalBlocks) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDragStart()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() }
+                        )
+                    }
+            )
+        }
+        // Menu icon (≡) with dropdown
+        Box {
+            IconButton(
+                onClick = { showMenu = true },
+                modifier = Modifier.size(32.dp)
             ) {
-                // Loop badge
-                if (isLoop) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = AccentWork.copy(alpha = 0.15f),
-                        modifier = Modifier.padding(end = 10.dp)
-                    ) {
-                        Text(
-                            text = "×${uiBlock.block.repeatCount}",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = AccentWork,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-
-                // Label or default name
-                Text(
-                    text = uiBlock.block.label
-                        ?: if (isLoop) "Set ${blockIndex + 1}" else "Blok ${blockIndex + 1}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Exercise count badge
-                Text(
-                    text = "${uiBlock.exercises.size} gerakan",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextTertiary,
-                    modifier = Modifier.padding(end = 4.dp)
-                )
-
-                // More options
-                Box {
-                    IconButton(onClick = { showBlockMenu = true }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.MoreVert, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
-                    }
-                    DropdownMenu(
-                        expanded = showBlockMenu,
-                        onDismissRequest = { showBlockMenu = false },
-                        containerColor = SurfaceCard
-                    ) {
-                        if (blockIndex > 0) {
-                            DropdownMenuItem(
-                                text = { Text("Pindah ke Atas", color = TextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.KeyboardArrowUp, null, tint = TextSecondary) },
-                                onClick = { onMoveUp(); showBlockMenu = false }
-                            )
-                        }
-                        if (blockIndex < totalBlocks - 1) {
-                            DropdownMenuItem(
-                                text = { Text("Pindah ke Bawah", color = TextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary) },
-                                onClick = { onMoveDown(); showBlockMenu = false }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("Duplikasi Blok", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
-                            onClick = { onDuplicate(); showBlockMenu = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Hapus Blok", color = ColorDanger) },
-                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
-                            onClick = { showDeleteConfirm = true; showBlockMenu = false }
-                        )
-                    }
-                }
-
-                // Expand arrow
                 Icon(
-                    imageVector = if (uiBlock.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = TextTertiary,
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Opsi Blok",
+                    tint = TextSecondary,
                     modifier = Modifier.size(20.dp)
                 )
             }
-
-            // ── Block Settings (Set Looping) ─────────────────────────────────
-            AnimatedVisibility(visible = uiBlock.isExpanded) {
-                Column {
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
-
-                    // Label editor
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = uiBlock.block.label ?: "",
-                            onValueChange = onLabelChange,
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Label blok (opsional)...", color = TextTertiary, style = MaterialTheme.typography.bodySmall) },
-                            colors = builderTextFieldColors(),
-                            shape = RoundedCornerShape(10.dp),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary)
+            if (showMenu) {
+                DropdownMenu(
+                    expanded = true,
+                    onDismissRequest = { showMenu = false },
+                    containerColor = SurfaceCard
+                ) {
+                    if (blockIndex > 0) {
+                        DropdownMenuItem(
+                            text = { Text("Pindah ke Atas", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.KeyboardArrowUp, null, tint = TextSecondary) },
+                            onClick = { onMoveUp(); showMenu = false }
                         )
+                    }
+                    if (blockIndex < totalBlocks - 1) {
+                        DropdownMenuItem(
+                            text = { Text("Pindah ke Bawah", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary) },
+                            onClick = { onMoveDown(); showMenu = false }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Duplikasi Blok", color = TextPrimary) },
+                        leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
+                        onClick = { onDuplicate(); showMenu = false }
+                    )
+                    if (totalBlocks > 1) {
+                        DropdownMenuItem(
+                            text = { Text("Hapus Blok", color = ColorDanger) },
+                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
+                            onClick = { onDelete(); showMenu = false }
+                        )
+                    }
+                }
+            }
+        }
 
-                        // Set count stepper
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Set", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = { onRepeatCountChange(uiBlock.block.repeatCount - 1) },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = uiBlock.block.repeatCount > 1
-                                ) {
-                                    Icon(Icons.Default.Remove, null, tint = if (uiBlock.block.repeatCount > 1) AccentWork else TextTertiary, modifier = Modifier.size(18.dp))
-                                }
-                                Text(
-                                    text = "${uiBlock.block.repeatCount}×",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (isLoop) AccentWork else TextPrimary,
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Title + Edit: "Blok 1 (Ketuk untuk ubah nama) ✏️"
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(onClick = onRenameBlock)
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (uiBlock.block.label.isNullOrBlank()) {
+                Text(
+                    text = "(Ketuk untuk ubah nama)",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = TextTertiary,
+                        fontSize = 11.sp
+                    ),
+                    maxLines = 1
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = null,
+                tint = TextTertiary,
+                modifier = Modifier.size(13.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Set Stepper: "Set: — 1x +"
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Set:",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = TextSecondary
+                )
+            )
+            IconButton(
+                onClick = {
+                    if (uiBlock.block.repeatCount > 1) {
+                        onRepeatCountChange(uiBlock.block.repeatCount - 1)
+                    }
+                },
+                modifier = Modifier.size(24.dp),
+                enabled = uiBlock.block.repeatCount > 1
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Kurang Set",
+                    tint = if (uiBlock.block.repeatCount > 1) Color.White else TextTertiary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                text = "${uiBlock.block.repeatCount}x",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = if (uiBlock.block.repeatCount > 1) Color.White else TextPrimary
+                )
+            )
+            IconButton(
+                onClick = {
+                    if (uiBlock.block.repeatCount < 20) {
+                        onRepeatCountChange(uiBlock.block.repeatCount + 1)
+                    }
+                },
+                modifier = Modifier.size(24.dp),
+                enabled = uiBlock.block.repeatCount < 20
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Tambah Set",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// ── Exercise Row Compact ─────────────────────────────────────────────────────
+
+@Composable
+private fun ExerciseRowCompact(
+    uiExercise: UiExercise,
+    exerciseIndex: Int,
+    blockIndex: Int,
+    isActive: Boolean,
+    isDurationExpanded: Boolean,
+    autocompleteSuggestions: List<ExerciseTemplate>,
+    isBeingDragged: Boolean = false,
+    dragOffsetY: Float = 0f,
+    onDragStart: () -> Unit = {},
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
+    onRowHeightMeasured: (Float) -> Unit = {},
+    onFocus: () -> Unit,
+    onToggleDurationExpand: () -> Unit,
+    onTitleChange: (String) -> Unit,
+    onTypeChange: (IntervalType) -> Unit,
+    onDurationChange: (Int) -> Unit,
+    onDurationAdd: (Int) -> Unit,
+    onDurationSet: (Int) -> Unit,
+    onOpenLibraryPicker: () -> Unit,
+    onPickMedia: () -> Unit,
+    onRemoveMedia: () -> Unit,
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
+    onApplyTemplate: (ExerciseTemplate) -> Unit,
+    onClearAutocomplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val exercise = uiExercise.exercise
+    val hasMedia = uiExercise.resolvedMediaUri != null && uiExercise.resolvedMediaType != MediaType.NONE
+    var showTypeMenu by remember { mutableStateOf(false) }
+    var showExerciseMenu by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { coords ->
+                if (coords.size.height > 0) {
+                    onRowHeightMeasured(coords.size.height.toFloat())
+                }
+            }
+            .zIndex(if (isBeingDragged) 10f else 1f)
+            .graphicsLayer {
+                if (isBeingDragged) {
+                    translationY = dragOffsetY
+                    scaleX = 1.02f
+                    scaleY = 1.02f
+                    shadowElevation = 12f
+                }
+            }
+            .background(
+                if (isBeingDragged) Color.White.copy(alpha = 0.10f) else Color.Transparent
+            )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Drag handle (⠿)
+            Icon(
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Pindah Urutan",
+                tint = if (isBeingDragged) Color.White else TextTertiary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .pointerInput(blockIndex, exerciseIndex) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDragStart()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(dragAmount.y)
+                            },
+                            onDragEnd = { onDragEnd() },
+                            onDragCancel = { onDragEnd() }
+                        )
+                    }
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Vertical Accent Color Bar (Frosted White Glass)
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color.White.copy(alpha = 0.22f))
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Center Column: Line 1 Title, Line 2 Subtitle (Type Chip + Bullet + Media)
+            Column(modifier = Modifier.weight(1f)) {
+                // Line 1: In-place editable title
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    if (exercise.title.isEmpty()) {
+                        Text(
+                            text = "Nama gerakan...",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = TextTertiary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                    BasicTextField(
+                        value = exercise.title,
+                        onValueChange = onTitleChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { if (it.isFocused) onFocus() },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        ),
+                        cursorBrush = SolidColor(Color.White),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                    )
+                }
+
+                // Line 2: Type chip + bullet + media badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    // Type selector
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { showTypeMenu = true }
+                                .padding(vertical = 2.dp, horizontal = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    id = when (exercise.type) {
+                                        IntervalType.WORK -> R.drawable.ic_interval_work
+                                        IntervalType.REST -> R.drawable.ic_interval_rest
+                                        IntervalType.WARMUP -> R.drawable.ic_interval_warmup
+                                        IntervalType.COOLDOWN -> R.drawable.ic_interval_cooldown
+                                    }
+                                ),
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.75f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = when (exercise.type) {
+                                    IntervalType.WORK -> "Kerja"
+                                    IntervalType.REST -> "Pemulihan"
+                                    IntervalType.WARMUP -> "Pemanasan"
+                                    IntervalType.COOLDOWN -> "Pendinginan"
+                                },
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color.White.copy(alpha = 0.85f),
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.widthIn(min = 32.dp),
-                                    textAlign = TextAlign.Center
+                                    fontSize = 11.sp
                                 )
-                                IconButton(
-                                    onClick = { onRepeatCountChange(uiBlock.block.repeatCount + 1) },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = uiBlock.block.repeatCount < 20
-                                ) {
-                                    Icon(Icons.Default.Add, null, tint = AccentWork, modifier = Modifier.size(18.dp))
+                            )
+                        }
+                        if (showTypeMenu) {
+                            DropdownMenu(
+                                expanded = true,
+                                onDismissRequest = { showTypeMenu = false },
+                                containerColor = Color(0xFF18181B)
+                            ) {
+                                IntervalType.entries.forEach { type ->
+                                    val isCurrent = type == exercise.type
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(
+                                                        id = when (type) {
+                                                            IntervalType.WORK -> R.drawable.ic_interval_work
+                                                            IntervalType.REST -> R.drawable.ic_interval_rest
+                                                            IntervalType.WARMUP -> R.drawable.ic_interval_warmup
+                                                            IntervalType.COOLDOWN -> R.drawable.ic_interval_cooldown
+                                                        }
+                                                    ),
+                                                    contentDescription = null,
+                                                    tint = if (isCurrent) Color.White else Color.White.copy(alpha = 0.65f),
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Text(
+                                                    text = when (type) {
+                                                        IntervalType.WORK -> "Kerja (Work)"
+                                                        IntervalType.REST -> "Pemulihan (Rest)"
+                                                        IntervalType.WARMUP -> "Pemanasan (Warmup)"
+                                                        IntervalType.COOLDOWN -> "Pendinginan (Cooldown)"
+                                                    },
+                                                    color = if (isCurrent) Color.White else TextSecondary
+                                                )
+                                            }
+                                        },
+                                        onClick = { onTypeChange(type); showTypeMenu = false }
+                                    )
                                 }
                             }
                         }
                     }
 
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
+                    // Bullet
+                    Text("•", style = MaterialTheme.typography.labelSmall.copy(color = TextTertiary, fontSize = 10.sp))
 
-                    // ── Exercises ─────────────────────────────────────────────
-                    uiBlock.exercises.forEachIndexed { exIndex, uiExercise ->
-                        ExerciseRow(
-                            uiExercise = uiExercise,
-                            exerciseIndex = exIndex,
-                            isActive = focusedExerciseIndex == exIndex,
-                            autocompleteSuggestions = if (focusedExerciseIndex == exIndex) autocompleteSuggestions else emptyList(),
-                            onFocus = { focusedExerciseIndex = exIndex },
-                            onTitleChange = { onExerciseTitleChange(exIndex, it) },
-                            onDurationChange = { onExerciseDurationChange(exIndex, it) },
-                            onDurationAdd = { onExerciseDurationAdd(exIndex, it) },
-                            onDurationSet = { onExerciseDurationSet(exIndex, it) },
-                            onTypeChange = { onExerciseTypeChange(exIndex, it) },
-                            onDuplicate = { onExerciseDuplicate(exIndex) },
-                            onDelete = { onExerciseDelete(exIndex) },
-                            onApplyTemplate = { template ->
-                                onApplyTemplate(exIndex, template)
-                                focusedExerciseIndex = null
-                            },
-                            onClearAutocomplete = {
-                                onClearAutocomplete()
-                                focusedExerciseIndex = null
-                            },
-                            onPickMedia = { onExercisePickMedia(exIndex) },
-                            onRemoveMedia = { onExerciseRemoveMedia(exIndex) }
-                        )
-                        if (exIndex < uiBlock.exercises.size - 1) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                color = SurfaceElevated,
-                                thickness = 0.5.dp
+                    // Media badge
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(onClick = onPickMedia)
+                            .padding(vertical = 2.dp, horizontal = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        if (hasMedia) {
+                            Icon(
+                                imageVector = if (uiExercise.resolvedMediaType == MediaType.GIF) Icons.Default.Movie else Icons.Default.PlayCircle,
+                                contentDescription = null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = if (uiExercise.resolvedMediaType == MediaType.GIF) "GIF tersedia" else "Video tersedia",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.AttachFile,
+                                contentDescription = null,
+                                tint = TextTertiary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "+ Media",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = TextTertiary,
+                                    fontSize = 11.sp
+                                )
                             )
                         }
                     }
-
-                    // ── Add Exercise Buttons ──────────────────────────────────
-                    HorizontalDivider(color = SurfaceElevated, thickness = 0.5.dp)
-                    AddExerciseRow(onAddExercise = onAddExercise)
                 }
             }
-        }
-    }
 
-    // Delete confirm dialog
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            containerColor = SurfaceCard,
-            title = { Text("Hapus Blok?", color = TextPrimary) },
-            text = { Text("Semua gerakan dalam blok ini akan dihapus.", color = TextSecondary) },
-            confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteConfirm = false }) {
-                    Text("Hapus", color = ColorDanger)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Batal", color = TextSecondary)
-                }
-            }
-        )
-    }
-}
+            Spacer(modifier = Modifier.width(10.dp))
 
-// ── Exercise Row ─────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ExerciseRow(
-    uiExercise: UiExercise,
-    exerciseIndex: Int,
-    isActive: Boolean,
-    autocompleteSuggestions: List<ExerciseTemplate>,
-    onFocus: () -> Unit,
-    onTitleChange: (String) -> Unit,
-    onDurationChange: (Int) -> Unit,
-    onDurationAdd: (Int) -> Unit,
-    onDurationSet: (Int) -> Unit,
-    onTypeChange: (IntervalType) -> Unit,
-    onDuplicate: () -> Unit,
-    onDelete: () -> Unit,
-    onApplyTemplate: (ExerciseTemplate) -> Unit,
-    onClearAutocomplete: () -> Unit,
-    onPickMedia: () -> Unit,
-    onRemoveMedia: () -> Unit
-) {
-    val exercise = uiExercise.exercise
-    val accentColor = exercise.type.toAccentColor()
-    val hasMedia = uiExercise.resolvedMediaUri != null && uiExercise.resolvedMediaType != MediaType.NONE
-    var showTypeMenu by remember { mutableStateOf(false) }
-    var showExerciseMenu by remember { mutableStateOf(false) }
-
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onFocus)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Type indicator dot
-            Box(
+            // Big Athletic Duration Pill (Frosted White Glass)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White.copy(alpha = 0.09f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
                 modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(accentColor)
-                    .clickable { showTypeMenu = true }
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Title field
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedTextField(
-                    value = exercise.title,
-                    onValueChange = onTitleChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = {
-                        Text("Nama gerakan...", color = TextTertiary, style = MaterialTheme.typography.bodyMedium)
-                    },
-                    colors = builderTextFieldColors(),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
-                )
-                // Autocomplete dropdown
-                DropdownMenu(
-                    expanded = autocompleteSuggestions.isNotEmpty() && isActive,
-                    onDismissRequest = onClearAutocomplete,
-                    containerColor = SurfaceElevated
-                ) {
-                    autocompleteSuggestions.forEach { template ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(template.name, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
-                                    Text("${template.defaultDuration}s · ${template.usageCount}× dipakai",
-                                        color = TextTertiary, style = MaterialTheme.typography.labelSmall)
-                                }
-                            },
-                            onClick = { onApplyTemplate(template) }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Media Badge or Picker Icon
-            if (hasMedia) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = AccentRest.copy(alpha = 0.2f),
-                    modifier = Modifier
-                        .clickable(onClick = onPickMedia)
-                        .padding(end = 4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (uiExercise.resolvedMediaType == MediaType.GIF) Icons.Default.Image else Icons.Default.PlayCircle,
-                            contentDescription = null,
-                            tint = AccentRest,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = if (uiExercise.resolvedMediaType == MediaType.GIF) "GIF" else "MP4",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AccentRest,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            } else {
-                IconButton(
-                    onClick = onPickMedia,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AttachFile,
-                        contentDescription = "Pasang GIF/Video",
-                        tint = TextTertiary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            // Duration display + picker
-            DurationChip(
-                seconds = exercise.durationSeconds,
-                color = accentColor,
-                onClick = onFocus
-            )
-
-            // More options
-            Box {
-                IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.MoreVert, null, tint = TextTertiary, modifier = Modifier.size(18.dp))
-                }
-                DropdownMenu(
-                    expanded = showExerciseMenu,
-                    onDismissRequest = { showExerciseMenu = false },
-                    containerColor = SurfaceCard
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(if (hasMedia) "Ganti GIF / Video" else "Pasang GIF / Video", color = TextPrimary) },
-                        leadingIcon = { Icon(Icons.Default.AttachFile, null, tint = AccentRest) },
-                        onClick = { onPickMedia(); showExerciseMenu = false }
-                    )
-                    if (hasMedia) {
-                        DropdownMenuItem(
-                            text = { Text("Hapus GIF / Video", color = ColorDanger) },
-                            leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = ColorDanger) },
-                            onClick = { onRemoveMedia(); showExerciseMenu = false }
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text("Duplikasi", color = TextPrimary) },
-                        leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
-                        onClick = { onDuplicate(); showExerciseMenu = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Hapus", color = ColorDanger) },
-                        leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
-                        onClick = { onDelete(); showExerciseMenu = false }
-                    )
-                }
-            }
-        }
-
-        // Type picker row
-        AnimatedVisibility(visible = showTypeMenu) {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onToggleDurationExpand)
             ) {
-                items(IntervalType.entries) { type ->
-                    val typeColor = type.toAccentColor()
-                    val isSelected = exercise.type == type
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onTypeChange(type); showTypeMenu = false },
-                        label = {
-                            Text(
-                                when (type) {
-                                    IntervalType.WARMUP -> "Warmup"
-                                    IntervalType.WORK -> "Work"
-                                    IntervalType.REST -> "Rest"
-                                    IntervalType.COOLDOWN -> "Cooldown"
-                                },
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = typeColor,
-                            selectedLabelColor = Color.Black,
-                            containerColor = SurfaceElevated,
-                            labelColor = TextSecondary
-                        )
+                Text(
+                    text = formatSeconds(exercise.durationSeconds),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 15.sp
                     )
+                )
+            }
+
+            // 3-dots Menu Button
+            Box {
+                IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.MoreVert, "Opsi Gerakan", tint = TextTertiary, modifier = Modifier.size(18.dp))
+                }
+                if (showExerciseMenu) {
+                    DropdownMenu(
+                        expanded = true,
+                        onDismissRequest = { showExerciseMenu = false },
+                        containerColor = SurfaceCard
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Pilih dari Kamus Master", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = Color.White) },
+                            onClick = { onOpenLibraryPicker(); showExerciseMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (hasMedia) "Ganti GIF / Video" else "Pasang GIF / Video", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.AttachFile, null, tint = Color.White.copy(alpha = 0.85f)) },
+                            onClick = { onPickMedia(); showExerciseMenu = false }
+                        )
+                        if (hasMedia) {
+                            DropdownMenuItem(
+                                text = { Text("Hapus GIF / Video", color = ColorDanger) },
+                                leadingIcon = { Icon(Icons.Default.DeleteOutline, null, tint = ColorDanger) },
+                                onClick = { onRemoveMedia(); showExerciseMenu = false }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Duplikasi Gerakan", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.CopyAll, null, tint = TextSecondary) },
+                            onClick = { onDuplicate(); showExerciseMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Hapus Gerakan", color = ColorDanger) },
+                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = ColorDanger) },
+                            onClick = { onDelete(); showExerciseMenu = false }
+                        )
+                    }
                 }
             }
         }
 
-        // Quick time presets (PRD 4.1.3)
-        AnimatedVisibility(visible = isActive) {
-            Column {
-                // Presets row
+        // Expanded Duration Quick Stepper & Presets (Frosted White Glass)
+        AnimatedVisibility(
+            visible = isDurationExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 36.dp, end = 14.dp, top = 4.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Row(
-                    modifier = Modifier.padding(start = 38.dp, end = 16.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text("+", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
-                    listOf(5, 15).forEach { addSec ->
-                        OutlinedButton(
+                    listOf(5, 15, 30).forEach { addSec ->
+                        Surface(
                             onClick = { onDurationAdd(addSec) },
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            border = BorderStroke(1.dp, SurfaceElevated),
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Text("+${addSec}s", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    listOf(30, 45, 60, 90).forEach { sec ->
-                        OutlinedButton(
-                            onClick = { onDurationSet(sec) },
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            border = BorderStroke(1.dp, if (exercise.durationSeconds == sec) accentColor else SurfaceElevated),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(30.dp)
+                            color = Color.White.copy(alpha = 0.08f),
+                            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.18f))
                         ) {
                             Text(
-                                "${sec}s",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (exercise.durationSeconds == sec) accentColor else TextSecondary
+                                text = "+${addSec}s",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    listOf(30, 45, 60, 90).forEach { sec ->
+                        val isSelected = exercise.durationSeconds == sec
+                        Surface(
+                            onClick = { onDurationSet(sec) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) Color.White.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f),
+                            border = BorderStroke(0.5.dp, if (isSelected) Color.White.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Text(
+                                text = "${sec}s",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (isSelected) Color.White else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
                 }
-                // Manual duration input
+
                 Row(
-                    modifier = Modifier.padding(start = 38.dp, end = 16.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Text("Ketik detik:", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
                     OutlinedTextField(
                         value = exercise.durationSeconds.toString(),
                         onValueChange = { v -> v.toIntOrNull()?.let { onDurationChange(it) } },
                         modifier = Modifier.width(80.dp),
-                        label = { Text("Detik", color = TextTertiary, style = MaterialTheme.typography.labelSmall) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = builderTextFieldColors(),
                         shape = RoundedCornerShape(8.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(color = TextPrimary, fontWeight = FontWeight.Bold),
                         singleLine = true
                     )
                     Text(
-                        "= ${formatDuration(exercise.durationSeconds)}",
+                        text = "= ${formatDuration(exercise.durationSeconds)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextTertiary
                     )
                 }
             }
         }
-    }
-}
 
-// ── Add Exercise Row ─────────────────────────────────────────────────────────
-
-@Composable
-private fun AddExerciseRow(onAddExercise: (IntervalType) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            IntervalType.WORK to "Gerakan",
-            IntervalType.REST to "Istirahat",
-            IntervalType.WARMUP to "Warmup",
-            IntervalType.COOLDOWN to "Cooldown"
-        ).forEach { (type, label) ->
-            val color = type.toAccentColor()
-            OutlinedButton(
-                onClick = { onAddExercise(type) },
-                modifier = Modifier.weight(1f).height(36.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                border = BorderStroke(1.dp, color.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = color)
+        // Autocomplete suggestions (Frosted White Glass Card)
+        AnimatedVisibility(
+            visible = isActive && autocompleteSuggestions.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 36.dp, end = 14.dp, top = 4.dp, bottom = 10.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
             ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Kamus Master (${autocompleteSuggestions.size})",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        IconButton(
+                            onClick = onClearAutocomplete,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(Icons.Default.Close, "Tutup", tint = TextTertiary, modifier = Modifier.size(13.dp))
+                        }
+                    }
+
+                    autocompleteSuggestions.take(4).forEach { template ->
+                        Surface(
+                            onClick = { onApplyTemplate(template) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF1E1E24),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            border = BorderStroke(0.5.dp, SurfaceBorder.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(6.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = template.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        template.difficulty?.let { diff ->
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color.White.copy(alpha = 0.12f)
+                                            ) {
+                                                Text(
+                                                    text = diff,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    template.targetMuscle?.let { muscle ->
+                                        Text(
+                                            text = "🎯 $muscle  /  ${template.defaultDuration}s",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.AddCircleOutline,
+                                    contentDescription = "Pilih",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-// ── Duration Chip ────────────────────────────────────────────────────────────
+// ── Block Footer Compact (Tambah Gerakan & Sisipan Cepat) ───────────────────
 
 @Composable
-private fun DurationChip(seconds: Int, color: Color, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.12f),
-        modifier = Modifier.clickable(onClick = onClick)
+private fun BlockFooterCompact(
+    onAddMovement: () -> Unit,
+    onQuickAdd: (IntervalType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            text = formatSeconds(seconds),
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
+        // [ 📖 + Tambah Gerakan (Kamus / Manual) ] (Frosted White Glass)
+        Surface(
+            onClick = onAddMovement,
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = TextPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "+ Tambah Gerakan (Kamus / Manual)",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                )
+            }
+        }
+
+        // Sisipan cepat: + Istirahat • + Warmup • + Cooldown
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Sisipan cepat: ",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = TextTertiary,
+                    fontSize = 12.sp
+                )
+            )
+
+            // + Istirahat
+            Text(
+                text = "+ Istirahat",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { onQuickAdd(IntervalType.REST) }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+
+            Text(" • ", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary))
+
+            // + Warmup
+            Text(
+                text = "+ Warmup",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { onQuickAdd(IntervalType.WARMUP) }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+
+            Text(" • ", style = MaterialTheme.typography.bodySmall.copy(color = TextTertiary))
+
+            // + Cooldown
+            Text(
+                text = "+ Cooldown",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable { onQuickAdd(IntervalType.COOLDOWN) }
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+        }
     }
 }
 
@@ -1077,29 +1878,35 @@ private fun DurationChip(seconds: Int, color: Color, onClick: () -> Unit) {
 
 @Composable
 private fun builderTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = AccentWork,
-    unfocusedBorderColor = SurfaceElevated,
+    focusedBorderColor = Color.White.copy(alpha = 0.50f),
+    unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
     focusedTextColor = TextPrimary,
     unfocusedTextColor = TextPrimary,
-    cursorColor = AccentWork,
-    focusedContainerColor = BackgroundPrimary.copy(alpha = 0.5f),
-    unfocusedContainerColor = Color.Transparent
+    cursorColor = Color.White,
+    focusedContainerColor = Color.White.copy(alpha = 0.10f),
+    unfocusedContainerColor = Color.White.copy(alpha = 0.06f)
 )
 
 private fun formatDuration(totalSec: Int): String {
     val minutes = totalSec / 60
     val seconds = totalSec % 60
-    return when {
-        minutes == 0 -> "${seconds}d"
-        seconds == 0 -> "${minutes} menit"
-        else -> "${minutes}m ${seconds}d"
+    return if (minutes > 0) {
+        "${minutes}m ${seconds.toString().padStart(2, '0')}d"
+    } else {
+        "${seconds}d"
     }
 }
 
 private fun formatSeconds(seconds: Int): String {
     val m = seconds / 60
     val s = seconds % 60
-    return if (m > 0) "${m}:${s.toString().padStart(2, '0')}" else "${s}d"
+    return if (m > 0 && s > 0) {
+        "${m}m ${s}d"
+    } else if (m > 0) {
+        "${m}m"
+    } else {
+        "${s}d"
+    }
 }
 
 // ── Media Source Selector Bottom Sheet (Rekam Langsung / Galeri) ─────────────
@@ -1128,24 +1935,10 @@ private fun MediaSourceBottomSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(AccentWork, CircleShape)
-                )
-                Text(
-                    text = "PANDUAN GERAKAN LATIHAN",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AccentWork,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-            }
+            // Header with custom MediaGuideHeaderBadge
+            MediaGuideHeaderBadge(
+                title = "PANDUAN GERAKAN LATIHAN"
+            )
 
             Text(
                 text = "Pilih Sumber Video & Media",
@@ -1162,12 +1955,12 @@ private fun MediaSourceBottomSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Option 1: Record Video Direct with Camera
+            // Option 1: Record Video Direct with Camera (Frosted White Glass)
             Surface(
                 onClick = onRecordVideo,
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceElevated,
-                border = BorderStroke(1.dp, AccentWork.copy(alpha = 0.4f)),
+                color = Color.White.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1180,7 +1973,7 @@ private fun MediaSourceBottomSheet(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .background(AccentWork, RoundedCornerShape(16.dp)),
+                            .background(Color.White, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1204,14 +1997,14 @@ private fun MediaSourceBottomSheet(
                             )
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = AccentWork.copy(alpha = 0.2f)
+                                color = Color.White.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = "KAMERA",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AccentWork,
-                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp
                                 )
                             }
@@ -1232,12 +2025,12 @@ private fun MediaSourceBottomSheet(
                 }
             }
 
-            // Option 2: Pick from Gallery / Files
+            // Option 2: Pick from Gallery / Files (Frosted White Glass)
             Surface(
                 onClick = onPickFromGallery,
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceElevated,
-                border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f)),
+                color = Color.White.copy(alpha = 0.08f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1250,13 +2043,13 @@ private fun MediaSourceBottomSheet(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .background(AccentRest.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+                            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.VideoLibrary,
                             contentDescription = null,
-                            tint = AccentRest,
+                            tint = Color.White,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -1274,14 +2067,14 @@ private fun MediaSourceBottomSheet(
                             )
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = AccentRest.copy(alpha = 0.15f)
+                                color = Color.White.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = "FILE / GIF",
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AccentRest,
-                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp
                                 )
                             }
@@ -1352,8 +2145,8 @@ private fun MediaSourceBottomSheet(
             // Workout Validation Info Card
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = BackgroundPrimary,
-                border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.4f)),
+                color = Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -1367,13 +2160,13 @@ private fun MediaSourceBottomSheet(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = AccentWarmup,
+                            tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "Ketentuan Validasi Media Workout:",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AccentWarmup,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -1389,3 +2182,285 @@ private fun MediaSourceBottomSheet(
         }
     }
 }
+
+// ── Exercise Library Picker Bottom Sheet (Master Data Kamus Gerakan) ────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExerciseLibraryPickerBottomSheet(
+    templates: List<ExerciseTemplate>,
+    onDismiss: () -> Unit,
+    onSelectTemplate: (ExerciseTemplate) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+
+    val categories = remember(templates) {
+        listOf("Semua") + templates.mapNotNull { it.category }.distinct().sorted()
+    }
+
+    val filteredTemplates = remember(templates, searchQuery, selectedCategory) {
+        templates.filter { tmpl ->
+            val matchQuery = searchQuery.isBlank() ||
+                tmpl.name.contains(searchQuery, ignoreCase = true) ||
+                (tmpl.targetMuscle?.contains(searchQuery, ignoreCase = true) == true) ||
+                (tmpl.primaryMuscle?.contains(searchQuery, ignoreCase = true) == true) ||
+                (tmpl.equipment?.contains(searchQuery, ignoreCase = true) == true)
+            val matchCategory = selectedCategory == null || selectedCategory == "Semua" ||
+                tmpl.category.equals(selectedCategory, ignoreCase = true)
+            matchQuery && matchCategory
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceCard,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextTertiary) },
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Kamus Gerakan Master",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White.copy(alpha = 0.10f)
+                        ) {
+                            Text(
+                                text = "${filteredTemplates.size} item",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Pilih gerakan terstandarisasi untuk rutinitas",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Tutup", tint = TextSecondary)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Search Bar (Frosted White Glass)
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Cari gerakan, otot, alat...", color = Color.White.copy(alpha = 0.40f)) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.65f)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, null, tint = Color.White.copy(alpha = 0.65f))
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = builderTextFieldColors()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Category Chips (Frosted White Glass)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(categories, key = { "picker_cat_$it" }) { cat ->
+                    val isSelected = (selectedCategory == null && cat == "Semua") || selectedCategory == cat
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            selectedCategory = if (cat == "Semua") null else cat
+                        },
+                        label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color.White.copy(alpha = 0.22f),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color.White.copy(alpha = 0.06f),
+                            labelColor = Color.White.copy(alpha = 0.65f)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = Color.White.copy(alpha = 0.15f),
+                            selectedBorderColor = Color.White.copy(alpha = 0.50f)
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Exercise List or Empty State
+            if (filteredTemplates.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SearchOff,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            text = "Tidak ada gerakan ditemukan",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextSecondary
+                        )
+                        Text(
+                            text = "Coba kata kunci lain atau pilih kategori 'Semua'",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextTertiary
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    items(filteredTemplates, key = { it.id }) { template ->
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSelectTemplate(template)
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = SurfaceElevated,
+                            border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Category Icon
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Color.White.copy(alpha = 0.08f),
+                                            RoundedCornerShape(10.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = template.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = TextPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        template.difficulty?.let { diff ->
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color.White.copy(alpha = 0.12f)
+                                            ) {
+                                                Text(
+                                                    text = diff,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        template.targetMuscle?.let { muscle ->
+                                            Text(
+                                                text = "🎯 $muscle",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = TextSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Text(
+                                            text = "/  ${template.defaultDuration}s",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextTertiary
+                                        )
+                                        Text(
+                                            text = "/  ${template.equipment ?: "Bodyweight"}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = TextTertiary
+                                        )
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.AddCircleOutline,
+                                    contentDescription = "Pilih",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

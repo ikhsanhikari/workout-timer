@@ -56,4 +56,8 @@ object DatabaseModule {
     @Provides
     fun provideExerciseTemplateDao(db: WorkoutDatabase): ExerciseTemplateDao =
         db.exerciseTemplateDao()
+
+    @Provides
+    fun provideWorkoutSessionRecordDao(db: WorkoutDatabase): WorkoutSessionRecordDao =
+        db.workoutSessionRecordDao()
 }

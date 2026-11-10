@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.workout.timer.data.model.WorkoutReminderItem
+import android.util.Log
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
@@ -27,16 +31,31 @@ class UserPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore = context.dataStore
+    private val gson = Gson()
 
     companion object {
         val KEY_USER_NICKNAME = stringPreferencesKey("user_nickname")
         val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+        val KEY_PRIMARY_GOAL = stringPreferencesKey("primary_goal")
+        val KEY_EXPERIENCE_LEVEL = stringPreferencesKey("experience_level")
+        val KEY_THEME_ACCENT = stringPreferencesKey("theme_accent")
         val KEY_HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
         val KEY_BEEP_ENABLED = booleanPreferencesKey("beep_enabled")
         val KEY_COUNTDOWN_ENABLED = booleanPreferencesKey("countdown_enabled")
+        val KEY_BGM_ENABLED = booleanPreferencesKey("bgm_enabled")
+        val KEY_VIDEO_ENABLED = booleanPreferencesKey("video_enabled")
+        val KEY_VOICE_COACH_ENABLED = booleanPreferencesKey("voice_coach_enabled")
         val KEY_CATALOG_VERSION = intPreferencesKey("catalog_version")
         val KEY_CATALOG_URL = stringPreferencesKey("catalog_url")
         val KEY_LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
+        val KEY_EXERCISE_LIBRARY_VERSION = intPreferencesKey("exercise_library_version")
+        val KEY_EXERCISE_LIBRARY_URL = stringPreferencesKey("exercise_library_url")
+        val KEY_REMINDER_ENABLED = booleanPreferencesKey("reminder_enabled")
+        val KEY_REMINDER_HOUR = intPreferencesKey("reminder_hour")
+        val KEY_REMINDER_MINUTE = intPreferencesKey("reminder_minute")
+        val KEY_CUSTOM_REMINDERS_JSON = stringPreferencesKey("custom_reminders_json")
+        val KEY_WEEKLY_SCHEDULE_JSON = stringPreferencesKey("weekly_schedule_json")
+        val KEY_ACTIVE_PROGRAM_NAME = stringPreferencesKey("active_program_name")
     }
 
     val catalogVersionFlow: Flow<Int> = dataStore.data
@@ -46,6 +65,14 @@ class UserPreferencesRepository @Inject constructor(
     val catalogUrlFlow: Flow<String?> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[KEY_CATALOG_URL] }
+
+    val exerciseLibraryVersionFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_EXERCISE_LIBRARY_VERSION] ?: 1 }
+
+    val exerciseLibraryUrlFlow: Flow<String?> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_EXERCISE_LIBRARY_URL] }
 
     suspend fun getCatalogVersion(): Int {
         return dataStore.data.firstOrNull()?.get(KEY_CATALOG_VERSION) ?: 1
@@ -63,6 +90,22 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[KEY_CATALOG_URL] = url }
     }
 
+    suspend fun getExerciseLibraryVersion(): Int {
+        return dataStore.data.firstOrNull()?.get(KEY_EXERCISE_LIBRARY_VERSION) ?: 1
+    }
+
+    suspend fun saveExerciseLibraryVersion(version: Int) {
+        dataStore.edit { it[KEY_EXERCISE_LIBRARY_VERSION] = version }
+    }
+
+    suspend fun getExerciseLibraryUrl(): String? {
+        return dataStore.data.firstOrNull()?.get(KEY_EXERCISE_LIBRARY_URL)
+    }
+
+    suspend fun saveExerciseLibraryUrl(url: String) {
+        dataStore.edit { it[KEY_EXERCISE_LIBRARY_URL] = url }
+    }
+
     suspend fun recordSyncTimestamp() {
         dataStore.edit { it[KEY_LAST_SYNC_TIMESTAMP] = System.currentTimeMillis() }
     }
@@ -70,10 +113,31 @@ class UserPreferencesRepository @Inject constructor(
     data class UserPreferences(
         val nickname: String = "",
         val isOnboardingDone: Boolean = false,
+        val primaryGoal: String = "All",
+        val experienceLevel: String = "Intermediate",
+        val themeAccent: String = "VoltLime",
         val hapticEnabled: Boolean = true,
         val beepEnabled: Boolean = true,
-        val countdownEnabled: Boolean = true
+        val countdownEnabled: Boolean = true,
+        val bgmEnabled: Boolean = true,
+        val videoEnabled: Boolean = true,
+        val voiceCoachEnabled: Boolean = true,
+        val reminderEnabled: Boolean = false,
+        val reminderHour: Int = 7,
+        val reminderMinute: Int = 0
     )
+
+    val bgmEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_BGM_ENABLED] ?: true }
+
+    val videoEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_VIDEO_ENABLED] ?: true }
+
+    val voiceCoachEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_VOICE_COACH_ENABLED] ?: true }
 
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data
         .catch { e ->
@@ -84,14 +148,50 @@ class UserPreferencesRepository @Inject constructor(
             UserPreferences(
                 nickname = preferences[KEY_USER_NICKNAME] ?: "",
                 isOnboardingDone = preferences[KEY_ONBOARDING_DONE] ?: false,
+                primaryGoal = preferences[KEY_PRIMARY_GOAL] ?: "All",
+                experienceLevel = preferences[KEY_EXPERIENCE_LEVEL] ?: "Intermediate",
+                themeAccent = preferences[KEY_THEME_ACCENT] ?: "VoltLime",
                 hapticEnabled = preferences[KEY_HAPTIC_ENABLED] ?: true,
                 beepEnabled = preferences[KEY_BEEP_ENABLED] ?: true,
-                countdownEnabled = preferences[KEY_COUNTDOWN_ENABLED] ?: true
+                countdownEnabled = preferences[KEY_COUNTDOWN_ENABLED] ?: true,
+                bgmEnabled = preferences[KEY_BGM_ENABLED] ?: true,
+                videoEnabled = preferences[KEY_VIDEO_ENABLED] ?: true,
+                voiceCoachEnabled = preferences[KEY_VOICE_COACH_ENABLED] ?: true,
+                reminderEnabled = preferences[KEY_REMINDER_ENABLED] ?: false,
+                reminderHour = preferences[KEY_REMINDER_HOUR] ?: 7,
+                reminderMinute = preferences[KEY_REMINDER_MINUTE] ?: 0
             )
         }
 
     suspend fun saveNickname(nickname: String) {
         dataStore.edit { it[KEY_USER_NICKNAME] = nickname }
+    }
+
+    suspend fun savePrimaryGoal(goal: String) {
+        dataStore.edit { it[KEY_PRIMARY_GOAL] = goal }
+    }
+
+    suspend fun saveExperienceLevel(level: String) {
+        dataStore.edit { it[KEY_EXPERIENCE_LEVEL] = level }
+    }
+
+    suspend fun saveThemeAccent(accent: String) {
+        dataStore.edit { it[KEY_THEME_ACCENT] = accent }
+    }
+
+    suspend fun completeOnboarding(
+        nickname: String,
+        goal: String,
+        level: String,
+        accent: String
+    ) {
+        dataStore.edit {
+            if (nickname.isNotBlank()) it[KEY_USER_NICKNAME] = nickname.trim()
+            it[KEY_PRIMARY_GOAL] = goal
+            it[KEY_EXPERIENCE_LEVEL] = level
+            it[KEY_THEME_ACCENT] = accent
+            it[KEY_ONBOARDING_DONE] = true
+        }
     }
 
     suspend fun markOnboardingDone() {
@@ -108,5 +208,97 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setCountdownEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_COUNTDOWN_ENABLED] = enabled }
+    }
+
+    suspend fun setBgmEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_BGM_ENABLED] = enabled }
+    }
+
+    suspend fun setVideoEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_VIDEO_ENABLED] = enabled }
+    }
+
+    suspend fun setVoiceCoachEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_VOICE_COACH_ENABLED] = enabled }
+    }
+
+    val reminderEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_REMINDER_ENABLED] ?: false }
+
+    val reminderHourFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_REMINDER_HOUR] ?: 7 }
+
+    val reminderMinuteFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_REMINDER_MINUTE] ?: 0 }
+
+    suspend fun setReminderEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_REMINDER_ENABLED] = enabled }
+    }
+
+    suspend fun setReminderTime(hour: Int, minute: Int) {
+        dataStore.edit {
+            it[KEY_REMINDER_HOUR] = hour
+            it[KEY_REMINDER_MINUTE] = minute
+        }
+    }
+
+    val customRemindersFlow: Flow<List<WorkoutReminderItem>> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { prefs ->
+            val json = prefs[KEY_CUSTOM_REMINDERS_JSON]
+            if (!json.isNullOrBlank()) {
+                try {
+                    val type = object : TypeToken<List<WorkoutReminderItem>>() {}.type
+                    val list: List<WorkoutReminderItem>? = gson.fromJson(json, type)
+                    if (!list.isNullOrEmpty()) return@map list
+                } catch (e: Exception) {
+                    Log.e("UserPreferences", "Gagal parse custom reminders", e)
+                }
+            }
+            val enabled = prefs[KEY_REMINDER_ENABLED] ?: false
+            val hour = prefs[KEY_REMINDER_HOUR] ?: 7
+            val minute = prefs[KEY_REMINDER_MINUTE] ?: 0
+            listOf(
+                WorkoutReminderItem(
+                    id = "default_reminder",
+                    label = "Latihan Harian",
+                    hour = hour,
+                    minute = minute,
+                    isEnabled = enabled
+                )
+            )
+        }
+
+    suspend fun saveCustomReminders(reminders: List<WorkoutReminderItem>) {
+        val json = gson.toJson(reminders)
+        dataStore.edit { prefs ->
+            prefs[KEY_CUSTOM_REMINDERS_JSON] = json
+            val firstEnabled = reminders.firstOrNull { it.isEnabled } ?: reminders.firstOrNull()
+            if (firstEnabled != null) {
+                prefs[KEY_REMINDER_ENABLED] = reminders.any { it.isEnabled }
+                prefs[KEY_REMINDER_HOUR] = firstEnabled.hour
+                prefs[KEY_REMINDER_MINUTE] = firstEnabled.minute
+            } else {
+                prefs[KEY_REMINDER_ENABLED] = false
+            }
+        }
+    }
+
+    val weeklyScheduleJsonFlow: Flow<String?> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_WEEKLY_SCHEDULE_JSON] }
+
+    val activeProgramNameFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_ACTIVE_PROGRAM_NAME] ?: "Athletic Split 4 Hari" }
+
+    suspend fun saveWeeklySchedule(json: String, programName: String = "Kustom") {
+        dataStore.edit {
+            it[KEY_WEEKLY_SCHEDULE_JSON] = json
+            it[KEY_ACTIVE_PROGRAM_NAME] = programName
+        }
     }
 }
