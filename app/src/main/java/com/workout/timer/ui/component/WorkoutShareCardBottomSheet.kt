@@ -1,6 +1,11 @@
 package com.workout.timer.ui.component
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -8,9 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.workout.timer.data.catalog.AssetPhotoResolver
@@ -40,6 +45,7 @@ import com.workout.timer.ui.theme.TextTertiary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.max
@@ -62,8 +68,90 @@ fun WorkoutShareCardBottomSheet(
     val coroutineScope = rememberCoroutineScope()
 
     val backgroundOptions = remember { AssetPhotoResolver.SHARE_CARD_BACKGROUNDS }
+    var customOption by remember { mutableStateOf<AssetPhotoResolver.ShareBackgroundOption?>(null) }
     var selectedOption by remember { mutableStateOf(backgroundOptions.first()) }
     var isGenerating by remember { mutableStateOf(false) }
+
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Launcher untuk mengambil foto selfie via Kamera perangkat
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && pendingCameraUri != null) {
+            val opt = AssetPhotoResolver.ShareBackgroundOption(
+                label = "Selfie Anda",
+                uri = pendingCameraUri.toString(),
+                assetRelativePath = pendingCameraUri.toString()
+            )
+            customOption = opt
+            selectedOption = opt
+            Toast.makeText(context, "📸 Foto selfie siap dipakai!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Permission launcher untuk Kamera
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val photoFile = File(context.cacheDir, "selfie_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
+            pendingCameraUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto selfie.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun launchCameraFlow() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            val photoFile = File(context.cacheDir, "selfie_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
+            pendingCameraUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // Launcher untuk memilih foto dari Galeri perangkat
+    val pickGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { sourceUri ->
+        if (sourceUri != null) {
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    val destFile = File(context.cacheDir, "custom_gallery_${System.currentTimeMillis()}.jpg")
+                    context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    val cachedUri = Uri.fromFile(destFile).toString()
+                    withContext(Dispatchers.Main) {
+                        val opt = AssetPhotoResolver.ShareBackgroundOption(
+                            label = "Foto Galeri",
+                            uri = cachedUri,
+                            assetRelativePath = cachedUri
+                        )
+                        customOption = opt
+                        selectedOption = opt
+                        Toast.makeText(context, "🖼️ Foto berhasil dipilih!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Gagal memuat gambar: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
 
     val dateFormatted = remember {
         SimpleDateFormat("d MMM yyyy  •  HH:mm", Locale.forLanguageTag("id-ID")).format(Date())
@@ -335,20 +423,227 @@ fun WorkoutShareCardBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "PILIH FOTO LATAR (PHOTO AI)",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 10.sp,
-                        letterSpacing = 1.sp
-                    ),
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "FOTO LATAR BELAKANG",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            letterSpacing = 1.sp
+                        ),
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Quick Action: Tombol Selfie & Galeri
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Quick Selfie Button
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                launchCameraFlow()
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.30f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoCamera,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Selfie",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        // Quick Galeri Button
+                        Surface(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                pickGalleryLauncher.launch("image/*")
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.30f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Galeri",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
+                    // 1. Jika ada Custom Photo (Selfie / Galeri), tampilkan di paling depan
+                    if (customOption != null) {
+                        val customOpt = customOption!!
+                        val isSelected = customOpt == selectedOption
+                        item {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    selectedOption = customOpt
+                                }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(58.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(
+                                            width = if (isSelected) 2.5.dp else 1.dp,
+                                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.35f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(Uri.parse(customOpt.uri))
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = customOpt.label,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    // Badge Icon Indikator
+                                    Box(
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .align(Alignment.BottomEnd)
+                                            .background(
+                                                Color.Black.copy(alpha = 0.70f),
+                                                RoundedCornerShape(topStart = 6.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = customOpt.label,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = if (isSelected) Color.White else TextTertiary,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+
+                    // 2. Tombol Shortcut Selfie
+                    item {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                launchCameraFlow()
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.08f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.25f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoCamera,
+                                    contentDescription = "Ambil Selfie",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Text(
+                                text = "Selfie",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+
+                    // 3. Tombol Shortcut Galeri
+                    item {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                pickGalleryLauncher.launch("image/*")
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(58.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.08f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.25f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Pilih Galeri",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Text(
+                                text = "Galeri",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+
+                    // 4. Koleksi 18 Latar AI
                     items(backgroundOptions) { option ->
                         val isSelected = option == selectedOption
                         Column(
@@ -371,7 +666,7 @@ fun WorkoutShareCardBottomSheet(
                             ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
-                                        .data(android.net.Uri.parse(option.uri))
+                                        .data(Uri.parse(option.uri))
                                         .crossfade(true)
                                         .build(),
                                     contentDescription = option.label,

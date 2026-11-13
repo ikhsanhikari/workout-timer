@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.*
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -28,6 +29,7 @@ object WorkoutCardGenerator {
 
     /**
      * Menghasilkan Bitmap kartu latihan siap dibagikan/disimpan.
+     * Mendukung latar dari assets/photo_ai/ maupun custom foto (selfie/galeri) via Uri.
      */
     fun generateCardBitmap(
         context: Context,
@@ -39,24 +41,39 @@ object WorkoutCardGenerator {
         val bitmap = Bitmap.createBitmap(CARD_WIDTH, CARD_HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // 1. Gambar Background Foto dari Assets
-        val cleanPath = assetRelativePath
-            .removePrefix("file:///android_asset/")
-            .removePrefix("/")
-
+        // 1. Gambar Background Foto (Assets atau Custom Uri Foto Selfie/Galeri)
         try {
-            context.assets.open(cleanPath).use { stream ->
-                val bgBitmap = BitmapFactory.decodeStream(stream)
-                if (bgBitmap != null) {
-                    val srcRect = calculateCenterCropRect(bgBitmap.width, bgBitmap.height, CARD_WIDTH, CARD_HEIGHT)
-                    val destRect = Rect(0, 0, CARD_WIDTH, CARD_HEIGHT)
-                    val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-                    canvas.drawBitmap(bgBitmap, srcRect, destRect, paint)
-                    bgBitmap.recycle()
+            val bgBitmap = if (
+                assetRelativePath.startsWith("content://") ||
+                assetRelativePath.startsWith("file://") ||
+                assetRelativePath.startsWith("/")
+            ) {
+                val uri = if (assetRelativePath.startsWith("/")) {
+                    Uri.fromFile(File(assetRelativePath))
+                } else {
+                    Uri.parse(assetRelativePath)
+                }
+                loadBitmapFromUri(context, uri)
+            } else {
+                val cleanPath = assetRelativePath
+                    .removePrefix("file:///android_asset/")
+                    .removePrefix("/")
+                context.assets.open(cleanPath).use { stream ->
+                    BitmapFactory.decodeStream(stream)
                 }
             }
+
+            if (bgBitmap != null) {
+                val srcRect = calculateCenterCropRect(bgBitmap.width, bgBitmap.height, CARD_WIDTH, CARD_HEIGHT)
+                val destRect = Rect(0, 0, CARD_WIDTH, CARD_HEIGHT)
+                val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+                canvas.drawBitmap(bgBitmap, srcRect, destRect, paint)
+                bgBitmap.recycle()
+            } else {
+                canvas.drawColor(android.graphics.Color.rgb(18, 18, 22))
+            }
         } catch (e: Exception) {
-            android.util.Log.e("WorkoutCardGenerator", "Gagal memuat asset $cleanPath: ${e.message}")
+            android.util.Log.e("WorkoutCardGenerator", "Gagal memuat background $assetRelativePath: ${e.message}")
             // Fallback dark color jika asset gagal dimuat
             canvas.drawColor(android.graphics.Color.rgb(18, 18, 22))
         }
@@ -318,6 +335,70 @@ object WorkoutCardGenerator {
             val newH = (srcW / targetRatio).toInt()
             val top = (srcH - newH) / 2
             Rect(0, top, srcW, top + newH)
+        }
+    }
+
+    /**
+     * Memuat Bitmap dari Uri lokal atau ContentProvider secara hemat memori
+     * dan otomatis mengoreksi orientasi rotasi berdasarkan metadata EXIF kamera.
+     */
+    private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
+        return try {
+            var orientation = ExifInterface.ORIENTATION_NORMAL
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val exif = ExifInterface(stream)
+                    orientation = exif.getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL
+                    )
+                }
+            } catch (_: Exception) {}
+
+            val boundsOptions = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, boundsOptions)
+            }
+
+            var inSampleSize = 1
+            val reqWidth = CARD_WIDTH
+            val reqHeight = CARD_HEIGHT
+            if (boundsOptions.outHeight > reqHeight || boundsOptions.outWidth > reqWidth) {
+                val halfHeight = boundsOptions.outHeight / 2
+                val halfWidth = boundsOptions.outWidth / 2
+                while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                    inSampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
+
+            val rawBitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, decodeOptions)
+            } ?: return null
+
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+                else -> return rawBitmap
+            }
+
+            val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+            if (rotated != rawBitmap) {
+                rawBitmap.recycle()
+            }
+            rotated
+        } catch (e: Exception) {
+            android.util.Log.e("WorkoutCardGenerator", "Gagal memuat bitmap dari URI $uri: ${e.message}")
+            null
         }
     }
 }
