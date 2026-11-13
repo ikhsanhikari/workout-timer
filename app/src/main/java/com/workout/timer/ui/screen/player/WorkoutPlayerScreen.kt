@@ -3058,55 +3058,59 @@ private fun CompletedWorkoutView(
                         }
                     }
 
-                    // Action Buttons: Buat & Bagikan Kartu + Selesai
+                    // Action Buttons: Buat & Bagikan Kartu + Selesai (Frosted Glass Aesthetic)
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Tombol Buat & Bagikan Kartu Pencapaian (Estetik, Volt Accent)
+                        // Tombol Buat & Bagikan Kartu Latihan (Frosted Glass)
                         Button(
                             onClick = { showShareCardSheet = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp),
                             shape = RoundedCornerShape(26.dp),
+                            border = BorderStroke(1.2.dp, Color.White.copy(alpha = 0.35f)),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentWork,
-                                contentColor = Color.Black
+                                containerColor = Color.White.copy(alpha = 0.16f),
+                                contentColor = Color.White
                             ),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = null,
-                                tint = Color.Black,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Buat Kartu Latihan (Share)",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Black,
+                                fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = Color.Black
+                                color = Color.White
                             )
                         }
 
-                        // Tombol Kembali ke Beranda
+                        // Tombol Kembali ke Beranda (Subtle Frosted Glass)
                         OutlinedButton(
                             onClick = onFinish,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
                             shape = RoundedCornerShape(24.dp),
-                            border = BorderStroke(1.2.dp, Color.White.copy(alpha = 0.35f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.White.copy(alpha = 0.05f),
+                                contentColor = Color.White.copy(alpha = 0.85f)
+                            )
                         ) {
                             Text(
                                 text = "Kembali ke Beranda",
                                 style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                         }
                     }

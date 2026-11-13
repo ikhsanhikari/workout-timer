@@ -32,17 +32,28 @@ object AssetPhotoResolver {
     const val BG_MAT_WATER_BOTTLE = "${ASSET_PHOTO_DIR}bg_mat_water_bottle.jpg"
 
     /**
-     * Kumpulan foto pilihan terbaik untuk Kartu Pencapaian Latihan (Share Card).
+     * Kumpulan seluruh 18 foto dari photo_ai untuk Kartu Pencapaian Latihan (Share Card).
+     * Pengguna dapat memilih foto apa pun yang tersedia di assets/photo_ai/.
      */
     val SHARE_CARD_BACKGROUNDS = listOf(
-        ShareBackgroundOption("Gym Modern", BG_GYM_GLASS_DUMBBELL, "photo_ai/bg_gym_glass_dumbbell.jpg"),
-        ShareBackgroundOption("Dumbbell Focus", BG_STRENGTH_DUMBBELL, "photo_ai/bg_strength_dumbbell.jpg"),
-        ShareBackgroundOption("Kardio Lari", BG_CARDIO_JOGGING, "photo_ai/bg_cardio_jogging.jpg"),
-        ShareBackgroundOption("Matras & Botol", BG_MAT_WATER_BOTTLE, "photo_ai/bg_mat_water_bottle.jpg"),
-        ShareBackgroundOption("Deck Relaksasi", BG_RECOVERY_DECK, "photo_ai/bg_recovery_deck.jpg"),
-        ShareBackgroundOption("Danau Berkabut", BG_RECOVERY_MISTY_LAKE, "photo_ai/bg_recovery_misty_lake.jpg"),
+        ShareBackgroundOption("Gym Minimalist", BG_GYM_GLASS_DUMBBELL, "photo_ai/bg_gym_glass_dumbbell.jpg"),
+        ShareBackgroundOption("Dumbbell Rack", BG_STRENGTH_DUMBBELL, "photo_ai/bg_strength_dumbbell.jpg"),
+        ShareBackgroundOption("Gym Pacing", BG_STRENGTH_GYM, "photo_ai/bg_strength_gym.jpg"),
+        ShareBackgroundOption("Pull-Up Bar", BG_STRENGTH_PULLUP, "photo_ai/bg_strength_pullup.jpg"),
         ShareBackgroundOption("Gym Loft", BG_GYM_WORKOUT, "photo_ai/bg_gym_workout.jpg"),
-        ShareBackgroundOption("Rooftop Pagi", BG_WARMUP_ROOFTOP, "photo_ai/bg_warmup_rooftop.jpg")
+        ShareBackgroundOption("Matras & Beban", BG_EQUIPMENT_MAT, "photo_ai/bg_equipment_mat.jpg"),
+        ShareBackgroundOption("Matras & Botol", BG_MAT_WATER_BOTTLE, "photo_ai/bg_mat_water_bottle.jpg"),
+        ShareBackgroundOption("Yoga & Core", BG_YOGA_CORE, "photo_ai/bg_yoga_core.jpg"),
+        ShareBackgroundOption("Kardio Lari", BG_CARDIO_JOGGING, "photo_ai/bg_cardio_jogging.jpg"),
+        ShareBackgroundOption("HIIT Atletik", BG_HIIT_ATHLETIC, "photo_ai/bg_hiit_athletic.jpg"),
+        ShareBackgroundOption("Rooftop Pagi", BG_WARMUP_ROOFTOP, "photo_ai/bg_warmup_rooftop.jpg"),
+        ShareBackgroundOption("Stretching Deck", BG_MOBILITY_STRETCH, "photo_ai/bg_mobility_stretch.jpg"),
+        ShareBackgroundOption("Olah Napas", BG_COOLDOWN_BREATHING, "photo_ai/bg_cooldown_breathing.jpg"),
+        ShareBackgroundOption("Deck Relaksasi", BG_RECOVERY_DECK, "photo_ai/bg_recovery_deck.jpg"),
+        ShareBackgroundOption("Danau Hutan", BG_RECOVERY_LAKE, "photo_ai/bg_recovery_lake.jpg"),
+        ShareBackgroundOption("Danau Berkabut", BG_RECOVERY_MISTY_LAKE, "photo_ai/bg_recovery_misty_lake.jpg"),
+        ShareBackgroundOption("Hutan Asri", BG_RECOVERY_FOREST, "photo_ai/bg_recovery_forest.jpg"),
+        ShareBackgroundOption("Refleksi Alam", BG_REST_REFLECTION, "photo_ai/bg_rest_reflection.jpg")
     )
 
     data class ShareBackgroundOption(

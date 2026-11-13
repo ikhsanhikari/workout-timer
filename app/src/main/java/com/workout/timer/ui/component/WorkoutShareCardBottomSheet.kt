@@ -66,7 +66,7 @@ fun WorkoutShareCardBottomSheet(
     var isGenerating by remember { mutableStateOf(false) }
 
     val dateFormatted = remember {
-        SimpleDateFormat("d MMM yyyy  •  HH:mm", Locale("id", "ID")).format(Date())
+        SimpleDateFormat("d MMM yyyy  •  HH:mm", Locale.forLanguageTag("id-ID")).format(Date())
     }
 
     val mm = totalDurationSeconds / 60
@@ -214,14 +214,14 @@ fun WorkoutShareCardBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Kicker
+                        // Kicker (Pure White)
                         Text(
                             text = "PENCAPAIAN LATIHAN",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 9.sp,
                                 letterSpacing = 1.sp
                             ),
-                            color = AccentWork,
+                            color = Color.White.copy(alpha = 0.90f),
                             fontWeight = FontWeight.Bold
                         )
 
@@ -246,7 +246,7 @@ fun WorkoutShareCardBottomSheet(
                                 .background(Color.White.copy(alpha = 0.20f))
                         )
 
-                        // 3 Kolom Metrik Esensial
+                        // 3 Kolom Metrik Esensial (Semua Putih Bersih)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -271,7 +271,7 @@ fun WorkoutShareCardBottomSheet(
                                 )
                             }
 
-                            // Gerakan
+                            // Gerakan (Pure White)
                             Column {
                                 Text(
                                     text = "$totalExercisesCompleted",
@@ -280,7 +280,7 @@ fun WorkoutShareCardBottomSheet(
                                         fontWeight = FontWeight.Black,
                                         fontSize = 18.sp
                                     ),
-                                    color = AccentWork
+                                    color = Color.White
                                 )
                                 Text(
                                     text = "GERAKAN",
@@ -365,7 +365,7 @@ fun WorkoutShareCardBottomSheet(
                                     .clip(RoundedCornerShape(12.dp))
                                     .border(
                                         width = if (isSelected) 2.5.dp else 1.dp,
-                                        color = if (isSelected) AccentWork else SurfaceBorder.copy(alpha = 0.4f),
+                                        color = if (isSelected) Color.White else SurfaceBorder.copy(alpha = 0.4f),
                                         shape = RoundedCornerShape(12.dp)
                                     )
                             ) {
@@ -398,7 +398,7 @@ fun WorkoutShareCardBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Tombol Simpan ke Galeri
+                // Tombol Simpan ke Galeri (Frosted Glass)
                 OutlinedButton(
                     onClick = {
                         if (isGenerating) return@OutlinedButton
@@ -427,23 +427,28 @@ fun WorkoutShareCardBottomSheet(
                         .weight(1f)
                         .height(50.dp),
                     shape = RoundedCornerShape(25.dp),
-                    border = BorderStroke(1.2.dp, Color.White.copy(alpha = 0.35f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White.copy(alpha = 0.08f),
+                        contentColor = Color.White
+                    )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
+                        tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Simpan",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 }
 
-                // Tombol Bagikan (Share Sheet)
+                // Tombol Bagikan (Frosted Glass)
                 Button(
                     onClick = {
                         if (isGenerating) return@Button
@@ -472,15 +477,16 @@ fun WorkoutShareCardBottomSheet(
                         .weight(1.3f)
                         .height(50.dp),
                     shape = RoundedCornerShape(25.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.40f)),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentWork,
-                        contentColor = Color.Black
+                        containerColor = Color.White.copy(alpha = 0.22f),
+                        contentColor = Color.White
                     ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
                 ) {
                     if (isGenerating) {
                         CircularProgressIndicator(
-                            color = Color.Black,
+                            color = Color.White,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(20.dp)
                         )
@@ -488,15 +494,15 @@ fun WorkoutShareCardBottomSheet(
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Bagikan Kartu",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Black,
-                            color = Color.Black
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
                 }

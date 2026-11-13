@@ -40,8 +40,12 @@ object WorkoutCardGenerator {
         val canvas = Canvas(bitmap)
 
         // 1. Gambar Background Foto dari Assets
+        val cleanPath = assetRelativePath
+            .removePrefix("file:///android_asset/")
+            .removePrefix("/")
+
         try {
-            context.assets.open(assetRelativePath).use { stream ->
+            context.assets.open(cleanPath).use { stream ->
                 val bgBitmap = BitmapFactory.decodeStream(stream)
                 if (bgBitmap != null) {
                     val srcRect = calculateCenterCropRect(bgBitmap.width, bgBitmap.height, CARD_WIDTH, CARD_HEIGHT)
@@ -51,7 +55,8 @@ object WorkoutCardGenerator {
                     bgBitmap.recycle()
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("WorkoutCardGenerator", "Gagal memuat asset $cleanPath: ${e.message}")
             // Fallback dark color jika asset gagal dimuat
             canvas.drawColor(android.graphics.Color.rgb(18, 18, 22))
         }
@@ -110,7 +115,7 @@ object WorkoutCardGenerator {
         canvas.drawText("GASCOUNT  •  SELESAI", marginHorizontal + 32f, headerY + 3f, brandTextPaint)
 
         // Tanggal & Waktu di kanan
-        val dateStr = SimpleDateFormat("d MMM yyyy  •  HH:mm", Locale("id", "ID")).format(Date())
+        val dateStr = SimpleDateFormat("d MMM yyyy  •  HH:mm", Locale.forLanguageTag("id-ID")).format(Date())
         val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb(200, 255, 255, 255)
             textSize = 24f
@@ -124,7 +129,7 @@ object WorkoutCardGenerator {
 
         // Small Kicker
         val kickerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.argb(230, 204, 255, 0) // Volt Green
+            color = android.graphics.Color.WHITE
             textSize = 26f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             letterSpacing = 0.12f
@@ -149,17 +154,12 @@ object WorkoutCardGenerator {
         val dividerY = contentStartY + 125f
         canvas.drawLine(marginHorizontal, dividerY, CARD_WIDTH - marginHorizontal, dividerY, dividerPaint)
 
-        // 5. Grid Statistik Bersih (3 Kolom: Waktu, Gerakan, Estimasi Kalori)
+        // 5. Grid Statistik Bersih (3 Kolom: Waktu, Gerakan, Estimasi Kalori - All Monochrome White)
         val statsY = dividerY + 50f
         val colWidth = (CARD_WIDTH - (marginHorizontal * 2)) / 3f
 
         val valPaintWhite = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
-            textSize = 66f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        }
-        val valPaintAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.rgb(204, 255, 0) // Volt Accent
             textSize = 66f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
@@ -178,9 +178,9 @@ object WorkoutCardGenerator {
         canvas.drawText(durationStr, col1X, statsY + 65f, valPaintWhite)
         canvas.drawText("TOTAL WAKTU", col1X, statsY + 115f, labelPaint)
 
-        // Kolom 2: Gerakan
+        // Kolom 2: Gerakan (Pure White)
         val col2X = marginHorizontal + colWidth
-        canvas.drawText("$totalExercisesCompleted", col2X, statsY + 65f, valPaintAccent)
+        canvas.drawText("$totalExercisesCompleted", col2X, statsY + 65f, valPaintWhite)
         canvas.drawText("GERAKAN SELESAI", col2X, statsY + 115f, labelPaint)
 
         // Kolom 3: Estimasi Kalori (~7.5 kcal/menit aktif)
@@ -215,9 +215,11 @@ object WorkoutCardGenerator {
             val file = File(cacheFolder, "gascount_card_${System.currentTimeMillis()}.jpg")
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                out.flush()
             }
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("WorkoutCardGenerator", "Gagal simpan kartu ke cache: ${e.message}", e)
             null
         }
     }
@@ -226,40 +228,64 @@ object WorkoutCardGenerator {
      * Menyimpan kartu ke Galeri Foto HP (MediaStore Pictures/GasCount).
      */
     fun saveCardToGallery(context: Context, bitmap: Bitmap, routineName: String): Boolean {
-        val fileName = "GasCount_${routineName.replace(Regex("[^a-zA-Z0-9]"), "_")}_${System.currentTimeMillis()}.jpg"
+        val cleanRoutineName = routineName.replace(Regex("[^a-zA-Z0-9]"), "_").take(30)
+        val fileName = "GasCount_${cleanRoutineName}_${System.currentTimeMillis()}.jpg"
+
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/GasCount")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
+                put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis())
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/GasCount")
                 }
-                val resolver = context.contentResolver
-                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues) ?: return false
+            }
+
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            if (uri != null) {
                 resolver.openOutputStream(uri)?.use { out ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                    out.flush()
                 }
-                contentValues.clear()
-                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                resolver.update(uri, contentValues, null, null)
+                try {
+                    android.media.MediaScannerConnection.scanFile(
+                        context,
+                        arrayOf(uri.toString()),
+                        arrayOf("image/jpeg"),
+                        null
+                    )
+                } catch (_: Exception) {}
                 true
             } else {
-                @Suppress("DEPRECATION")
-                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                val appDir = File(picturesDir, "GasCount").apply { mkdirs() }
-                val file = File(appDir, fileName)
-                FileOutputStream(file).use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
-                }
-                val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.DATA, file.absolutePath)
-                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                }
-                context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                true
+                saveToPicturesLegacy(context, bitmap, fileName)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("WorkoutCardGenerator", "Gagal simpan ke MediaStore: ${e.message}", e)
+            saveToPicturesLegacy(context, bitmap, fileName)
+        }
+    }
+
+    private fun saveToPicturesLegacy(context: Context, bitmap: Bitmap, fileName: String): Boolean {
+        return try {
+            @Suppress("DEPRECATION")
+            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val appDir = File(picturesDir, "GasCount").apply { mkdirs() }
+            val file = File(appDir, fileName)
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                out.flush()
+            }
+            android.media.MediaScannerConnection.scanFile(
+                context,
+                arrayOf(file.absolutePath),
+                arrayOf("image/jpeg"),
+                null
+            )
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("WorkoutCardGenerator", "Gagal simpan ke legacy Pictures: ${e.message}", e)
             false
         }
     }
