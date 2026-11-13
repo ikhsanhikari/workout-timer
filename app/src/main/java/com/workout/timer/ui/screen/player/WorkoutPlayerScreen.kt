@@ -772,13 +772,52 @@ private fun ActiveWorkoutView(
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
-                            DynamicExerciseIllustrationCard(
-                                currentExercise = currentExercise,
-                                nextExercise = nextExercise,
-                                intervalType = intervalType,
-                                accentColor = accentColor,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            // Saat video dinonaktifkan di landscape, tampilkan foto AI latar di dalam card
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .border(BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)), RoundedCornerShape(24.dp))
+                            ) {
+                                val context = LocalContext.current
+                                val bgPhotoUri = remember(currentExercise.title, currentExercise.category, currentExercise.equipment, intervalType) {
+                                    com.workout.timer.data.catalog.AssetPhotoResolver.resolveBackgroundPhoto(
+                                        intervalType = intervalType,
+                                        category = currentExercise.category,
+                                        equipment = currentExercise.equipment,
+                                        title = currentExercise.title,
+                                        targetMuscle = currentExercise.targetMuscle
+                                    )
+                                }
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context).data(android.net.Uri.parse(bgPhotoUri)).crossfade(true).build(),
+                                    imageLoader = context.imageLoader,
+                                    contentDescription = "Background Latihan",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.40f),
+                                                    Color.Black.copy(alpha = 0.25f),
+                                                    Color.Black.copy(alpha = 0.55f)
+                                                )
+                                            )
+                                        )
+                                )
+                                DynamicExerciseIllustrationCard(
+                                    currentExercise = currentExercise,
+                                    nextExercise = nextExercise,
+                                    intervalType = intervalType,
+                                    accentColor = accentColor,
+                                    isTransparent = true,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
 
@@ -990,114 +1029,158 @@ private fun ActiveWorkoutView(
                     }
                 }
             } else {
-                // ── PORTRAIT PURE FOCUS MODE (NO VIDEO, AMOLED POSTURE CARD & CHRONO DIAL) ──
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp, vertical = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TopHeaderBar(
-                        routineName = routineName,
-                        exerciseIndex = exerciseIndex,
-                        totalExercises = totalExercises,
-                        remainingSeconds = remainingSeconds,
-                        totalElapsedSeconds = totalElapsedSeconds,
-                        intervalType = intervalType,
-                        accentColor = accentColor,
-                        isBgmEnabled = isBgmEnabled,
-                        onToggleBgm = onToggleBgm,
-                        isVideoEnabled = isVideoEnabled,
-                        onToggleVideo = onToggleVideo,
-                        isVoiceCoachEnabled = isVoiceCoachEnabled,
-                        onToggleVoiceCoach = onToggleVoiceCoach,
-                        onStop = onStop,
-                        isGlassMode = false
-                    )
-
-                    if (!isNotificationGranted && !notificationPromptDismissed) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        LockscreenNotificationPromptBanner(
-                            onDismiss = { notificationPromptDismissed = true },
-                            onRequestPermission = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    DeviceReadinessManager.openNotificationSettings(context)
-                                }
-                            }
+                // ── PORTRAIT MODE SAAT VIDEO DINONAKTIFKAN (FOTO AI LATAR + FOKUS DIAL) ──
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // 1. Ambient Background Photo dari photo_ai
+                    val context = LocalContext.current
+                    val bgPhotoUri = remember(currentExercise.title, currentExercise.category, currentExercise.equipment, intervalType) {
+                        com.workout.timer.data.catalog.AssetPhotoResolver.resolveBackgroundPhoto(
+                            intervalType = intervalType,
+                            category = currentExercise.category,
+                            equipment = currentExercise.equipment,
+                            title = currentExercise.title,
+                            targetMuscle = currentExercise.targetMuscle
                         )
                     }
+                    val photoRequest = remember(bgPhotoUri) {
+                        ImageRequest.Builder(context)
+                            .data(android.net.Uri.parse(bgPhotoUri))
+                            .crossfade(true)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = photoRequest,
+                        imageLoader = context.imageLoader,
+                        contentDescription = "Background Latihan",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
 
-                    Spacer(modifier = Modifier.weight(0.5f))
-
-                    // 210dp Large Chrono Dial with tap-to-pause
+                    // 2. Dark Scrim agar Chrono Dial & elemen kontrol tetap kontras
                     Box(
                         modifier = Modifier
-                            .size(210.dp)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onTogglePause()
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressRing(
-                            progress = progress,
-                            strokeWidth = 14.dp,
-                            accentColor = accentColor,
-                            trackColor = accentColor.copy(alpha = 0.16f),
-                            remainingSeconds = remainingSeconds
-                        )
-                        RingCenterContent(
-                            intervalType = intervalType,
-                            accentColor = accentColor,
-                            remainingSeconds = remainingSeconds,
-                            currentExercise = currentExercise,
-                            isPaused = isPaused,
-                            isCompact = false
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.weight(0.5f))
-
-                    // Dynamic Posture Guide Card
-                    DynamicExerciseIllustrationCard(
-                        currentExercise = currentExercise,
-                        nextExercise = nextExercise,
-                        intervalType = intervalType,
-                        accentColor = accentColor,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 135.dp, max = 175.dp)
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.65f),
+                                        Color.Black.copy(alpha = 0.50f),
+                                        Color.Black.copy(alpha = 0.75f)
+                                    )
+                                )
+                            )
                     )
 
-                    Spacer(modifier = Modifier.weight(0.5f))
-
+                    // 3. Foreground Focus UI
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        nextExercise?.let { next ->
-                            UpNextBanner(next = next, isGlassMode = false)
-                        }
-
-                        BottomPlaybackControls(
+                        TopHeaderBar(
+                            routineName = routineName,
+                            exerciseIndex = exerciseIndex,
+                            totalExercises = totalExercises,
+                            remainingSeconds = remainingSeconds,
+                            totalElapsedSeconds = totalElapsedSeconds,
                             intervalType = intervalType,
                             accentColor = accentColor,
-                            isPaused = isPaused,
-                            onTogglePause = onTogglePause,
-                            onSkip = onSkip,
-                            onPrevious = onPrevious,
-                            onAddRest = onAddRest,
-                            isGlassMode = false
+                            isBgmEnabled = isBgmEnabled,
+                            onToggleBgm = onToggleBgm,
+                            isVideoEnabled = isVideoEnabled,
+                            onToggleVideo = onToggleVideo,
+                            isVoiceCoachEnabled = isVoiceCoachEnabled,
+                            onToggleVoiceCoach = onToggleVoiceCoach,
+                            onStop = onStop,
+                            isGlassMode = true
                         )
+
+                        if (!isNotificationGranted && !notificationPromptDismissed) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LockscreenNotificationPromptBanner(
+                                onDismiss = { notificationPromptDismissed = true },
+                                onRequestPermission = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        DeviceReadinessManager.openNotificationSettings(context)
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(0.5f))
+
+                        // 210dp Large Chrono Dial with tap-to-pause
+                        Box(
+                            modifier = Modifier
+                                .size(210.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTogglePause()
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressRing(
+                                progress = progress,
+                                strokeWidth = 14.dp,
+                                accentColor = accentColor,
+                                trackColor = accentColor.copy(alpha = 0.16f),
+                                remainingSeconds = remainingSeconds
+                            )
+                            RingCenterContent(
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                remainingSeconds = remainingSeconds,
+                                currentExercise = currentExercise,
+                                isPaused = isPaused,
+                                isCompact = false
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(0.5f))
+
+                        // Dynamic Posture Guide Card (Frosted Glass di atas photo)
+                        DynamicExerciseIllustrationCard(
+                            currentExercise = currentExercise,
+                            nextExercise = nextExercise,
+                            intervalType = intervalType,
+                            accentColor = accentColor,
+                            isTransparent = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 135.dp, max = 175.dp)
+                        )
+
+                        Spacer(modifier = Modifier.weight(0.5f))
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            nextExercise?.let { next ->
+                                UpNextBanner(next = next, isGlassMode = true)
+                            }
+
+                            BottomPlaybackControls(
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                isPaused = isPaused,
+                                onTogglePause = onTogglePause,
+                                onSkip = onSkip,
+                                onPrevious = onPrevious,
+                                onAddRest = onAddRest,
+                                isGlassMode = true
+                            )
+                        }
                     }
                 }
             }
