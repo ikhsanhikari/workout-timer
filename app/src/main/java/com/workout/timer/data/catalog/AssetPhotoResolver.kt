@@ -11,7 +11,7 @@ object AssetPhotoResolver {
 
     const val ASSET_PHOTO_DIR = "file:///android_asset/photo_ai/"
 
-    // 15 Background Photos yang telah dikompresi (768x1376, Q85) & distandarisasi
+    // 18 Background Photos yang telah dikompresi (768x1376, Q85) & distandarisasi
     const val BG_CARDIO_JOGGING = "${ASSET_PHOTO_DIR}bg_cardio_jogging.jpg"
     const val BG_COOLDOWN_BREATHING = "${ASSET_PHOTO_DIR}bg_cooldown_breathing.jpg"
     const val BG_EQUIPMENT_MAT = "${ASSET_PHOTO_DIR}bg_equipment_mat.jpg"
@@ -27,22 +27,48 @@ object AssetPhotoResolver {
     const val BG_STRENGTH_PULLUP = "${ASSET_PHOTO_DIR}bg_strength_pullup.jpg"
     const val BG_WARMUP_ROOFTOP = "${ASSET_PHOTO_DIR}bg_warmup_rooftop.jpg"
     const val BG_YOGA_CORE = "${ASSET_PHOTO_DIR}bg_yoga_core.jpg"
+    const val BG_GYM_GLASS_DUMBBELL = "${ASSET_PHOTO_DIR}bg_gym_glass_dumbbell.jpg"
+    const val BG_RECOVERY_DECK = "${ASSET_PHOTO_DIR}bg_recovery_deck.jpg"
+    const val BG_MAT_WATER_BOTTLE = "${ASSET_PHOTO_DIR}bg_mat_water_bottle.jpg"
+
+    /**
+     * Kumpulan foto pilihan terbaik untuk Kartu Pencapaian Latihan (Share Card).
+     */
+    val SHARE_CARD_BACKGROUNDS = listOf(
+        ShareBackgroundOption("Gym Modern", BG_GYM_GLASS_DUMBBELL, "photo_ai/bg_gym_glass_dumbbell.jpg"),
+        ShareBackgroundOption("Dumbbell Focus", BG_STRENGTH_DUMBBELL, "photo_ai/bg_strength_dumbbell.jpg"),
+        ShareBackgroundOption("Kardio Lari", BG_CARDIO_JOGGING, "photo_ai/bg_cardio_jogging.jpg"),
+        ShareBackgroundOption("Matras & Botol", BG_MAT_WATER_BOTTLE, "photo_ai/bg_mat_water_bottle.jpg"),
+        ShareBackgroundOption("Deck Relaksasi", BG_RECOVERY_DECK, "photo_ai/bg_recovery_deck.jpg"),
+        ShareBackgroundOption("Danau Berkabut", BG_RECOVERY_MISTY_LAKE, "photo_ai/bg_recovery_misty_lake.jpg"),
+        ShareBackgroundOption("Gym Loft", BG_GYM_WORKOUT, "photo_ai/bg_gym_workout.jpg"),
+        ShareBackgroundOption("Rooftop Pagi", BG_WARMUP_ROOFTOP, "photo_ai/bg_warmup_rooftop.jpg")
+    )
+
+    data class ShareBackgroundOption(
+        val label: String,
+        val uri: String,
+        val assetRelativePath: String
+    )
 
     private val RECOVERY_POOL = listOf(
         BG_RECOVERY_LAKE,
         BG_RECOVERY_MISTY_LAKE,
         BG_RECOVERY_FOREST,
         BG_REST_REFLECTION,
+        BG_RECOVERY_DECK,
         BG_COOLDOWN_BREATHING
     )
 
     private val STRENGTH_DUMBBELL_POOL = listOf(
+        BG_GYM_GLASS_DUMBBELL,
         BG_STRENGTH_DUMBBELL,
         BG_EQUIPMENT_MAT,
         BG_STRENGTH_GYM
     )
 
     private val STRENGTH_BARBELL_GYM_POOL = listOf(
+        BG_GYM_GLASS_DUMBBELL,
         BG_STRENGTH_GYM,
         BG_GYM_WORKOUT,
         BG_STRENGTH_DUMBBELL

@@ -2865,6 +2865,8 @@ private fun CompletedWorkoutView(
     state: WorkoutTimerState.Completed,
     onFinish: () -> Unit
 ) {
+    var showShareCardSheet by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -3056,29 +3058,70 @@ private fun CompletedWorkoutView(
                         }
                     }
 
-                    // Button Selesai
-                    Button(
-                        onClick = onFinish,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                    // Action Buttons: Buat & Bagikan Kartu + Selesai
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "Kembali ke Beranda",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 16.sp,
-                            color = Color.Black
-                        )
+                        // Tombol Buat & Bagikan Kartu Pencapaian (Estetik, Volt Accent)
+                        Button(
+                            onClick = { showShareCardSheet = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AccentWork,
+                                contentColor = Color.Black
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Buat Kartu Latihan (Share)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 15.sp,
+                                color = Color.Black
+                            )
+                        }
+
+                        // Tombol Kembali ke Beranda
+                        OutlinedButton(
+                            onClick = onFinish,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.2.dp, Color.White.copy(alpha = 0.35f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        ) {
+                            Text(
+                                text = "Kembali ke Beranda",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        // Bottom Sheet Generator & Preview Kartu Pencapaian Latihan
+        if (showShareCardSheet) {
+            com.workout.timer.ui.component.WorkoutShareCardBottomSheet(
+                routineName = state.routineName,
+                totalDurationSeconds = state.totalDurationSeconds,
+                totalExercisesCompleted = state.totalExercisesCompleted,
+                onDismiss = { showShareCardSheet = false }
+            )
         }
     }
 }
