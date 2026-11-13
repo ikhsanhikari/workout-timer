@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -35,7 +36,9 @@ import java.io.File
 import android.net.Uri
 import kotlinx.coroutines.launch
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -217,7 +220,8 @@ fun WorkoutBuilderScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .imePadding(),
                 contentPadding = PaddingValues(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
@@ -1721,9 +1725,12 @@ private fun ExerciseRowCompact(
                                     ) {
                                         Text(
                                             text = template.name,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = TextPrimary,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                         template.difficulty?.let { diff ->
                                             Surface(
@@ -2193,6 +2200,11 @@ private fun ExerciseLibraryPickerBottomSheet(
     onSelectTemplate: (ExerciseTemplate) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listState = rememberLazyListState()
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
 
@@ -2213,87 +2225,129 @@ private fun ExerciseLibraryPickerBottomSheet(
         }
     }
 
+    // Tutup keyboard otomatis saat user mulai scroll hasil pencarian
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = SurfaceCard,
         dragHandle = { BottomSheetDefaults.DragHandle(color = TextTertiary) },
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        contentWindowInsets = { WindowInsets(0) }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxHeight(0.92f)
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
         ) {
-            // Header
+            // Compact Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Kamus Gerakan",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color.White.copy(alpha = 0.10f)
                     ) {
                         Text(
-                            text = "Kamus Gerakan Master",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
+                            text = "${filteredTemplates.size}",
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color.White.copy(alpha = 0.10f)
-                        ) {
-                            Text(
-                                text = "${filteredTemplates.size} item",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
-                    Text(
-                        text = "Pilih gerakan terstandarisasi untuk rutinitas",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
                 }
 
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Tutup", tint = TextSecondary)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Tutup",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Search Bar (Frosted White Glass)
+            // Compact Search Bar (Frosted White Glass)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Cari gerakan, otot, alat...", color = Color.White.copy(alpha = 0.40f)) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.65f)) },
+                placeholder = {
+                    Text(
+                        "Cari gerakan, otot, atau alat...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.45f)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, null, tint = Color.White.copy(alpha = 0.65f))
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Hapus",
+                                tint = Color.White.copy(alpha = 0.65f),
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    }
+                ),
+                shape = RoundedCornerShape(12.dp),
                 colors = builderTextFieldColors()
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Category Chips (Frosted White Glass)
+            // Compact Category Chips
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
+                contentPadding = PaddingValues(vertical = 2.dp)
             ) {
                 items(categories, key = { "picker_cat_$it" }) { cat ->
                     val isSelected = (selectedCategory == null && cat == "Semua") || selectedCategory == cat
@@ -2303,6 +2357,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             selectedCategory = if (cat == "Semua") null else cat
                         },
+                        modifier = Modifier.height(30.dp),
                         label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color.White.copy(alpha = 0.22f),
@@ -2332,17 +2387,17 @@ private fun ExerciseLibraryPickerBottomSheet(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.SearchOff,
                             contentDescription = null,
                             tint = TextTertiary,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                         Text(
                             text = "Tidak ada gerakan ditemukan",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             color = TextSecondary
                         )
                         Text(
@@ -2354,36 +2409,38 @@ private fun ExerciseLibraryPickerBottomSheet(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(filteredTemplates, key = { it.id }) { template ->
                         Surface(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                keyboardController?.hide()
                                 onSelectTemplate(template)
                             },
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = SurfaceElevated,
-                            border = BorderStroke(1.dp, SurfaceBorder.copy(alpha = 0.5f))
+                            border = BorderStroke(0.8.dp, SurfaceBorder.copy(alpha = 0.45f))
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                // Category Icon
+                                // Compact Category Icon
                                 Box(
                                     modifier = Modifier
-                                        .size(44.dp)
+                                        .size(36.dp)
                                         .background(
                                             Color.White.copy(alpha = 0.08f),
-                                            RoundedCornerShape(10.dp)
+                                            RoundedCornerShape(8.dp)
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -2391,7 +2448,7 @@ private fun ExerciseLibraryPickerBottomSheet(
                                         painter = painterResource(id = getExerciseMovementIconRes(template.category, template.mediaUri != null)),
                                         contentDescription = null,
                                         tint = Color.White,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
 
@@ -2402,20 +2459,23 @@ private fun ExerciseLibraryPickerBottomSheet(
                                     ) {
                                         Text(
                                             text = template.name,
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.bodyMedium,
                                             color = TextPrimary,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                         template.difficulty?.let { diff ->
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = Color.White.copy(alpha = 0.12f)
+                                                color = Color.White.copy(alpha = 0.10f)
                                             ) {
                                                 Text(
                                                     text = diff,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.White,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                    color = Color.White.copy(alpha = 0.85f),
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                                 )
                                             }
                                         }
@@ -2423,37 +2483,25 @@ private fun ExerciseLibraryPickerBottomSheet(
 
                                     Spacer(modifier = Modifier.height(2.dp))
 
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        template.targetMuscle?.let { muscle ->
-                                            Text(
-                                                text = "🎯 $muscle",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = TextSecondary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Text(
-                                            text = "/  ${template.defaultDuration}s",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = TextTertiary
-                                        )
-                                        Text(
-                                            text = "/  ${template.equipment ?: "Bodyweight"}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = TextTertiary
-                                        )
+                                    val metaParts = buildList {
+                                        add(template.equipment ?: "Bodyweight")
+                                        add("${template.defaultDuration}s")
+                                        template.targetMuscle?.takeIf { it.isNotBlank() }?.let { add(it) }
                                     }
+                                    Text(
+                                        text = metaParts.joinToString(" • "),
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
 
                                 Icon(
                                     imageVector = Icons.Default.AddCircleOutline,
                                     contentDescription = "Pilih",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }

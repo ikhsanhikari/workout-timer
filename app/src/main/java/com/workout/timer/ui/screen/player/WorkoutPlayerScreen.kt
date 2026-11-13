@@ -424,7 +424,8 @@ private fun DynamicExerciseIllustrationCard(
     nextExercise: FlatExerciseItem?,
     intervalType: IntervalType,
     accentColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isTransparent: Boolean = false
 ) {
     val isRest = intervalType == IntervalType.REST
     val guide = if (isRest) {
@@ -459,8 +460,8 @@ private fun DynamicExerciseIllustrationCard(
 
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = SurfaceCard.copy(alpha = 0.9f),
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
+        color = if (isTransparent) Color.Transparent else SurfaceCard.copy(alpha = 0.9f),
+        border = if (isTransparent) BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)) else BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
         modifier = modifier
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1186,20 +1187,69 @@ private fun WorkoutMediaContainer(
                     }
                 }
 
-                // Tidak ada media kustom: Tampilkan Apple Fitness+ Style Dynamic Motion Card
+                // Tidak ada media kustom: Tampilkan Foto AI Sinematik sebagai Background Dinamis
                 else -> {
-                    DynamicExerciseIllustrationCard(
-                        currentExercise = currentExercise,
-                        nextExercise = nextExercise,
-                        intervalType = intervalType,
-                        accentColor = accentColor,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val context = LocalContext.current
+                    val bgPhotoUri = remember(currentExercise.title, currentExercise.category, currentExercise.equipment, intervalType) {
+                        com.workout.timer.data.catalog.AssetPhotoResolver.resolveBackgroundPhoto(
+                            intervalType = intervalType,
+                            category = currentExercise.category,
+                            equipment = currentExercise.equipment,
+                            title = currentExercise.title,
+                            targetMuscle = currentExercise.targetMuscle
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val photoRequest = remember(bgPhotoUri) {
+                            ImageRequest.Builder(context)
+                                .data(android.net.Uri.parse(bgPhotoUri))
+                                .crossfade(true)
+                                .build()
+                        }
+                        AsyncImage(
+                            model = photoRequest,
+                            imageLoader = context.imageLoader,
+                            contentDescription = "Background Latihan",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        // Vignette & gradient scrim untuk estetika sinematik & kontras teks optimal
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = if (isFullscreen) 0.50f else 0.40f),
+                                            Color.Black.copy(alpha = if (isFullscreen) 0.30f else 0.25f),
+                                            Color.Black.copy(alpha = if (isFullscreen) 0.65f else 0.55f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        // Jika dalam mode card (landscape), tampilkan card ilustrasi di atas foto
+                        if (!isFullscreen) {
+                            DynamicExerciseIllustrationCard(
+                                currentExercise = currentExercise,
+                                nextExercise = nextExercise,
+                                intervalType = intervalType,
+                                accentColor = accentColor,
+                                isTransparent = true,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                 }
             }
 
             // Overlay Badge khusus saat Video / GIF aktif dalam mode non-fullscreen card
-            if (!isFullscreen && !isRestPreview && (mediaType == MediaType.VIDEO || mediaType == MediaType.GIF) && !mediaUri.isNullOrBlank()) {
+            if (!isFullscreen && !isRestPreview && (effectiveMediaType == MediaType.VIDEO || effectiveMediaType == MediaType.GIF) && !effectiveMediaUri.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
