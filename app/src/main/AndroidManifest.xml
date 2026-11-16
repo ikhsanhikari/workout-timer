@@ -76,13 +76,14 @@
             android:foregroundServiceType="health"
             android:exported="false" />
 
-        <!-- Receiver Pengingat Latihan Harian -->
+        <!-- Receiver Pengingat Latihan Harian (Mendukung Reboot & Update Play Store) -->
         <receiver
             android:name=".receiver.WorkoutReminderReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
-                <action android:name="com.workout.timer.ACTION_DAILY_REMINDER" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.workout.timer.ACTION_DAILY_REMINDER" />
             </intent-filter>
         </receiver>
 

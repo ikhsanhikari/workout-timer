@@ -22,10 +22,14 @@ import androidx.core.content.ContextCompat
 object DeviceReadinessManager {
 
     /**
-     * Memeriksa apakah izin notifikasi telah diberikan oleh pengguna.
-     * Pada Android 12 ke bawah (API < 33), selalu bernilai true.
+     * Memeriksa apakah izin notifikasi telah diberikan oleh pengguna dan aktif di sistem.
+     * Menggunakan NotificationManagerCompat agar mencakup izin runtime (Android 13+)
+     * serta status toggle notifikasi global di setelan sistem (Android 12 ke bawah).
      */
     fun isNotificationPermissionGranted(context: Context): Boolean {
+        val notificationsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+        if (!notificationsEnabled) return false
+
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 context,
@@ -33,6 +37,36 @@ object DeviceReadinessManager {
             ) == PackageManager.PERMISSION_GRANTED
         } else {
             true
+        }
+    }
+
+    /**
+     * Memeriksa apakah aplikasi diizinkan menjadwalkan exact alarm (Android 12+).
+     * Di Android 14+, Play Store mewajibkan pemeriksaan ini.
+     */
+    fun isExactAlarmAllowed(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+            alarmManager?.canScheduleExactAlarms() ?: true
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Membuka pengaturan Alarms & Reminders sistem jika exact alarm dibatasi (Android 12+).
+     */
+    fun openExactAlarmSettings(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                openAppDetailsSettings(context)
+            }
         }
     }
 

@@ -1,5 +1,8 @@
 package com.workout.timer.ui.screen.home
 
+import android.Manifest
+import android.os.Build
+import com.workout.timer.util.DeviceReadinessManager
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -404,6 +407,9 @@ fun HomeScreen(
                 },
                 onDeleteReminder = { id ->
                     viewModel.deleteCustomReminder(context, id)
+                },
+                onTestNotification = {
+                    viewModel.testReminderNotification(context)
                 },
                 onStartWorkout = onNavigateToStartWorkout,
                 onDismiss = { showNotificationSheet = false }
@@ -2605,12 +2611,24 @@ private fun NotificationReminderBottomSheet(
     onUpdateReminder: (id: String, label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
     onAddReminder: (label: String, hour: Int, minute: Int, days: List<Int>) -> Unit,
     onDeleteReminder: (id: String) -> Unit,
+    onTestNotification: () -> Unit = {},
     onStartWorkout: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddDialog by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<WorkoutReminderItem?>(null) }
+
+    var isNotificationGranted by remember {
+        mutableStateOf(DeviceReadinessManager.isNotificationPermissionGranted(context))
+    }
+
+    val requestNotificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isNotificationGranted = granted
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -2687,6 +2705,55 @@ private fun NotificationReminderBottomSheet(
                 }
             }
 
+            // Banner Peringatan Izin Notifikasi (Jika Dibatasi oleh OS Android)
+            if (!isNotificationGranted) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF2E1C14),
+                    border = BorderStroke(1.dp, Color(0xFF8B4513).copy(alpha = 0.7f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "⚠️ Izin Notifikasi Belum Aktif",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFFFFB088)
+                            )
+                            Text(
+                                text = "Android memblokir notifikasi aplikasi secara bawaan.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = Color.White.copy(alpha = 0.75f)
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    DeviceReadinessManager.openNotificationSettings(context)
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text("Izinkan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // Reminders List (Ultra-clean Single-row Frosted Glass Cards)
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -2695,38 +2762,87 @@ private fun NotificationReminderBottomSheet(
                 reminders.forEach { reminder ->
                     FrostedReminderCard(
                         reminder = reminder,
-                        onToggle = { onToggleReminder(reminder.id, it) },
+                        onToggle = { isEnabled ->
+                            if (isEnabled && !isNotificationGranted) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    DeviceReadinessManager.openNotificationSettings(context)
+                                }
+                            }
+                            onToggleReminder(reminder.id, isEnabled)
+                        },
                         onClick = { editingReminder = reminder }
                     )
                 }
             }
 
-            // Button: Tambah Pengingat Baru (+)
-            Button(
-                onClick = { showAddDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.08f),
-                    contentColor = Color.White
-                ),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+            // Action Buttons: Tambah Pengingat Baru (+) & Tes Notifikasi Langsung
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Tambah Pengingat Baru",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp,
-                    color = Color.White
-                )
+                // Button: Tambah Pengingat Baru (+)
+                Button(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.08f),
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Tambah",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    )
+                }
+
+                // Button: Uji Kirim Notifikasi Sekarang
+                OutlinedButton(
+                    onClick = {
+                        if (!isNotificationGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        onTestNotification()
+                    },
+                    modifier = Modifier
+                        .weight(1.3f)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White.copy(alpha = 0.12f),
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsActive,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Tes Notifikasi",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.5.sp,
+                        color = Color.White
+                    )
+                }
             }
 
             // Card 2: Quick Action / Active Routine Preview (if available)

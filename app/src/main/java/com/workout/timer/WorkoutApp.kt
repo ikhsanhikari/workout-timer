@@ -1,6 +1,9 @@
 package com.workout.timer
 
 import android.app.Application
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Build
 import android.util.Log
 import coil.ImageLoader
@@ -9,6 +12,9 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.workout.timer.receiver.WorkoutReminderReceiver
+import com.workout.timer.service.WorkoutTimerService
+import com.workout.timer.util.WorkoutReminderManager
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 
@@ -33,6 +39,45 @@ class WorkoutApp : Application(), ImageLoaderFactory {
                 crashFile.writeText(Log.getStackTraceString(throwable))
             } catch (_: Exception) {}
             defaultHandler?.uncaughtException(thread, throwable)
+        }
+
+        // Daftarkan semua notification channel secara global di awal aplikasi booting
+        createNotificationChannels()
+
+        // Pastikan alarm terjadwal jika pengguna memiliki pengingat aktif
+        WorkoutReminderManager.rescheduleAll(this)
+    }
+
+    private fun createNotificationChannels() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(NotificationManager::class.java) ?: return
+
+            // 1. Channel Pengingat Latihan Harian
+            val reminderChannel = NotificationChannel(
+                WorkoutReminderReceiver.CHANNEL_ID,
+                "Pengingat Latihan Harian",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifikasi pengingat latihan harian yang tersinkronisasi otomatis dengan jadwal mingguan"
+                enableVibration(true)
+                enableLights(true)
+                setShowBadge(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+
+            // 2. Channel Workout Timer Aktif (Foreground Service)
+            val serviceChannel = NotificationChannel(
+                WorkoutTimerService.NOTIFICATION_CHANNEL_ID,
+                "Workout Timer Aktif",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Status sesi latihan aktif dan kontrol timer"
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            }
+
+            notificationManager.createNotificationChannels(listOf(reminderChannel, serviceChannel))
         }
     }
 

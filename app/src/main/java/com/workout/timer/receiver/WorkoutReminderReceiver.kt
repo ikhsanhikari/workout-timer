@@ -50,8 +50,8 @@ class WorkoutReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         Log.d(TAG, "Alarm received: action=${intent?.action}")
 
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Setelah perangkat reboot, jadwalkan ulang seluruh alarm sesuai preferensi pengguna
+        if (intent?.action == Intent.ACTION_BOOT_COMPLETED || intent?.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // Setelah perangkat reboot atau aplikasi di-update dari Play Store, jadwalkan ulang seluruh alarm
             WorkoutReminderManager.rescheduleAll(context)
             return
         }

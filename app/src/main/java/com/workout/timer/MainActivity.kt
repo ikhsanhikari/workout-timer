@@ -1,19 +1,25 @@
 package com.workout.timer
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.workout.timer.ui.navigation.WorkoutNavGraph
 import com.workout.timer.ui.theme.WorkoutTimerTheme
+import com.workout.timer.util.WorkoutReminderManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +37,7 @@ data class PendingNotificationNav(
  * - Mengaktifkan splash screen (F-01 onboarding).
  * - Mengaktifkan edge-to-edge display untuk tampilan AMOLED maksimal.
  * - Menangani Intent dari Notifikasi (Mulai Latihan, Lihat Jadwal, Rest Day).
+ * - Meminta izin notifikasi runtime di Android 13+ (POST_NOTIFICATIONS) agar alarm & timer lockscreen aktif.
  * - Menyerahkan navigasi ke [WorkoutNavGraph].
  */
 @AndroidEntryPoint
@@ -49,10 +56,25 @@ class MainActivity : ComponentActivity() {
     private val _pendingNav = MutableStateFlow<PendingNotificationNav?>(null)
     val pendingNav: StateFlow<PendingNotificationNav?> = _pendingNav.asStateFlow()
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            WorkoutReminderManager.rescheduleAll(this)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Permintaan izin notifikasi otomatis di Android 13+ (Tiramisu / API 33+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         handleNotificationIntent(intent)
 
