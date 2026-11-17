@@ -34,7 +34,7 @@ import java.util.*
 fun RunSummaryScreen(
     sessionId: Long,
     onNavigateBack: () -> Unit,
-    onNavigateHome: () -> Unit,
+    onNavigateDone: () -> Unit,
     viewModel: RunSummaryViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -268,9 +268,9 @@ fun RunSummaryScreen(
                     Text("Bagikan", fontWeight = FontWeight.SemiBold)
                 }
 
-                // Selesai / Ke Home
+                // Selesai / Kembali ke Dashboard Lari
                 Button(
-                    onClick = onNavigateHome,
+                    onClick = onNavigateDone,
                     modifier = Modifier
                         .weight(1f)
                         .height(54.dp),

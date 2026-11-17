@@ -55,6 +55,10 @@ import java.util.*
 @Composable
 fun RunDashboardScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit = onNavigateBack,
+    onNavigateToWorkoutPlan: () -> Unit = {},
+    onNavigateToProgress: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onNavigateToActiveRun: (Long) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSummary: (Long) -> Unit,
@@ -137,8 +141,15 @@ fun RunDashboardScreen(
             containerColor = Color.Transparent,
             bottomBar = {
                 HomeBottomNavigation(
-                    currentTab = HomeTab.BERANDA,
-                    onTabSelected = { _ -> onNavigateBack() }
+                    currentTab = null,
+                    onTabSelected = { tab ->
+                        when (tab) {
+                            HomeTab.BERANDA -> onNavigateToHome()
+                            HomeTab.LATIHAN -> onNavigateToWorkoutPlan()
+                            HomeTab.PROGRESS -> onNavigateToProgress()
+                            HomeTab.PROFIL -> onNavigateToSettings()
+                        }
+                    }
                 )
             }
         ) { innerPadding ->
@@ -689,86 +700,95 @@ private fun RouteMiniMapCanvas(
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
+        if (w <= 10f || h <= 10f) return@Canvas
 
-        // Gambar grid halus background peta
-        val gridColor = Color.White.copy(alpha = 0.04f)
-        drawLine(gridColor, Offset(w * 0.33f, 0f), Offset(w * 0.33f, h), strokeWidth = 1f)
-        drawLine(gridColor, Offset(w * 0.66f, 0f), Offset(w * 0.66f, h), strokeWidth = 1f)
-        drawLine(gridColor, Offset(0f, h * 0.5f), Offset(w, h * 0.5f), strokeWidth = 1f)
+        try {
+            // Gambar grid halus background peta
+            val gridColor = Color.White.copy(alpha = 0.04f)
+            drawLine(gridColor, Offset(w * 0.33f, 0f), Offset(w * 0.33f, h), strokeWidth = 1f)
+            drawLine(gridColor, Offset(w * 0.66f, 0f), Offset(w * 0.66f, h), strokeWidth = 1f)
+            drawLine(gridColor, Offset(0f, h * 0.5f), Offset(w, h * 0.5f), strokeWidth = 1f)
 
-        val neonPurple = Color(0xFFA78BFA)
-        val glowPurple = Color(0xFF8B5CF6).copy(alpha = 0.38f)
-        val startColor = Color(0xFF34D399) // Mint green start dot
+            val neonPurple = Color(0xFFA78BFA)
+            val glowPurple = Color(0xFF8B5CF6).copy(alpha = 0.38f)
+            val startColor = Color(0xFF34D399) // Mint green start dot
 
-        if (points.size >= 2) {
-            val minLat = points.minOf { it.latitude }
-            val maxLat = points.maxOf { it.latitude }
-            val minLng = points.minOf { it.longitude }
-            val maxLng = points.maxOf { it.longitude }
-
-            val latSpan = (maxLat - minLat).coerceAtLeast(0.0001)
-            val lngSpan = (maxLng - minLng).coerceAtLeast(0.0001)
-
-            val padX = w * 0.16f
-            val padY = h * 0.16f
-            val usableW = w - padX * 2
-            val usableH = h - padY * 2
-
-            val path = Path()
-            points.forEachIndexed { idx, pt ->
-                val x = padX + (((pt.longitude - minLng) / lngSpan) * usableW).toFloat()
-                val y = padY + (((maxLat - pt.latitude) / latSpan) * usableH).toFloat()
-                if (idx == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            val validPoints = points.filter {
+                !it.latitude.isNaN() && !it.longitude.isNaN() &&
+                !it.latitude.isInfinite() && !it.longitude.isInfinite() &&
+                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0
             }
 
-            // 1. Glow shadow
-            drawPath(
-                path,
-                glowPurple,
-                style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-            // 2. Main line
-            drawPath(
-                path,
-                neonPurple,
-                style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
+            if (validPoints.size >= 2) {
+                val minLat = validPoints.minOf { it.latitude }
+                val maxLat = validPoints.maxOf { it.latitude }
+                val minLng = validPoints.minOf { it.longitude }
+                val maxLng = validPoints.maxOf { it.longitude }
 
-            // 3. Start Point Dot
-            val firstPt = points.first()
-            val startX = padX + (((firstPt.longitude - minLng) / lngSpan) * usableW).toFloat()
-            val startY = padY + (((maxLat - firstPt.latitude) / latSpan) * usableH).toFloat()
-            drawCircle(startColor, radius = 4.5.dp.toPx(), center = Offset(startX, startY))
-            drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(startX, startY))
+                val latSpan = (maxLat - minLat).coerceAtLeast(0.0001)
+                val lngSpan = (maxLng - minLng).coerceAtLeast(0.0001)
 
-            // 4. End Point Dot
-            val lastPt = points.last()
-            val endX = padX + (((lastPt.longitude - minLng) / lngSpan) * usableW).toFloat()
-            val endY = padY + (((maxLat - lastPt.latitude) / latSpan) * usableH).toFloat()
-            drawCircle(neonPurple, radius = 4.5.dp.toPx(), center = Offset(endX, endY))
-            drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(endX, endY))
-        } else {
-            // Default decorative curve yang elegan sesuai gambar referensi
-            val path = Path().apply {
-                moveTo(w * 0.18f, h * 0.72f)
-                cubicTo(w * 0.35f, h * 0.68f, w * 0.45f, h * 0.35f, w * 0.82f, h * 0.28f)
+                val padX = w * 0.16f
+                val padY = h * 0.16f
+                val usableW = (w - padX * 2).coerceAtLeast(1f)
+                val usableH = (h - padY * 2).coerceAtLeast(1f)
+
+                val path = Path()
+                validPoints.forEachIndexed { idx, pt ->
+                    val x = padX + (((pt.longitude - minLng) / lngSpan) * usableW).toFloat()
+                    val y = padY + (((maxLat - pt.latitude) / latSpan) * usableH).toFloat()
+                    if (idx == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+
+                // 1. Glow shadow
+                drawPath(
+                    path,
+                    glowPurple,
+                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+                // 2. Main line
+                drawPath(
+                    path,
+                    neonPurple,
+                    style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+
+                // 3. Start Point Dot
+                val firstPt = validPoints.first()
+                val startX = padX + (((firstPt.longitude - minLng) / lngSpan) * usableW).toFloat()
+                val startY = padY + (((maxLat - firstPt.latitude) / latSpan) * usableH).toFloat()
+                drawCircle(startColor, radius = 4.5.dp.toPx(), center = Offset(startX, startY))
+                drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(startX, startY))
+
+                // 4. End Point Dot
+                val lastPt = validPoints.last()
+                val endX = padX + (((lastPt.longitude - minLng) / lngSpan) * usableW).toFloat()
+                val endY = padY + (((maxLat - lastPt.latitude) / latSpan) * usableH).toFloat()
+                drawCircle(neonPurple, radius = 4.5.dp.toPx(), center = Offset(endX, endY))
+                drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(endX, endY))
+            } else {
+                // Default decorative curve yang elegan sesuai gambar referensi
+                val path = Path().apply {
+                    moveTo(w * 0.18f, h * 0.72f)
+                    cubicTo(w * 0.35f, h * 0.68f, w * 0.45f, h * 0.35f, w * 0.82f, h * 0.28f)
+                }
+                drawPath(
+                    path,
+                    glowPurple,
+                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                )
+                drawPath(
+                    path,
+                    neonPurple,
+                    style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round)
+                )
+
+                // Start & End Dot
+                drawCircle(startColor, radius = 4.5.dp.toPx(), center = Offset(w * 0.18f, h * 0.72f))
+                drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(w * 0.18f, h * 0.72f))
+                drawCircle(neonPurple, radius = 4.5.dp.toPx(), center = Offset(w * 0.82f, h * 0.28f))
+                drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(w * 0.82f, h * 0.28f))
             }
-            drawPath(
-                path,
-                glowPurple,
-                style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
-            )
-            drawPath(
-                path,
-                neonPurple,
-                style = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round)
-            )
-
-            // Start & End Dot
-            drawCircle(startColor, radius = 4.5.dp.toPx(), center = Offset(w * 0.18f, h * 0.72f))
-            drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(w * 0.18f, h * 0.72f))
-            drawCircle(neonPurple, radius = 4.5.dp.toPx(), center = Offset(w * 0.82f, h * 0.28f))
-            drawCircle(Color.White, radius = 2.dp.toPx(), center = Offset(w * 0.82f, h * 0.28f))
-        }
+        } catch (_: Exception) {}
     }
 }

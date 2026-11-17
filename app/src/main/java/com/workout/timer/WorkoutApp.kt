@@ -46,8 +46,16 @@ class WorkoutApp : Application(), ImageLoaderFactory {
 
         // Inisialisasi OSMDroid configuration (Peta Offline & Cache)
         org.osmdroid.config.Configuration.getInstance().apply {
+            try {
+                load(this@WorkoutApp, getSharedPreferences("osmdroid_prefs", android.content.Context.MODE_PRIVATE))
+            } catch (_: Exception) {}
             userAgentValue = packageName
-            osmdroidTileCache = File(cacheDir, "osmdroid_tiles")
+            val osmBase = File(filesDir, "osmdroid")
+            if (!osmBase.exists()) osmBase.mkdirs()
+            osmdroidBasePath = osmBase
+            val tileCache = File(cacheDir, "osmdroid_tiles")
+            if (!tileCache.exists()) tileCache.mkdirs()
+            osmdroidTileCache = tileCache
             tileFileSystemCacheMaxBytes = 200L * 1024 * 1024 // Maks 200MB
         }
 

@@ -160,7 +160,8 @@ fun WorkoutNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onNavigateToBuilder = {
@@ -273,7 +274,8 @@ fun WorkoutNavGraph(
                 },
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onNavigateToWorkoutPlan = {
@@ -297,7 +299,8 @@ fun WorkoutNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onNavigateToWorkoutPlan = {
@@ -319,6 +322,30 @@ fun WorkoutNavGraph(
         composable(route = Screen.RunDashboard.route) {
             RunDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToWorkoutPlan = {
+                    navController.navigate(Screen.WorkoutPlan.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToProgress = {
+                    navController.navigate(Screen.WorkoutHistory.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
                 onNavigateToActiveRun = { sessionId ->
                     navController.navigate(Screen.ActiveRun.createRoute(sessionId))
                 },
@@ -365,9 +392,13 @@ fun WorkoutNavGraph(
             RunSummaryScreen(
                 sessionId = sessionId,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateHome = {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                onNavigateDone = {
+                    val popped = navController.popBackStack(Screen.RunDashboard.route, inclusive = false)
+                    if (!popped) {
+                        navController.navigate(Screen.RunDashboard.route) {
+                            popUpTo(Screen.Home.route)
+                            launchSingleTop = true
+                        }
                     }
                 }
             )

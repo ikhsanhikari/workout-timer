@@ -2495,7 +2495,7 @@ enum class HomeTab {
 
 @Composable
 fun HomeBottomNavigation(
-    currentTab: HomeTab = HomeTab.BERANDA,
+    currentTab: HomeTab? = HomeTab.BERANDA,
     onTabSelected: (HomeTab) -> Unit,
     modifier: Modifier = Modifier
 ) {

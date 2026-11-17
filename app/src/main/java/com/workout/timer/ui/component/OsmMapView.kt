@@ -108,40 +108,46 @@ fun OsmMapView(
 
             override fun draw(pCanvas: Canvas?, pMapView: MapView?, pShadow: Boolean) {
                 if (pShadow || pCanvas == null || pMapView == null) return
-                val projection = pMapView.projection
+                val projection = pMapView.projection ?: return
 
-                // 1. Gambar Pin Start jika rute sudah punya minimal 1 titik
-                if (pointsList.isNotEmpty()) {
-                    val startCoord = pointsList.first()
-                    projection.toPixels(GeoPoint(startCoord.first, startCoord.second), screenPoint)
-                    // White border ring
-                    pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 14f, startBorderPaint)
-                    // Green center
-                    pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 10f, startCorePaint)
-                }
+                try {
+                    // 1. Gambar Pin Start jika rute sudah punya minimal 1 titik
+                    if (pointsList.isNotEmpty()) {
+                        val startCoord = pointsList.first()
+                        if (!startCoord.first.isNaN() && !startCoord.second.isNaN()) {
+                            projection.toPixels(GeoPoint(startCoord.first, startCoord.second), screenPoint)
+                            // White border ring
+                            pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 14f, startBorderPaint)
+                            // Green center
+                            pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 10f, startCorePaint)
+                        }
+                    }
 
-                // 2. Gambar Pin Finish jika rute selesai (lebih dari 1 titik dan bukan sedang tracking)
-                if (pointsList.size >= 2 && userLocation == null) {
-                    val finishCoord = pointsList.last()
-                    projection.toPixels(GeoPoint(finishCoord.first, finishCoord.second), screenPoint)
-                    pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 14f, finishBorderPaint)
-                    pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 10f, finishCorePaint)
-                }
+                    // 2. Gambar Pin Finish jika rute selesai (lebih dari 1 titik dan bukan sedang tracking)
+                    if (pointsList.size >= 2 && userLocation == null) {
+                        val finishCoord = pointsList.last()
+                        if (!finishCoord.first.isNaN() && !finishCoord.second.isNaN()) {
+                            projection.toPixels(GeoPoint(finishCoord.first, finishCoord.second), screenPoint)
+                            pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 14f, finishBorderPaint)
+                            pCanvas.drawCircle(screenPoint.x.toFloat(), screenPoint.y.toFloat(), 10f, finishCorePaint)
+                        }
+                    }
 
-                // 3. Gambar User GPS Puck (posisi aktif lari saat ini)
-                val current = userLocation
-                if (current != null) {
-                    projection.toPixels(GeoPoint(current.first, current.second), screenPoint)
-                    val cx = screenPoint.x.toFloat()
-                    val cy = screenPoint.y.toFloat()
+                    // 3. Gambar User GPS Puck (posisi aktif lari saat ini)
+                    val current = userLocation
+                    if (current != null && !current.first.isNaN() && !current.second.isNaN()) {
+                        projection.toPixels(GeoPoint(current.first, current.second), screenPoint)
+                        val cx = screenPoint.x.toFloat()
+                        val cy = screenPoint.y.toFloat()
 
-                    // Outer pulsing halo
-                    pCanvas.drawCircle(cx, cy, 28f, puckHaloPaint)
-                    // White outer ring
-                    pCanvas.drawCircle(cx, cy, 14f, puckWhiteBorderPaint)
-                    // Vibrant orange center
-                    pCanvas.drawCircle(cx, cy, 9f, puckCorePaint)
-                }
+                        // Outer pulsing halo
+                        pCanvas.drawCircle(cx, cy, 28f, puckHaloPaint)
+                        // White outer ring
+                        pCanvas.drawCircle(cx, cy, 14f, puckWhiteBorderPaint)
+                        // Vibrant orange center
+                        pCanvas.drawCircle(cx, cy, 9f, puckCorePaint)
+                    }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -150,16 +156,32 @@ fun OsmMapView(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> mapViewRef?.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapViewRef?.onPause()
-                Lifecycle.Event.ON_DESTROY -> mapViewRef?.onDetach()
+                Lifecycle.Event.ON_RESUME -> {
+                    try {
+                        mapViewRef?.onResume()
+                    } catch (_: Exception) {}
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    try {
+                        mapViewRef?.onPause()
+                    } catch (_: Exception) {}
+                }
+                Lifecycle.Event.ON_DESTROY -> {
+                    try {
+                        mapViewRef?.onDetach()
+                    } catch (_: Exception) {}
+                }
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            mapViewRef?.onDetach()
+            try {
+                // Pause tile provider saat keluar komposisi tanpa detach langsung
+                // agar tidak terjadi NullPointerException di RenderThread
+                mapViewRef?.onPause()
+            } catch (_: Exception) {}
         }
     }
 
@@ -182,58 +204,78 @@ fun OsmMapView(
                 onMapReady(this)
             }
         },
+        onRelease = { mapView ->
+            try {
+                mapView.onPause()
+                mapView.onDetach()
+            } catch (_: Exception) {}
+        },
         update = { mapView ->
             mapViewRef = mapView
 
-            // 1. Update titik-titik rute polyline
-            val geoPoints = routePoints.map { GeoPoint(it.first, it.second) }
-            routeShadowPolyline.setPoints(geoPoints)
-            routeMainPolyline.setPoints(geoPoints)
+            try {
+                // 1. Update titik-titik rute polyline
+                val validPoints = routePoints.filter {
+                    !it.first.isNaN() && !it.second.isNaN() &&
+                    !it.first.isInfinite() && !it.second.isInfinite()
+                }
+                val geoPoints = validPoints.map { GeoPoint(it.first, it.second) }
+                routeShadowPolyline.setPoints(geoPoints)
+                routeMainPolyline.setPoints(geoPoints)
 
-            // 2. Update koordinat tracker overlay secara dinamis
-            trackerOverlay.userLocation = currentLocation
-            trackerOverlay.pointsList = routePoints
+                // 2. Update koordinat tracker overlay secara dinamis
+                trackerOverlay.userLocation = currentLocation
+                trackerOverlay.pointsList = validPoints
 
-            // 3. Jika fitBounds aktif (misal pada layar ringkasan / summary), auto-frame seluruh rute
-            if (fitBounds && routePoints.isNotEmpty()) {
-                if (routePoints.size == 1) {
-                    val single = GeoPoint(routePoints[0].first, routePoints[0].second)
-                    mapView.controller.setCenter(single)
-                    mapView.controller.setZoom(16.5)
-                } else {
-                    var minLat = 90.0
-                    var maxLat = -90.0
-                    var minLng = 180.0
-                    var maxLng = -180.0
-                    for (p in routePoints) {
-                        if (p.first < minLat) minLat = p.first
-                        if (p.first > maxLat) maxLat = p.first
-                        if (p.second < minLng) minLng = p.second
-                        if (p.second > maxLng) maxLng = p.second
-                    }
-                    val latPadding = ((maxLat - minLat) * 0.25).coerceAtLeast(0.002)
-                    val lngPadding = ((maxLng - minLng) * 0.25).coerceAtLeast(0.002)
-                    val boundingBox = BoundingBox(
-                        maxLat + latPadding,
-                        maxLng + lngPadding,
-                        minLat - latPadding,
-                        minLng - lngPadding
-                    )
-                    mapView.post {
-                        try {
-                            mapView.zoomToBoundingBox(boundingBox, true, 80)
-                        } catch (_: Exception) {
-                            mapView.controller.setCenter(boundingBox.centerWithDateLine)
+                // 3. Jika fitBounds aktif (misal pada layar ringkasan / summary), auto-frame seluruh rute
+                if (fitBounds && validPoints.isNotEmpty()) {
+                    if (validPoints.size == 1) {
+                        val single = GeoPoint(validPoints[0].first, validPoints[0].second)
+                        mapView.controller?.setCenter(single)
+                        mapView.controller?.setZoom(16.5)
+                    } else {
+                        var minLat = 90.0
+                        var maxLat = -90.0
+                        var minLng = 180.0
+                        var maxLng = -180.0
+                        for (p in validPoints) {
+                            if (p.first < minLat) minLat = p.first
+                            if (p.first > maxLat) maxLat = p.first
+                            if (p.second < minLng) minLng = p.second
+                            if (p.second > maxLng) maxLng = p.second
+                        }
+                        if (minLat <= maxLat && minLng <= maxLng) {
+                            val latPadding = ((maxLat - minLat) * 0.25).coerceAtLeast(0.002)
+                            val lngPadding = ((maxLng - minLng) * 0.25).coerceAtLeast(0.002)
+                            val boundingBox = BoundingBox(
+                                (maxLat + latPadding).coerceIn(-85.0, 85.0),
+                                (maxLng + lngPadding).coerceIn(-180.0, 180.0),
+                                (minLat - latPadding).coerceIn(-85.0, 85.0),
+                                (minLng - lngPadding).coerceIn(-180.0, 180.0)
+                            )
+                            mapView.post {
+                                if (!mapView.isAttachedToWindow) return@post
+                                try {
+                                    mapView.zoomToBoundingBox(boundingBox, true, 80)
+                                } catch (_: Exception) {
+                                    try {
+                                        mapView.controller?.setCenter(boundingBox.centerWithDateLine)
+                                    } catch (_: Exception) {}
+                                }
+                            }
                         }
                     }
+                } else if (isFollowUser && currentLocation != null) {
+                    val lat = currentLocation.first
+                    val lng = currentLocation.second
+                    if (!lat.isNaN() && !lng.isNaN() && !lat.isInfinite() && !lng.isInfinite()) {
+                        val center = GeoPoint(lat, lng)
+                        mapView.controller?.animateTo(center)
+                    }
                 }
-            } else if (isFollowUser && currentLocation != null) {
-                // Ikuti pergerakan user
-                val center = GeoPoint(currentLocation.first, currentLocation.second)
-                mapView.controller.animateTo(center)
-            }
 
-            mapView.invalidate()
+                mapView.invalidate()
+            } catch (_: Exception) {}
         }
     )
 }
