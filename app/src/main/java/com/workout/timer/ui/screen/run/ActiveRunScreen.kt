@@ -1,20 +1,21 @@
 package com.workout.timer.ui.screen.run
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsNotFixed
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -71,16 +73,15 @@ fun ActiveRunScreen(
             .fillMaxSize()
             .background(Color(0xFF0A0A0C))
     ) {
-        // Lapisan Peta OSMDroid (Bisa Fullscreen 100% atau Split 58%)
+        // Lapisan Peta OSMDroid — Selalu berjalan mulus 100% fullscreen di latar belakang
         OsmMapView(
-            modifier = if (isFullscreenMap) Modifier.fillMaxSize()
-                       else Modifier.fillMaxWidth().fillMaxHeight(0.58f),
+            modifier = Modifier.fillMaxSize(),
             currentLocation = currentCoordinates,
             routePoints = trackingState.routePoints,
             isFollowUser = isFollowUser
         )
 
-        // Overlay Tombol Atas (Back, Status, Re-center GPS, Fullscreen Toggle)
+        // Overlay Tombol Atas (Back & Re-center GPS)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -105,12 +106,16 @@ fun ActiveRunScreen(
                 )
             }
 
-            // Quick live badge jika sedang fullscreen
-            if (isFullscreenMap) {
+            // Quick live badge saat mode fullscreen
+            AnimatedVisibility(
+                visible = isFullscreenMap,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f)
+            ) {
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color.Black.copy(alpha = 0.7f))
+                        .background(Color.Black.copy(alpha = 0.75f))
                         .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -135,86 +140,89 @@ fun ActiveRunScreen(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Tombol Fullscreen Map Toggle
-                IconButton(
-                    onClick = { isFullscreenMap = !isFullscreenMap },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isFullscreenMap) Color.White else Color.Black.copy(alpha = 0.65f)
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = if (isFullscreenMap) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        contentDescription = "Layar Peta Penuh",
-                        tint = if (isFullscreenMap) Color.Black else Color.White,
-                        modifier = Modifier.size(22.dp)
+            // Tombol Follow User / Re-center GPS
+            IconButton(
+                onClick = { viewModel.toggleFollowUser() },
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isFollowUser) Color.White else Color.Black.copy(alpha = 0.65f)
                     )
-                }
-
-                // Tombol Follow User / Re-center GPS
-                IconButton(
-                    onClick = { viewModel.toggleFollowUser() },
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isFollowUser) Color.White else Color.Black.copy(alpha = 0.65f)
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = if (isFollowUser) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed,
-                        contentDescription = "Pusatkan Lokasi",
-                        tint = if (isFollowUser) Color.Black else Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = if (isFollowUser) Icons.Default.GpsFixed else Icons.Default.GpsNotFixed,
+                    contentDescription = "Pusatkan Lokasi",
+                    tint = if (isFollowUser) Color.Black else Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
-        // Tampilan Bawah: MODE FULLSCREEN (Floating Glass Pill)
-        if (isFullscreenMap) {
+        // TAMPILAN 1: Floating Capsule Glass Pill (Saat Fullscreen Map)
+        AnimatedVisibility(
+            visible = isFullscreenMap,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             Row(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 14.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(30.dp))
                     .background(Color(0xFF101014).copy(alpha = 0.92f))
-                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(28.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(30.dp))
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            // Swipe UP untuk membuka kembali panel statistik lengkap
+                            if (dragAmount < -15f) {
+                                isFullscreenMap = false
+                            }
+                        }
+                    }
                     .clickable { isFullscreenMap = false }
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Info Metrik Singkat
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.Bottom) {
+                // Info Metrik Singkat & Indikator Swipe Up
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Geser ke atas untuk detail",
+                        tint = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = RunStatsCalculator.formatDistanceKm(trackingState.distanceMeters),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "km",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                        }
                         Text(
-                            text = RunStatsCalculator.formatDistanceKm(trackingState.distanceMeters),
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = "km",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(bottom = 3.dp)
+                            text = "Pace ${RunStatsCalculator.formatPace(trackingState.currentPaceSecPerKm)}/km • ${trackingState.caloriesBurned} kkal",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.5f)
                         )
                     }
-                    Text(
-                        text = "Pace ${RunStatsCalculator.formatPace(trackingState.currentPaceSecPerKm)}/km • ${trackingState.caloriesBurned} kkal",
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
                 }
 
                 // Tombol Kontrol Kompak (Pause & Stop)
@@ -228,7 +236,7 @@ fun ActiveRunScreen(
                             else viewModel.pause(context)
                         },
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(46.dp)
                             .clip(CircleShape)
                             .background(Color.White)
                     ) {
@@ -243,7 +251,7 @@ fun ActiveRunScreen(
                     IconButton(
                         onClick = { showStopConfirmation = true },
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(46.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.12f))
                             .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
@@ -257,30 +265,51 @@ fun ActiveRunScreen(
                     }
                 }
             }
-        } else {
-            // Tampilan Bawah: MODE SPLIT VIEW (Panel Statistik Lengkap)
+        }
+
+        // TAMPILAN 2: Panel Statistik Lengkap (Mendukung Swipe Down untuk Fullscreen)
+        AnimatedVisibility(
+            visible = !isFullscreenMap,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.46f)
+                    .fillMaxHeight(0.48f)
                     .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                     .background(Color(0xFF101014).copy(alpha = 0.95f))
-                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            // Swipe DOWN untuk meng-collapse panel ke mode fullscreen map
+                            if (dragAmount > 16f) {
+                                isFullscreenMap = true
+                            }
+                        }
+                    }
                     .padding(horizontal = 24.dp)
-                    .padding(top = 16.dp, bottom = 28.dp),
+                    .padding(top = 10.dp, bottom = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Drag Indicator (Bisa diklik untuk Fullscreen Peta)
+                // Header Drag Handle
                 Box(
                     modifier = Modifier
-                        .width(44.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.25f))
+                        .fillMaxWidth()
                         .clickable { isFullscreenMap = true }
-                )
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.32f))
+                    )
+                }
 
                 // Durasi Besar di Tengah
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -344,7 +373,7 @@ fun ActiveRunScreen(
                     )
                 }
 
-                // Tombol Aksi (Pause/Resume & Selesai)
+                // Tombol Aksi Bawah (Pause/Resume & Selesai)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
