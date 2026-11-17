@@ -267,16 +267,15 @@ class OfflineTileManager @Inject constructor(
     fun createMyAreaRegion(latitude: Double, longitude: Double): OfflineRegion {
         val deltaLat = 0.045 // ~5km
         val deltaLng = 0.045 // ~5km
+        val north = (latitude + deltaLat).coerceIn(-85.0, 85.0)
+        val south = (latitude - deltaLat).coerceIn(-85.0, 85.0)
+        val east = (longitude + deltaLng).coerceIn(-180.0, 180.0)
+        val west = (longitude - deltaLng).coerceIn(-180.0, 180.0)
         return OfflineRegion(
             id = "my_area",
             name = "Area Sekitar Saya",
             description = "Radius ~5 KM dari posisi GPS Anda saat ini",
-            boundingBox = BoundingBox(
-                latitude + deltaLat,
-                longitude + deltaLng,
-                latitude - deltaLat,
-                longitude - deltaLng
-            ),
+            boundingBox = BoundingBox(north, east, south, west),
             minZoom = 13,
             maxZoom = 16,
             estimatedMb = 12,
@@ -286,6 +285,7 @@ class OfflineTileManager @Inject constructor(
 
     /**
      * Memulai pengunduhan tile untuk suatu wilayah secara asynchronous tanpa crash dialog.
+     * Menggunakan SqlTileWriter langsung tanpa perlu instansiasi MapView.
      */
     fun downloadRegion(region: OfflineRegion, mapView: MapView? = null) {
         if (_downloadState.value.isDownloading) return
@@ -299,15 +299,31 @@ class OfflineTileManager @Inject constructor(
         )
 
         try {
-            val mv = mapView ?: MapView(context).apply {
-                setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+            val tileWriter = org.osmdroid.tileprovider.modules.SqlTileWriter()
+            val cacheManager = try {
+                CacheManager(
+                    org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK,
+                    tileWriter,
+                    region.minZoom,
+                    region.maxZoom
+                )
+            } catch (_: Throwable) {
+                // Fallback jika konstruktor writer ditolak
+                val mv = mapView ?: MapView(context).apply {
+                    setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+                }
+                CacheManager(mv)
             }
-            val cacheManager = CacheManager(mv)
-            val totalTiles = cacheManager.possibleTilesInArea(
-                region.boundingBox,
-                region.minZoom,
-                region.maxZoom
-            )
+
+            val totalTiles = try {
+                cacheManager.possibleTilesInArea(
+                    region.boundingBox,
+                    region.minZoom,
+                    region.maxZoom
+                )
+            } catch (_: Throwable) {
+                150
+            }
 
             _downloadState.value = _downloadState.value.copy(totalCount = totalTiles)
 
@@ -340,7 +356,7 @@ class OfflineTileManager @Inject constructor(
                                 regionId = region.id,
                                 isDownloading = false,
                                 progress = 0f,
-                                errorMessage = "Download selesai dengan $errors error koneksi."
+                                errorMessage = "Download selesai dengan $errors catatan."
                             )
                             Log.e("OfflineTileManager", "Download region '${region.name}' gagal: $errors errors")
                         } catch (e: Exception) {
@@ -373,12 +389,12 @@ class OfflineTileManager @Inject constructor(
                     }
                 }
             )
-        } catch (e: Exception) {
-            Log.e("OfflineTileManager", "Gagal inisialisasi download cache: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e("OfflineTileManager", "Gagal inisialisasi download cache: ${t.message}", t)
             _downloadState.value = TileDownloadProgress(
                 regionId = region.id,
                 isDownloading = false,
-                errorMessage = e.message
+                errorMessage = "Gagal memulai unduhan: ${t.message}"
             )
         }
     }

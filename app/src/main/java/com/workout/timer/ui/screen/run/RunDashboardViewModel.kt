@@ -117,8 +117,8 @@ class RunDashboardViewModel @Inject constructor(
         }
     }
 
-    fun downloadRegion(region: OfflineRegion, mapView: MapView? = null) {
-        offlineTileManager.downloadRegion(region, mapView)
+    fun downloadRegion(region: OfflineRegion) {
+        offlineTileManager.downloadRegion(region)
     }
 
     fun clearOfflineCache() {

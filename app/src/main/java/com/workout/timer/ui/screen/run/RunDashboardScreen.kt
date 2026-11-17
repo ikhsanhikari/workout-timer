@@ -72,13 +72,6 @@ fun RunDashboardScreen(
         }
     }
 
-    // MapView instance untuk background tile download cache manager
-    val downloadMapView = remember {
-        MapView(context).apply {
-            setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -323,7 +316,7 @@ fun RunDashboardScreen(
                 downloadProgress = uiState.downloadProgress,
                 cacheSizeMb = uiState.offlineCacheSizeMb,
                 onDownloadRegion = { region ->
-                    viewModel.downloadRegion(region, downloadMapView)
+                    viewModel.downloadRegion(region)
                 },
                 onClearCache = { viewModel.clearOfflineCache() }
             )

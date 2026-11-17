@@ -202,6 +202,8 @@ fun OfflineMapDownloadSheet(
             ) {
                 // Tombol "Area Sekitar Saya" jika koordinat GPS tersedia
                 if (currentLat != null && currentLng != null) {
+                    val userLat = currentLat
+                    val userLng = currentLng
                     item {
                         RegionItemCard(
                             title = "Area Sekitar Saya",
@@ -209,19 +211,21 @@ fun OfflineMapDownloadSheet(
                             isSpecial = true,
                             isDownloading = downloadProgress.isDownloading && downloadProgress.regionId == "my_area",
                             onClick = {
+                                val deltaLat = 0.045
+                                val deltaLng = 0.045
+                                val north = (userLat + deltaLat).coerceIn(-85.0, 85.0)
+                                val south = (userLat - deltaLat).coerceIn(-85.0, 85.0)
+                                val east = (userLng + deltaLng).coerceIn(-180.0, 180.0)
+                                val west = (userLng - deltaLng).coerceIn(-180.0, 180.0)
                                 val myArea = com.workout.timer.service.location.OfflineRegion(
                                     id = "my_area",
                                     name = "Area Sekitar Saya",
                                     description = "Lokasi saat ini",
-                                    boundingBox = org.osmdroid.util.BoundingBox(
-                                        currentLat + 0.045,
-                                        currentLng + 0.045,
-                                        currentLat - 0.045,
-                                        currentLng - 0.045
-                                    ),
+                                    boundingBox = org.osmdroid.util.BoundingBox(north, east, south, west),
                                     minZoom = 13,
                                     maxZoom = 16,
-                                    estimatedMb = 12
+                                    estimatedMb = 12,
+                                    distanceKmFromUser = 0f
                                 )
                                 onDownloadRegion(myArea)
                             }
