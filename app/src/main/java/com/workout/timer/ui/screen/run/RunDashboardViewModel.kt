@@ -20,6 +20,7 @@ data class RunDashboardUiState(
     val totalCompletedRuns: Int = 0,
     val totalCaloriesBurned: Int = 0,
     val recentSessions: List<RunSession> = emptyList(),
+    val sessionRoutes: Map<Long, List<com.workout.timer.data.model.LocationPoint>> = emptyMap(),
     val activeTrackingState: RunTrackingState = RunTrackingState(),
     val offlineCacheSizeMb: Float = 0f,
     val downloadProgress: TileDownloadProgress = TileDownloadProgress(),
@@ -61,12 +62,17 @@ class RunDashboardViewModel @Inject constructor(
                 runRepository.getAllSessions()
             ) { distanceMeters, runsCount, calories, allSessions ->
                 val distanceKm = (distanceMeters ?: 0.0) / 1000.0
+                val recent = allSessions.take(5)
+                val routes = recent.associate { session ->
+                    session.id to runRepository.getPointsForSession(session.id)
+                }
                 _uiState.update { current ->
                     current.copy(
                         totalDistanceKm = distanceKm,
                         totalCompletedRuns = runsCount,
                         totalCaloriesBurned = calories ?: 0,
-                        recentSessions = allSessions.take(5)
+                        recentSessions = recent,
+                        sessionRoutes = routes
                     )
                 }
             }.collect()
