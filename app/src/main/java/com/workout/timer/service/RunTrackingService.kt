@@ -88,6 +88,9 @@ class RunTrackingService : Service() {
         private val _trackingState = MutableStateFlow(RunTrackingState())
         val trackingState: StateFlow<RunTrackingState> = _trackingState.asStateFlow()
 
+        /** Cache rute terakhir yang baru selesai agar langsung muncul di layar summary tanpa delay DB */
+        var lastCompletedRoute: List<Pair<Double, Double>> = emptyList()
+
         fun startIntent(context: Context, sessionId: Long = 0L): Intent =
             Intent(context, RunTrackingService::class.java).apply {
                 action = ACTION_START
@@ -177,6 +180,10 @@ class RunTrackingService : Service() {
 
             withContext(Dispatchers.Main) {
                 startForegroundNotification()
+                // Cek lokasi instan detik 0
+                locationTracker.getLastLocation { loc ->
+                    loc?.let { handleNewLocation(it) }
+                }
                 startGpsTracking()
                 startTimerTicker()
             }
@@ -184,7 +191,7 @@ class RunTrackingService : Service() {
     }
 
     private fun startGpsTracking() {
-        locationTracker.startLocationUpdates(intervalMs = 3000L, minDistanceMeters = 2.0f) { location ->
+        locationTracker.startLocationUpdates(intervalMs = 3000L, minDistanceMeters = 0.5f) { location ->
             handleNewLocation(location)
         }
     }
@@ -220,8 +227,8 @@ class RunTrackingService : Service() {
                 lastPoint.latitude, lastPoint.longitude,
                 point.latitude, point.longitude
             )
-            // Filter anomali GPS teleport jump (> 80 meter dalam 3 detik ≈ 96 km/h)
-            if (delta in 1.5..80.0) {
+            // Akumulasi jarak untuk perpindahan >= 0.4 meter (mendukung jalan kaki santai hingga lari cepat)
+            if (delta in 0.4..150.0) {
                 distanceDelta = delta.toDouble()
             }
         } else {
@@ -238,7 +245,9 @@ class RunTrackingService : Service() {
         // Simpan ke buffer DB
         locationPointBuffer.add(point)
         if (locationPointBuffer.size >= 5) {
-            flushPointsToDatabase()
+            serviceScope.launch {
+                flushPointsToDatabase()
+            }
         }
 
         _trackingState.update { state ->
@@ -300,6 +309,8 @@ class RunTrackingService : Service() {
         locationTracker.stopLocationUpdates()
 
         val finalState = _trackingState.value
+        lastCompletedRoute = finalState.routePoints
+
         serviceScope.launch {
             flushPointsToDatabase()
             if (finalState.sessionId > 0L) {
@@ -322,11 +333,11 @@ class RunTrackingService : Service() {
         }
     }
 
-    private fun flushPointsToDatabase() {
+    private suspend fun flushPointsToDatabase() {
         if (locationPointBuffer.isEmpty()) return
         val toSave = locationPointBuffer.toList()
         locationPointBuffer.clear()
-        serviceScope.launch(Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             try {
                 runRepository.addLocationPoints(toSave)
             } catch (e: Exception) {

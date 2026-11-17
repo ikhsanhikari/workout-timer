@@ -45,9 +45,16 @@ class RunSummaryViewModel @Inject constructor(
             }
 
             val targetId = session?.id ?: sessionId
-            val points = if (targetId > 0L) {
+            val dbPoints = if (targetId > 0L) {
                 runRepository.getPointsForSession(targetId).map { Pair(it.latitude, it.longitude) }
             } else emptyList()
+
+            // Jika DB masih dalam proses sinkronisasi, ambil dari in-memory cache
+            val points = if (dbPoints.isNotEmpty()) {
+                dbPoints
+            } else {
+                com.workout.timer.service.RunTrackingService.lastCompletedRoute
+            }
 
             _uiState.update {
                 it.copy(

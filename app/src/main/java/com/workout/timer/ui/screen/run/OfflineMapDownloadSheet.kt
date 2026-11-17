@@ -230,10 +230,15 @@ fun OfflineMapDownloadSheet(
                 }
 
                 items(presetRegions) { region ->
+                    val distStr = if (region.distanceKmFromUser != null) {
+                        String.format(java.util.Locale.US, " • 📍 %.0f km dari Anda", region.distanceKmFromUser)
+                    } else ""
+
                     RegionItemCard(
                         title = region.name,
-                        subtitle = "${region.description} (~${region.estimatedMb} MB)",
+                        subtitle = "${region.description} (~${region.estimatedMb} MB$distStr)",
                         isSpecial = false,
+                        distanceKm = region.distanceKmFromUser,
                         isDownloading = downloadProgress.isDownloading && downloadProgress.regionId == region.id,
                         onClick = { onDownloadRegion(region) }
                     )
@@ -248,6 +253,7 @@ private fun RegionItemCard(
     title: String,
     subtitle: String,
     isSpecial: Boolean,
+    distanceKm: Float? = null,
     isDownloading: Boolean,
     onClick: () -> Unit
 ) {
@@ -271,12 +277,31 @@ private fun RegionItemCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                if (distanceKm != null && distanceKm > 0.1f) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (distanceKm < 10) String.format(java.util.Locale.US, "%.1f km", distanceKm)
+                            else String.format(java.util.Locale.US, "%.0f km", distanceKm),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,

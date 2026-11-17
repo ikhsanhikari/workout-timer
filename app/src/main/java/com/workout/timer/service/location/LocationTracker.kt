@@ -45,12 +45,13 @@ class LocationTracker @Inject constructor(
 
     /**
      * Memulai pembaruan lokasi reguler untuk foreground tracking.
-     * Menggunakan interval adaptif (default 3000ms, fastest 1500ms) dengan filter min distance 2m.
+     * Menggunakan interval adaptif (default 3000ms, fastest 1500ms) dengan filter min distance 0.5m.
+     * Mengambil last known location secara instan agar titik lokasi langsung muncul di detik awal.
      */
     @SuppressLint("MissingPermission")
     fun startLocationUpdates(
         intervalMs: Long = 3000L,
-        minDistanceMeters: Float = 2.0f,
+        minDistanceMeters: Float = 0.5f,
         onLocationReceived: (Location) -> Unit
     ) {
         if (!hasLocationPermission()) {
@@ -60,17 +61,27 @@ class LocationTracker @Inject constructor(
 
         stopLocationUpdates()
 
+        // 1. Ambil lokasi terakhir yang tersimpan secara instan (detik 0)
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
+                if (lastLoc != null) {
+                    onLocationReceived(lastLoc)
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Daftarkan pembaruan berkala GPS
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMs)
             .setMinUpdateIntervalMillis(intervalMs / 2)
             .setMinUpdateDistanceMeters(minDistanceMeters)
-            .setWaitForAccurateLocation(true)
+            .setWaitForAccurateLocation(false)
             .build()
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
-                    // Filter outlier: hanya ambil koordinat dengan akurasi <= 30 meter
-                    if (location.accuracy <= 30f) {
+                    // Filter outlier: toleransi akurasi hingga 60 meter agar tidak drop saat awal / indoor
+                    if (location.accuracy <= 60f) {
                         onLocationReceived(location)
                     }
                 }
@@ -84,7 +95,7 @@ class LocationTracker @Inject constructor(
                 callback,
                 Looper.getMainLooper()
             )
-            Log.d("LocationTracker", "Mulai requestLocationUpdates (interval: ${intervalMs}ms)")
+            Log.d("LocationTracker", "Mulai requestLocationUpdates (interval: ${intervalMs}ms, minDistance: ${minDistanceMeters}m)")
         } catch (e: SecurityException) {
             Log.e("LocationTracker", "SecurityException saat request location: ${e.message}")
         }

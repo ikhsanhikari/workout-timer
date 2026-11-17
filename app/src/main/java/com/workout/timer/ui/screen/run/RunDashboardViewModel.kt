@@ -23,24 +23,33 @@ data class RunDashboardUiState(
     val activeTrackingState: RunTrackingState = RunTrackingState(),
     val offlineCacheSizeMb: Float = 0f,
     val downloadProgress: TileDownloadProgress = TileDownloadProgress(),
-    val showDownloadSheet: Boolean = false
+    val showDownloadSheet: Boolean = false,
+    val userLat: Double? = null,
+    val userLng: Double? = null,
+    val sortedRegions: List<OfflineRegion> = emptyList()
 )
 
 @HiltViewModel
 class RunDashboardViewModel @Inject constructor(
     private val runRepository: RunRepository,
-    private val offlineTileManager: OfflineTileManager
+    private val offlineTileManager: OfflineTileManager,
+    private val locationTracker: com.workout.timer.service.location.LocationTracker
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RunDashboardUiState())
     val uiState: StateFlow<RunDashboardUiState> = _uiState.asStateFlow()
 
-    val presetRegions = offlineTileManager.presetRegions
-
     init {
         observeRunData()
         observeActiveTracking()
         refreshCacheSize()
+        loadInitialRegions()
+    }
+
+    private fun loadInitialRegions() {
+        _uiState.update {
+            it.copy(sortedRegions = offlineTileManager.presetRegions)
+        }
     }
 
     private fun observeRunData() {
@@ -81,7 +90,19 @@ class RunDashboardViewModel @Inject constructor(
     }
 
     fun openDownloadSheet() {
-        _uiState.update { it.copy(showDownloadSheet = true) }
+        locationTracker.getLastLocation { loc ->
+            val lat = loc?.latitude ?: _uiState.value.activeTrackingState.currentLat
+            val lng = loc?.longitude ?: _uiState.value.activeTrackingState.currentLng
+            val sorted = offlineTileManager.getRegionsSortedByProximity(lat, lng)
+            _uiState.update {
+                it.copy(
+                    showDownloadSheet = true,
+                    userLat = lat,
+                    userLng = lng,
+                    sortedRegions = sorted
+                )
+            }
+        }
         refreshCacheSize()
     }
 
@@ -96,7 +117,7 @@ class RunDashboardViewModel @Inject constructor(
         }
     }
 
-    fun downloadRegion(region: OfflineRegion, mapView: MapView) {
+    fun downloadRegion(region: OfflineRegion, mapView: MapView? = null) {
         offlineTileManager.downloadRegion(region, mapView)
     }
 

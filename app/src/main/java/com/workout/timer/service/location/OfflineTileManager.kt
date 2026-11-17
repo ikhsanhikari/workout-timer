@@ -1,8 +1,8 @@
 package com.workout.timer.service.location
 
 import android.content.Context
+import android.location.Location
 import android.util.Log
-import com.workout.timer.data.model.LocationPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.MapView
 import java.io.File
@@ -26,9 +25,10 @@ data class OfflineRegion(
     val name: String,
     val description: String,
     val boundingBox: BoundingBox,
-    val minZoom: Int = 12,
+    val minZoom: Int = 13,
     val maxZoom: Int = 16,
-    val estimatedMb: Int
+    val estimatedMb: Int,
+    val distanceKmFromUser: Float? = null
 )
 
 /**
@@ -55,55 +55,211 @@ class OfflineTileManager @Inject constructor(
     val downloadState: StateFlow<TileDownloadProgress> = _downloadState.asStateFlow()
 
     /**
-     * Daftar preset wilayah kota populer di Indonesia untuk download offline cepat.
+     * Daftar preset wilayah kota & spot lari populer di Indonesia.
      */
     val presetRegions: List<OfflineRegion> = listOf(
+        // Jabodetabek
         OfflineRegion(
             id = "jakarta",
-            name = "DKI Jakarta & Sekitar",
-            description = "Monas, Sudirman, Senayan, GBK, Kelapa Gading",
-            boundingBox = BoundingBox(-6.08, 106.98, -6.38, 106.68),
-            minZoom = 13,
-            maxZoom = 16,
+            name = "DKI Jakarta",
+            description = "GBK Senayan, Monas, Sudirman-Thamrin, Tebet Eco Park",
+            boundingBox = BoundingBox(-6.10, 106.96, -6.36, 106.70),
             estimatedMb = 28
         ),
         OfflineRegion(
+            id = "bogor",
+            name = "Kota & Kab. Bogor",
+            description = "Kebun Raya Bogor, Sempur, Pajajaran, Sentul City",
+            boundingBox = BoundingBox(-6.53, 106.84, -6.65, 106.75),
+            estimatedMb = 16
+        ),
+        OfflineRegion(
+            id = "depok",
+            name = "Kota Depok",
+            description = "Kampus UI, Margonda Raya, Alun-Alun Grand Depok City",
+            boundingBox = BoundingBox(-6.34, 106.86, -6.44, 106.78),
+            estimatedMb = 14
+        ),
+        OfflineRegion(
+            id = "tangerang",
+            name = "Tangerang & BSD City",
+            description = "The Breeze, ICE BSD, Scientia Square Park, Alam Sutera",
+            boundingBox = BoundingBox(-6.16, 106.69, -6.33, 106.58),
+            estimatedMb = 20
+        ),
+        OfflineRegion(
+            id = "bekasi",
+            name = "Kota Bekasi",
+            description = "Summarecon Bekasi, Stadion Patriot, Ahmad Yani",
+            boundingBox = BoundingBox(-6.20, 107.03, -6.29, 106.95),
+            estimatedMb = 15
+        ),
+
+        // Jawa Barat & Tengah
+        OfflineRegion(
             id = "bandung",
             name = "Kota Bandung",
-            description = "Gasibu, Dago, Saparua, ITB, Alun-alun",
-            boundingBox = BoundingBox(-6.86, 107.68, -6.97, 107.56),
-            minZoom = 13,
-            maxZoom = 16,
+            description = "Lapangan Gasibu, Dago, GOR Saparua, ITB, Kiara Artha",
+            boundingBox = BoundingBox(-6.86, 107.67, -6.96, 107.57),
             estimatedMb = 18
         ),
         OfflineRegion(
-            id = "surabaya",
-            name = "Kota Surabaya",
-            description = "Tunjungan, Kertajaya, Mayjen Sungkono",
-            boundingBox = BoundingBox(-7.22, 112.82, -7.34, 112.68),
-            minZoom = 13,
-            maxZoom = 16,
-            estimatedMb = 22
+            id = "semarang",
+            name = "Kota Semarang",
+            description = "Simpang Lima, Tri Lomba Juang, Kota Lama, Diponegoro",
+            boundingBox = BoundingBox(-6.96, 110.45, -7.05, 110.37),
+            estimatedMb = 16
+        ),
+        OfflineRegion(
+            id = "solo",
+            name = "Solo (Surakarta)",
+            description = "Stadion Manahan, Jalan Slamet Riyadi, Balekambang",
+            boundingBox = BoundingBox(-7.53, 110.86, -7.59, 110.78),
+            estimatedMb = 14
         ),
         OfflineRegion(
             id = "yogyakarta",
-            name = "Yogyakarta & UGM",
-            description = "Malioboro, UGM, Alun-alun, Stadion Mandala Krida",
-            boundingBox = BoundingBox(-7.74, 110.42, -7.83, 110.33),
-            minZoom = 13,
-            maxZoom = 16,
+            name = "Yogyakarta & Sleman",
+            description = "Kawasan UGM, Mandala Krida, Malioboro, Alun-Alun",
+            boundingBox = BoundingBox(-7.73, 110.42, -7.83, 110.33),
             estimatedMb = 15
         ),
+
+        // Jawa Timur
         OfflineRegion(
-            id = "bali",
+            id = "surabaya",
+            name = "Kota Surabaya",
+            description = "Taman Bungkul, Tunjungan, Mayjen Sungkono, Kertajaya",
+            boundingBox = BoundingBox(-7.23, 112.81, -7.33, 112.69),
+            estimatedMb = 22
+        ),
+        OfflineRegion(
+            id = "malang",
+            name = "Kota Malang",
+            description = "Ijen Boulevard, Lapangan Rampal, Alun-Alun Merdeka",
+            boundingBox = BoundingBox(-7.94, 112.66, -8.01, 112.59),
+            estimatedMb = 14
+        ),
+
+        // Bali & Nusa Tenggara
+        OfflineRegion(
+            id = "bali_denpasar",
             name = "Denpasar & Sanur (Bali)",
-            description = "Renon, Sanur Beach, Puputan Badung",
-            boundingBox = BoundingBox(-8.62, 115.28, -8.72, 115.18),
-            minZoom = 13,
-            maxZoom = 16,
+            description = "Lapangan Renon, Pantai Sanur, Bajra Sandhi",
+            boundingBox = BoundingBox(-8.63, 115.27, -8.72, 115.19),
             estimatedMb = 16
+        ),
+        OfflineRegion(
+            id = "bali_kuta",
+            name = "Kuta, Seminyak & Canggu",
+            description = "Jalan Pantai Kuta, Petitenget, Batu Bolong, Echo Beach",
+            boundingBox = BoundingBox(-8.64, 115.18, -8.74, 115.12),
+            estimatedMb = 16
+        ),
+        OfflineRegion(
+            id = "bali_ubud",
+            name = "Ubud (Bali)",
+            description = "Campuhan Ridge Walk, Monkey Forest, Penestanan",
+            boundingBox = BoundingBox(-8.48, 115.28, -8.54, 115.24),
+            estimatedMb = 12
+        ),
+
+        // Sumatera
+        OfflineRegion(
+            id = "medan",
+            name = "Kota Medan",
+            description = "Merdeka Walk, Lapangan Benteng, Taman Cadika, USU",
+            boundingBox = BoundingBox(-3.54, 98.71, -3.63, 98.63),
+            estimatedMb = 18
+        ),
+        OfflineRegion(
+            id = "palembang",
+            name = "Kota Palembang",
+            description = "Jakabaring Sport City, Kambang Iwak, Jembatan Ampera",
+            boundingBox = BoundingBox(-2.95, 104.79, -3.03, 104.72),
+            estimatedMb = 16
+        ),
+        OfflineRegion(
+            id = "lampung",
+            name = "Bandar Lampung",
+            description = "Stadion Pahoman, PKOR Way Halim, Teluk Betung",
+            boundingBox = BoundingBox(-5.38, 105.31, -5.46, 105.23),
+            estimatedMb = 14
+        ),
+        OfflineRegion(
+            id = "pekanbaru",
+            name = "Kota Pekanbaru",
+            description = "Stadion Utama Riau, Taman Kota, Diponegoro",
+            boundingBox = BoundingBox(-0.48, 101.48, -0.56, 101.40),
+            estimatedMb = 14
+        ),
+        OfflineRegion(
+            id = "batam",
+            name = "Batam Center & Sekupang",
+            description = "Alun-Alun Engku Putri, Harbour Bay, Mega Wisata Ocarina",
+            boundingBox = BoundingBox(-1.08, 104.07, -1.16, 103.97),
+            estimatedMb = 15
+        ),
+
+        // Sulawesi & Kalimantan
+        OfflineRegion(
+            id = "makassar",
+            name = "Kota Makassar",
+            description = "Pantai Losari, Karebosi, CPI (Center Point of Indonesia)",
+            boundingBox = BoundingBox(-5.10, 119.46, -5.19, 119.38),
+            estimatedMb = 17
+        ),
+        OfflineRegion(
+            id = "manado",
+            name = "Kota Manado",
+            description = "Kawasan Megamas, Godbless Park, Boulevard",
+            boundingBox = BoundingBox(-1.46, 124.86, -1.52, 124.81),
+            estimatedMb = 13
+        ),
+        OfflineRegion(
+            id = "balikpapan",
+            name = "Kota Balikpapan",
+            description = "Lapangan Merdeka, Pantai Melawai, Grand City",
+            boundingBox = BoundingBox(-1.22, 116.89, -1.29, 116.82),
+            estimatedMb = 14
+        ),
+        OfflineRegion(
+            id = "samarinda",
+            name = "Kota Samarinda",
+            description = "Tepian Mahakam, GOR Sempaja, Taman Samarendah",
+            boundingBox = BoundingBox(-0.47, 117.18, -0.54, 117.11),
+            estimatedMb = 14
+        ),
+        OfflineRegion(
+            id = "banjarmasin",
+            name = "Kota Banjarmasin",
+            description = "Siring Menara Pandang, Patung Bekantan, Lambung Mangkurat",
+            boundingBox = BoundingBox(-3.30, 114.62, -3.36, 114.56),
+            estimatedMb = 13
+        ),
+        OfflineRegion(
+            id = "pontianak",
+            name = "Kota Pontianak",
+            description = "Taman Digulis Untan, Waterfront Kapuas, GOR Pangsuma",
+            boundingBox = BoundingBox(-0.01, 109.36, -0.07, 109.31),
+            estimatedMb = 13
         )
     )
+
+    /**
+     * Mengurutkan daftar wilayah preset berdasarkan jarak terdekat dengan koordinat GPS user saat ini.
+     */
+    fun getRegionsSortedByProximity(userLat: Double?, userLng: Double?): List<OfflineRegion> {
+        if (userLat == null || userLng == null) return presetRegions
+        val distResults = FloatArray(1)
+        return presetRegions.map { region ->
+            val centerLat = (region.boundingBox.latNorth + region.boundingBox.latSouth) / 2.0
+            val centerLng = (region.boundingBox.lonEast + region.boundingBox.lonWest) / 2.0
+            Location.distanceBetween(userLat, userLng, centerLat, centerLng, distResults)
+            val distKm = distResults[0] / 1000f
+            region.copy(distanceKmFromUser = distKm)
+        }.sortedBy { it.distanceKmFromUser ?: Float.MAX_VALUE }
+    }
 
     /**
      * Membuat BoundingBox untuk "Area Saya" berdasarkan posisi GPS saat ini (radius ~5km).
@@ -114,7 +270,7 @@ class OfflineTileManager @Inject constructor(
         return OfflineRegion(
             id = "my_area",
             name = "Area Sekitar Saya",
-            description = "Radius ~5 KM dari lokasi GPS Anda saat ini",
+            description = "Radius ~5 KM dari posisi GPS Anda saat ini",
             boundingBox = BoundingBox(
                 latitude + deltaLat,
                 longitude + deltaLng,
@@ -123,14 +279,15 @@ class OfflineTileManager @Inject constructor(
             ),
             minZoom = 13,
             maxZoom = 16,
-            estimatedMb = 12
+            estimatedMb = 12,
+            distanceKmFromUser = 0f
         )
     }
 
     /**
-     * Memulai pengunduhan tile untuk suatu wilayah secara asynchronous.
+     * Memulai pengunduhan tile untuk suatu wilayah secara asynchronous tanpa crash dialog.
      */
-    fun downloadRegion(region: OfflineRegion, mapView: MapView) {
+    fun downloadRegion(region: OfflineRegion, mapView: MapView? = null) {
         if (_downloadState.value.isDownloading) return
 
         _downloadState.value = TileDownloadProgress(
@@ -142,7 +299,10 @@ class OfflineTileManager @Inject constructor(
         )
 
         try {
-            val cacheManager = CacheManager(mapView)
+            val mv = mapView ?: MapView(context).apply {
+                setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+            }
+            val cacheManager = CacheManager(mv)
             val totalTiles = cacheManager.possibleTilesInArea(
                 region.boundingBox,
                 region.minZoom,
@@ -151,39 +311,53 @@ class OfflineTileManager @Inject constructor(
 
             _downloadState.value = _downloadState.value.copy(totalCount = totalTiles)
 
-            cacheManager.downloadAreaAsync(
+            // Gunakan downloadAreaAsyncNoUI agar tidak memicu ProgressDialog bawaan
+            // yang dapat menyebabkan BadTokenException saat dijalankan di Compose/ApplicationContext
+            cacheManager.downloadAreaAsyncNoUI(
                 context,
                 region.boundingBox,
                 region.minZoom,
                 region.maxZoom,
                 object : CacheManager.CacheManagerCallback {
                     override fun onTaskComplete() {
-                        _downloadState.value = TileDownloadProgress(
-                            regionId = region.id,
-                            isDownloading = false,
-                            progress = 1.0f,
-                            currentCount = totalTiles,
-                            totalCount = totalTiles
-                        )
-                        Log.i("OfflineTileManager", "Download region '${region.name}' selesai!")
+                        try {
+                            _downloadState.value = TileDownloadProgress(
+                                regionId = region.id,
+                                isDownloading = false,
+                                progress = 1.0f,
+                                currentCount = totalTiles,
+                                totalCount = totalTiles
+                            )
+                            Log.i("OfflineTileManager", "Download region '${region.name}' selesai!")
+                        } catch (e: Exception) {
+                            Log.e("OfflineTileManager", "Error onTaskComplete: ${e.message}")
+                        }
                     }
 
                     override fun onTaskFailed(errors: Int) {
-                        _downloadState.value = TileDownloadProgress(
-                            regionId = region.id,
-                            isDownloading = false,
-                            progress = 0f,
-                            errorMessage = "Download gagal dengan $errors error jaringan."
-                        )
-                        Log.e("OfflineTileManager", "Download region '${region.name}' gagal: $errors errors")
+                        try {
+                            _downloadState.value = TileDownloadProgress(
+                                regionId = region.id,
+                                isDownloading = false,
+                                progress = 0f,
+                                errorMessage = "Download selesai dengan $errors error koneksi."
+                            )
+                            Log.e("OfflineTileManager", "Download region '${region.name}' gagal: $errors errors")
+                        } catch (e: Exception) {
+                            Log.e("OfflineTileManager", "Error onTaskFailed: ${e.message}")
+                        }
                     }
 
                     override fun updateProgress(progress: Int, current: Int, total: Int, percent: Int) {
-                        _downloadState.value = _downloadState.value.copy(
-                            progress = percent / 100f,
-                            currentCount = current,
-                            totalCount = total
-                        )
+                        try {
+                            _downloadState.value = _downloadState.value.copy(
+                                progress = percent / 100f,
+                                currentCount = current,
+                                totalCount = total
+                            )
+                        } catch (e: Exception) {
+                            Log.e("OfflineTileManager", "Error updateProgress: ${e.message}")
+                        }
                     }
 
                     override fun downloadStarted() {
@@ -191,7 +365,11 @@ class OfflineTileManager @Inject constructor(
                     }
 
                     override fun setPossibleTilesInArea(total: Int) {
-                        _downloadState.value = _downloadState.value.copy(totalCount = total)
+                        try {
+                            _downloadState.value = _downloadState.value.copy(totalCount = total)
+                        } catch (e: Exception) {
+                            Log.e("OfflineTileManager", "Error setPossibleTilesInArea: ${e.message}")
+                        }
                     }
                 }
             )

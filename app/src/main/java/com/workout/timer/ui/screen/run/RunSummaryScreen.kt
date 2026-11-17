@@ -121,10 +121,10 @@ fun RunSummaryScreen(
                 if (uiState.routePoints.isNotEmpty()) {
                     OsmMapView(
                         modifier = Modifier.fillMaxSize(),
-                        currentLocation = startPoint,
+                        currentLocation = null,
                         routePoints = uiState.routePoints,
                         isFollowUser = false,
-                        zoomLevel = 15.0
+                        fitBounds = true
                     )
                 } else {
                     Box(
