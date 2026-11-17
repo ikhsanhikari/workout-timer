@@ -418,171 +418,6 @@ private fun getExerciseGuide(title: String, type: IntervalType): ExerciseVisualG
     }
 }
 
-@Composable
-private fun DynamicExerciseIllustrationCard(
-    currentExercise: FlatExerciseItem,
-    nextExercise: FlatExerciseItem?,
-    intervalType: IntervalType,
-    accentColor: Color,
-    modifier: Modifier = Modifier,
-    isTransparent: Boolean = false
-) {
-    val isRest = intervalType == IntervalType.REST
-    val guide = if (isRest) {
-        val nextTitle = nextExercise?.title ?: "Gerakan Berikutnya"
-        getExerciseGuide(nextTitle, IntervalType.WORK)
-    } else {
-        getExerciseGuide(currentExercise.title, intervalType)
-    }
-
-    val activeTargetMuscles = if (isRest) {
-        nextExercise?.targetMuscle ?: guide.targetMuscles
-    } else {
-        currentExercise.targetMuscle ?: guide.targetMuscles
-    }
-
-    val activeCoachTip = if (isRest) {
-        nextExercise?.coachTip ?: guide.coachTip
-    } else {
-        currentExercise.coachTip ?: guide.coachTip
-    }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "illustration_float")
-    val floatY by infiniteTransition.animateFloat(
-        initialValue = -4f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "float_anim"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = if (isTransparent) Color.Transparent else SurfaceCard.copy(alpha = 0.9f),
-        border = if (isTransparent) BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)) else BorderStroke(1.dp, accentColor.copy(alpha = 0.25f)),
-        modifier = modifier
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Ambient background glow
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.12f),
-                                Color.Transparent
-                            ),
-                            radius = 450f
-                        )
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Top: Phase Badge & Muscle Target
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.08f),
-                        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.20f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    if (isRest) R.drawable.ic_pose_meditation else R.drawable.ic_intensity_lightning
-                                ),
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isRest) "BERSIAP BERIKUTNYA" else "PANDUAN POSTUR",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                        }
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = SurfaceElevated
-                    ) {
-                        Text(
-                            text = "🎯 $activeTargetMuscles",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                // Center: Big Floating Pose Illustration
-                Box(
-                    modifier = Modifier
-                        .size(125.dp)
-                        .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.10f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = guide.iconRes),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier
-                            .size(105.dp)
-                            .graphicsLayer {
-                                translationY = floatY.dp.toPx()
-                            }
-                    )
-                }
-
-                // Bottom: Title & Coach Tip
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (isRest) (nextExercise?.title ?: "Gerakan Berikutnya") else currentExercise.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "💡 $activeCoachTip",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 15.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
 // ─── ACTIVE WORKOUT VIEW (ADAPTIVE PORTRAIT & LANDSCAPE) ──────────────────────
 
 @Composable
@@ -809,14 +644,6 @@ private fun ActiveWorkoutView(
                                             )
                                         )
                                 )
-                                DynamicExerciseIllustrationCard(
-                                    currentExercise = currentExercise,
-                                    nextExercise = nextExercise,
-                                    intervalType = intervalType,
-                                    accentColor = accentColor,
-                                    isTransparent = true,
-                                    modifier = Modifier.fillMaxSize()
-                                )
                             }
                         }
                     }
@@ -871,12 +698,12 @@ private fun ActiveWorkoutView(
                 }
             }
         } else {
-            // ── PORTRAIT LAYOUT ──
-            if (isVideoEnabled) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // 1. FULLSCREEN VIDEO LAYER (EDGE-TO-EDGE)
+            // ── PORTRAIT LAYOUT (UNIFIED FOR VIDEO ON & OFF) ──
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // 1. FULLSCREEN BACKGROUND: Video if isVideoEnabled, else Ambient Photo AI
+                if (isVideoEnabled) {
                     WorkoutMediaContainer(
                         mediaUri = displayMediaUri,
                         mediaType = displayMediaType,
@@ -893,6 +720,31 @@ private fun ActiveWorkoutView(
                         modifier = Modifier.fillMaxSize(),
                         isFullscreen = true
                     )
+                } else {
+                    val context = LocalContext.current
+                    val bgPhotoUri = remember(currentExercise.title, currentExercise.category, currentExercise.equipment, intervalType) {
+                        com.workout.timer.data.catalog.AssetPhotoResolver.resolveBackgroundPhoto(
+                            intervalType = intervalType,
+                            category = currentExercise.category,
+                            equipment = currentExercise.equipment,
+                            title = currentExercise.title,
+                            targetMuscle = currentExercise.targetMuscle
+                        )
+                    }
+                    val photoRequest = remember(bgPhotoUri) {
+                        ImageRequest.Builder(context)
+                            .data(android.net.Uri.parse(bgPhotoUri))
+                            .crossfade(true)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = photoRequest,
+                        imageLoader = context.imageLoader,
+                        contentDescription = "Background Latihan",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                     // 2. ULTRA-SUBTLE VIGNETTE (Only top status bar protection & subtle bottom shade)
                     Box(
@@ -1028,165 +880,9 @@ private fun ActiveWorkoutView(
                         }
                     }
                 }
-            } else {
-                // ── PORTRAIT MODE SAAT VIDEO DINONAKTIFKAN (FOTO AI LATAR + FOKUS DIAL) ──
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // 1. Ambient Background Photo dari photo_ai
-                    val context = LocalContext.current
-                    val bgPhotoUri = remember(currentExercise.title, currentExercise.category, currentExercise.equipment, intervalType) {
-                        com.workout.timer.data.catalog.AssetPhotoResolver.resolveBackgroundPhoto(
-                            intervalType = intervalType,
-                            category = currentExercise.category,
-                            equipment = currentExercise.equipment,
-                            title = currentExercise.title,
-                            targetMuscle = currentExercise.targetMuscle
-                        )
-                    }
-                    val photoRequest = remember(bgPhotoUri) {
-                        ImageRequest.Builder(context)
-                            .data(android.net.Uri.parse(bgPhotoUri))
-                            .crossfade(true)
-                            .build()
-                    }
-                    AsyncImage(
-                        model = photoRequest,
-                        imageLoader = context.imageLoader,
-                        contentDescription = "Background Latihan",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    // 2. Dark Scrim agar Chrono Dial & elemen kontrol tetap kontras
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Black.copy(alpha = 0.65f),
-                                        Color.Black.copy(alpha = 0.50f),
-                                        Color.Black.copy(alpha = 0.75f)
-                                    )
-                                )
-                            )
-                    )
-
-                    // 3. Foreground Focus UI
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        TopHeaderBar(
-                            routineName = routineName,
-                            exerciseIndex = exerciseIndex,
-                            totalExercises = totalExercises,
-                            remainingSeconds = remainingSeconds,
-                            totalElapsedSeconds = totalElapsedSeconds,
-                            intervalType = intervalType,
-                            accentColor = accentColor,
-                            isBgmEnabled = isBgmEnabled,
-                            onToggleBgm = onToggleBgm,
-                            isVideoEnabled = isVideoEnabled,
-                            onToggleVideo = onToggleVideo,
-                            isVoiceCoachEnabled = isVoiceCoachEnabled,
-                            onToggleVoiceCoach = onToggleVoiceCoach,
-                            onStop = onStop,
-                            isGlassMode = true
-                        )
-
-                        if (!isNotificationGranted && !notificationPromptDismissed) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            LockscreenNotificationPromptBanner(
-                                onDismiss = { notificationPromptDismissed = true },
-                                onRequestPermission = {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        DeviceReadinessManager.openNotificationSettings(context)
-                                    }
-                                }
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.weight(0.5f))
-
-                        // 210dp Large Chrono Dial with tap-to-pause
-                        Box(
-                            modifier = Modifier
-                                .size(210.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onTogglePause()
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressRing(
-                                progress = progress,
-                                strokeWidth = 14.dp,
-                                accentColor = accentColor,
-                                trackColor = accentColor.copy(alpha = 0.16f),
-                                remainingSeconds = remainingSeconds
-                            )
-                            RingCenterContent(
-                                intervalType = intervalType,
-                                accentColor = accentColor,
-                                remainingSeconds = remainingSeconds,
-                                currentExercise = currentExercise,
-                                isPaused = isPaused,
-                                isCompact = false
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.weight(0.5f))
-
-                        // Dynamic Posture Guide Card (Frosted Glass di atas photo)
-                        DynamicExerciseIllustrationCard(
-                            currentExercise = currentExercise,
-                            nextExercise = nextExercise,
-                            intervalType = intervalType,
-                            accentColor = accentColor,
-                            isTransparent = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 135.dp, max = 175.dp)
-                        )
-
-                        Spacer(modifier = Modifier.weight(0.5f))
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            nextExercise?.let { next ->
-                                UpNextBanner(next = next, isGlassMode = true)
-                            }
-
-                            BottomPlaybackControls(
-                                intervalType = intervalType,
-                                accentColor = accentColor,
-                                isPaused = isPaused,
-                                onTogglePause = onTogglePause,
-                                onSkip = onSkip,
-                                onPrevious = onPrevious,
-                                onAddRest = onAddRest,
-                                isGlassMode = true
-                            )
-                        }
-                    }
-                }
             }
         }
     }
-}
 
 // ─── DUAL-BUFFER EXOPLAYER & MEDIA PIPELINE (ZERO BLACK-SCREEN) ──────────────
 
@@ -1315,18 +1011,6 @@ private fun WorkoutMediaContainer(
                                     )
                                 )
                         )
-
-                        // Jika dalam mode card (landscape), tampilkan card ilustrasi di atas foto
-                        if (!isFullscreen) {
-                            DynamicExerciseIllustrationCard(
-                                currentExercise = currentExercise,
-                                nextExercise = nextExercise,
-                                intervalType = intervalType,
-                                accentColor = accentColor,
-                                isTransparent = true,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
                     }
                 }
             }
