@@ -27,9 +27,11 @@ import kotlinx.coroutines.launch
         WorkoutBlock::class,
         WorkoutExercise::class,
         ExerciseTemplate::class,
-        WorkoutSessionRecord::class
+        WorkoutSessionRecord::class,
+        RunSession::class,
+        LocationPoint::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(WorkoutTypeConverters::class)
@@ -40,6 +42,8 @@ abstract class WorkoutDatabase : RoomDatabase() {
     abstract fun workoutExerciseDao(): WorkoutExerciseDao
     abstract fun exerciseTemplateDao(): ExerciseTemplateDao
     abstract fun workoutSessionRecordDao(): WorkoutSessionRecordDao
+    abstract fun runSessionDao(): RunSessionDao
+    abstract fun locationPointDao(): LocationPointDao
 
     companion object {
         const val DATABASE_NAME = "workout_timer.db"
@@ -88,6 +92,42 @@ abstract class WorkoutDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `run_sessions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `startedAt` INTEGER NOT NULL,
+                        `completedAt` INTEGER NOT NULL DEFAULT 0,
+                        `distanceMeters` REAL NOT NULL DEFAULT 0.0,
+                        `durationSeconds` INTEGER NOT NULL DEFAULT 0,
+                        `avgPaceSecPerKm` INTEGER NOT NULL DEFAULT 0,
+                        `bestPaceSecPerKm` INTEGER NOT NULL DEFAULT 0,
+                        `caloriesBurned` INTEGER NOT NULL DEFAULT 0,
+                        `status` TEXT NOT NULL DEFAULT 'running'
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_sessions_startedAt` ON `run_sessions` (`startedAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_sessions_completedAt` ON `run_sessions` (`completedAt`)")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `location_points` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `sessionId` INTEGER NOT NULL,
+                        `latitude` REAL NOT NULL,
+                        `longitude` REAL NOT NULL,
+                        `altitude` REAL NOT NULL DEFAULT 0.0,
+                        `speed` REAL NOT NULL DEFAULT 0.0,
+                        `accuracy` REAL NOT NULL DEFAULT 0.0,
+                        `timestamp` INTEGER NOT NULL,
+                        FOREIGN KEY (`sessionId`) REFERENCES `run_sessions`(`id`) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_location_points_sessionId` ON `location_points` (`sessionId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_location_points_timestamp` ON `location_points` (`timestamp`)")
+            }
+        }
+
         @Volatile
         private var INSTANCE: WorkoutDatabase? = null
 
@@ -106,7 +146,7 @@ abstract class WorkoutDatabase : RoomDatabase() {
                     DATABASE_NAME
                 )
                     .addCallback(PrepopulateCallback(context.applicationContext, scope))
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -18,6 +18,10 @@ import com.workout.timer.ui.screen.splash.SplashScreen
 import com.workout.timer.ui.screen.onboarding.OnboardingScreen
 import com.workout.timer.ui.screen.settings.SettingsScreen
 import com.workout.timer.ui.screen.plan.WorkoutPlanScreen
+import com.workout.timer.ui.screen.run.RunDashboardScreen
+import com.workout.timer.ui.screen.run.ActiveRunScreen
+import com.workout.timer.ui.screen.run.RunSummaryScreen
+import com.workout.timer.ui.screen.run.RunHistoryScreen
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -143,6 +147,9 @@ fun WorkoutNavGraph(
                         popUpTo(Screen.Home.route)
                         launchSingleTop = true
                     }
+                },
+                onNavigateToRun = {
+                    navController.navigate(Screen.RunDashboard.route)
                 }
             )
         }
@@ -304,6 +311,73 @@ fun WorkoutNavGraph(
                         popUpTo(Screen.Home.route)
                         launchSingleTop = true
                     }
+                }
+            )
+        }
+
+        // ── Pelacakan Lari / Jalan (GPS Offline) ─────────────────────────────
+        composable(route = Screen.RunDashboard.route) {
+            RunDashboardScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToActiveRun = { sessionId ->
+                    navController.navigate(Screen.ActiveRun.createRoute(sessionId))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.RunHistory.route)
+                },
+                onNavigateToSummary = { sessionId ->
+                    navController.navigate(Screen.RunSummary.createRoute(sessionId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.ActiveRun.route,
+            arguments = listOf(
+                navArgument("sessionId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
+            ActiveRunScreen(
+                sessionId = sessionId,
+                onNavigateBack = { navController.popBackStack() },
+                onFinishRun = { completedId ->
+                    navController.navigate(Screen.RunSummary.createRoute(completedId)) {
+                        popUpTo(Screen.RunDashboard.route)
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.RunSummary.route,
+            arguments = listOf(
+                navArgument("sessionId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
+            RunSummaryScreen(
+                sessionId = sessionId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(route = Screen.RunHistory.route) {
+            RunHistoryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSummary = { sessionId ->
+                    navController.navigate(Screen.RunSummary.createRoute(sessionId))
                 }
             )
         }

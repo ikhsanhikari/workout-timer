@@ -21,6 +21,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- HEALTH: untuk timer workout/fitness (Android 14+ wajib deklarasikan ini) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- LOCATION: untuk pelacakan GPS lari/jalan (Android 14+ wajib) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- Location Permissions for GPS Running Tracker -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <!-- WakeLock (Keep Screen On) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -74,6 +81,12 @@
         <service
             android:name=".service.WorkoutTimerService"
             android:foregroundServiceType="health"
+            android:exported="false" />
+
+        <!-- Run / Walk GPS Tracking Foreground Service -->
+        <service
+            android:name=".service.RunTrackingService"
+            android:foregroundServiceType="location"
             android:exported="false" />
 
         <!-- Receiver Pengingat Latihan Harian (Mendukung Reboot & Update Play Store) -->

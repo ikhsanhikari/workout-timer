@@ -61,3 +61,11 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# 12. OSMDroid (Offline Maps)
+-keep class org.osmdroid.** { *; }
+-dontwarn org.osmdroid.**
+
+# 13. Google Play Services Location
+-keep class com.google.android.gms.location.** { *; }
+-dontwarn com.google.android.gms.location.**

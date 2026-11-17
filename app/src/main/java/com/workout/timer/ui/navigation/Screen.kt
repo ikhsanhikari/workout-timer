@@ -49,4 +49,20 @@ sealed class Screen(val route: String) {
 
     /** Settings / Preferensi pengguna */
     data object Settings : Screen("settings")
+
+    /** Pelacakan Lari / Jalan — Dashboard */
+    data object RunDashboard : Screen("run")
+
+    /** Pelacakan Lari / Jalan — Sesi Live Tracking */
+    data object ActiveRun : Screen("run/active/{sessionId}") {
+        fun createRoute(sessionId: Long = 0L) = "run/active/$sessionId"
+    }
+
+    /** Pelacakan Lari / Jalan — Ringkasan Pasca Lari */
+    data object RunSummary : Screen("run/summary/{sessionId}") {
+        fun createRoute(sessionId: Long) = "run/summary/$sessionId"
+    }
+
+    /** Pelacakan Lari / Jalan — Riwayat Sesi */
+    data object RunHistory : Screen("run/history")
 }

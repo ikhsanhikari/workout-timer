@@ -44,6 +44,13 @@ class WorkoutApp : Application(), ImageLoaderFactory {
         // Daftarkan semua notification channel secara global di awal aplikasi booting
         createNotificationChannels()
 
+        // Inisialisasi OSMDroid configuration (Peta Offline & Cache)
+        org.osmdroid.config.Configuration.getInstance().apply {
+            userAgentValue = packageName
+            osmdroidTileCache = File(cacheDir, "osmdroid_tiles")
+            tileFileSystemCacheMaxBytes = 200L * 1024 * 1024 // Maks 200MB
+        }
+
         // Pastikan alarm terjadwal jika pengguna memiliki pengingat aktif
         WorkoutReminderManager.rescheduleAll(this)
     }
@@ -77,7 +84,19 @@ class WorkoutApp : Application(), ImageLoaderFactory {
                 enableVibration(false)
             }
 
-            notificationManager.createNotificationChannels(listOf(reminderChannel, serviceChannel))
+            // 3. Channel Live Pelacakan GPS Lari / Jalan
+            val runChannel = NotificationChannel(
+                com.workout.timer.service.RunTrackingService.NOTIFICATION_CHANNEL_ID,
+                "Pelacakan Lari / Jalan (GPS)",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Status live tracking jarak, durasi, dan pace lari GPS"
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+            }
+
+            notificationManager.createNotificationChannels(listOf(reminderChannel, serviceChannel, runChannel))
         }
     }
 

@@ -148,6 +148,10 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
+    // Offline Maps (OSMDroid) & GPS Location
+    implementation(libs.osmdroid.android)
+    implementation(libs.play.services.location)
+
     // Debug
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
