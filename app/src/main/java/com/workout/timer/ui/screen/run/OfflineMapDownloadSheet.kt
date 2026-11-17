@@ -36,6 +36,7 @@ fun OfflineMapDownloadSheet(
     downloadProgress: TileDownloadProgress,
     cacheSizeMb: Float,
     onDownloadRegion: (OfflineRegion) -> Unit,
+    onCancelDownload: () -> Unit = {},
     onClearCache: () -> Unit
 ) {
     ModalBottomSheet(
@@ -144,6 +145,27 @@ fun OfflineMapDownloadSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Error message jika terjadi kendala unduhan
+            AnimatedVisibility(visible = !downloadProgress.errorMessage.isNullOrBlank()) {
+                downloadProgress.errorMessage?.let { errorMsg ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 14.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF3E1A1A))
+                            .border(1.dp, Color(0xFFFF5252).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = errorMsg,
+                            fontSize = 12.sp,
+                            color = Color(0xFFFF8A80)
+                        )
+                    }
+                }
+            }
+
             // Download progress indicator
             AnimatedVisibility(visible = downloadProgress.isDownloading) {
                 Column(
@@ -185,13 +207,29 @@ fun OfflineMapDownloadSheet(
                         trackColor = Color.White.copy(alpha = 0.2f)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        text = "${downloadProgress.currentCount} / ${downloadProgress.totalCount} tiles",
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${downloadProgress.currentCount} / ${downloadProgress.totalCount} tiles",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "Batal",
+                            fontSize = 12.sp,
+                            color = Color(0xFFFF5252),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { onCancelDownload() }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 
@@ -213,11 +251,11 @@ fun OfflineMapDownloadSheet(
                             onClick = {
                                 val deltaLat = 0.045
                                 val deltaLng = 0.045
-                                val north = (userLat + deltaLat).coerceIn(-85.0, 85.0)
-                                val south = (userLat - deltaLat).coerceIn(-85.0, 85.0)
-                                val east = (userLng + deltaLng).coerceIn(-180.0, 180.0)
-                                val west = (userLng - deltaLng).coerceIn(-180.0, 180.0)
-                                val myArea = com.workout.timer.service.location.OfflineRegion(
+                                val north = maxOf(userLat + deltaLat, userLat - deltaLat).coerceIn(-85.0, 85.0)
+                                val south = minOf(userLat + deltaLat, userLat - deltaLat).coerceIn(-85.0, 85.0)
+                                val east = maxOf(userLng + deltaLng, userLng - deltaLng).coerceIn(-180.0, 180.0)
+                                val west = minOf(userLng + deltaLng, userLng - deltaLng).coerceIn(-180.0, 180.0)
+                                val myArea = OfflineRegion(
                                     id = "my_area",
                                     name = "Area Sekitar Saya",
                                     description = "Lokasi saat ini",

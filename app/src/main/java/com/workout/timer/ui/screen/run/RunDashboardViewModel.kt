@@ -90,17 +90,27 @@ class RunDashboardViewModel @Inject constructor(
     }
 
     fun openDownloadSheet() {
+        val currentLat = _uiState.value.activeTrackingState.currentLat ?: _uiState.value.userLat
+        val currentLng = _uiState.value.activeTrackingState.currentLng ?: _uiState.value.userLng
+        val initialSorted = offlineTileManager.getRegionsSortedByProximity(currentLat, currentLng)
+        _uiState.update {
+            it.copy(
+                showDownloadSheet = true,
+                userLat = currentLat,
+                userLng = currentLng,
+                sortedRegions = initialSorted
+            )
+        }
         locationTracker.getLastLocation { loc ->
-            val lat = loc?.latitude ?: _uiState.value.activeTrackingState.currentLat
-            val lng = loc?.longitude ?: _uiState.value.activeTrackingState.currentLng
-            val sorted = offlineTileManager.getRegionsSortedByProximity(lat, lng)
-            _uiState.update {
-                it.copy(
-                    showDownloadSheet = true,
-                    userLat = lat,
-                    userLng = lng,
-                    sortedRegions = sorted
-                )
+            if (loc != null) {
+                val sorted = offlineTileManager.getRegionsSortedByProximity(loc.latitude, loc.longitude)
+                _uiState.update {
+                    it.copy(
+                        userLat = loc.latitude,
+                        userLng = loc.longitude,
+                        sortedRegions = sorted
+                    )
+                }
             }
         }
         refreshCacheSize()
@@ -119,6 +129,15 @@ class RunDashboardViewModel @Inject constructor(
 
     fun downloadRegion(region: OfflineRegion) {
         offlineTileManager.downloadRegion(region)
+    }
+
+    fun downloadMyArea(latitude: Double, longitude: Double) {
+        val region = offlineTileManager.createMyAreaRegion(latitude, longitude)
+        offlineTileManager.downloadRegion(region)
+    }
+
+    fun cancelDownload() {
+        offlineTileManager.cancelDownload()
     }
 
     fun clearOfflineCache() {

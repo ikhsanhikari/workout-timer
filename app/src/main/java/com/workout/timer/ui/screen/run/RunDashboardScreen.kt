@@ -318,6 +318,7 @@ fun RunDashboardScreen(
                 onDownloadRegion = { region ->
                     viewModel.downloadRegion(region)
                 },
+                onCancelDownload = { viewModel.cancelDownload() },
                 onClearCache = { viewModel.clearOfflineCache() }
             )
         }

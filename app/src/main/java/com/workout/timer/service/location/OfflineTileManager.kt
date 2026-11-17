@@ -4,16 +4,20 @@ import android.content.Context
 import android.location.Location
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.cachemanager.CacheManager
+import org.osmdroid.tileprovider.modules.SqlTileWriter
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
-import org.osmdroid.views.MapView
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +54,10 @@ data class TileDownloadProgress(
 class OfflineTileManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var downloadJob: Job? = null
+    private val sqlTileWriter by lazy { SqlTileWriter() }
 
     private val _downloadState = MutableStateFlow(TileDownloadProgress())
     val downloadState: StateFlow<TileDownloadProgress> = _downloadState.asStateFlow()
@@ -267,10 +275,10 @@ class OfflineTileManager @Inject constructor(
     fun createMyAreaRegion(latitude: Double, longitude: Double): OfflineRegion {
         val deltaLat = 0.045 // ~5km
         val deltaLng = 0.045 // ~5km
-        val north = (latitude + deltaLat).coerceIn(-85.0, 85.0)
-        val south = (latitude - deltaLat).coerceIn(-85.0, 85.0)
-        val east = (longitude + deltaLng).coerceIn(-180.0, 180.0)
-        val west = (longitude - deltaLng).coerceIn(-180.0, 180.0)
+        val north = maxOf(latitude + deltaLat, latitude - deltaLat).coerceIn(-85.0, 85.0)
+        val south = minOf(latitude + deltaLat, latitude - deltaLat).coerceIn(-85.0, 85.0)
+        val east = maxOf(longitude + deltaLng, longitude - deltaLng).coerceIn(-180.0, 180.0)
+        val west = minOf(longitude + deltaLng, longitude - deltaLng).coerceIn(-180.0, 180.0)
         return OfflineRegion(
             id = "my_area",
             name = "Area Sekitar Saya",
@@ -284,118 +292,167 @@ class OfflineTileManager @Inject constructor(
     }
 
     /**
-     * Memulai pengunduhan tile untuk suatu wilayah secara asynchronous tanpa crash dialog.
-     * Menggunakan SqlTileWriter langsung tanpa perlu instansiasi MapView.
+     * Membatalkan proses pengunduhan tile yang sedang berjalan.
      */
-    fun downloadRegion(region: OfflineRegion, mapView: MapView? = null) {
-        if (_downloadState.value.isDownloading) return
-
+    fun cancelDownload() {
+        downloadJob?.cancel()
+        downloadJob = null
         _downloadState.value = TileDownloadProgress(
-            regionId = region.id,
-            isDownloading = true,
-            progress = 0f,
-            currentCount = 0,
-            totalCount = 0
+            isDownloading = false,
+            errorMessage = null
         )
+        Log.d("OfflineTileManager", "Unduhan tile dibatalkan oleh pengguna.")
+    }
 
-        try {
-            val tileWriter = org.osmdroid.tileprovider.modules.SqlTileWriter()
-            val cacheManager = try {
-                CacheManager(
-                    org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK,
-                    tileWriter,
-                    region.minZoom,
-                    region.maxZoom
+    /**
+     * Memulai pengunduhan tile untuk suatu wilayah secara asynchronous & aman menggunakan Kotlin Coroutines.
+     * Menggunakan SqlTileWriter langsung tanpa AsyncTask / ProgressDialog sehingga 100% bebas dari
+     * BadTokenException, TileSourcePolicyException, ataupun force close.
+     */
+    fun downloadRegion(region: OfflineRegion) {
+        cancelDownload()
+
+        downloadJob = scope.launch {
+            try {
+                _downloadState.value = TileDownloadProgress(
+                    regionId = region.id,
+                    isDownloading = true,
+                    progress = 0f,
+                    currentCount = 0,
+                    totalCount = 0
                 )
-            } catch (_: Throwable) {
-                // Fallback jika konstruktor writer ditolak
-                val mv = mapView ?: MapView(context).apply {
-                    setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
-                }
-                CacheManager(mv)
-            }
 
-            val totalTiles = try {
-                cacheManager.possibleTilesInArea(
-                    region.boundingBox,
-                    region.minZoom,
-                    region.maxZoom
-                )
-            } catch (_: Throwable) {
-                150
-            }
-
-            _downloadState.value = _downloadState.value.copy(totalCount = totalTiles)
-
-            // Gunakan downloadAreaAsyncNoUI agar tidak memicu ProgressDialog bawaan
-            // yang dapat menyebabkan BadTokenException saat dijalankan di Compose/ApplicationContext
-            cacheManager.downloadAreaAsyncNoUI(
-                context,
-                region.boundingBox,
-                region.minZoom,
-                region.maxZoom,
-                object : CacheManager.CacheManagerCallback {
-                    override fun onTaskComplete() {
-                        try {
-                            _downloadState.value = TileDownloadProgress(
-                                regionId = region.id,
-                                isDownloading = false,
-                                progress = 1.0f,
-                                currentCount = totalTiles,
-                                totalCount = totalTiles
-                            )
-                            Log.i("OfflineTileManager", "Download region '${region.name}' selesai!")
-                        } catch (e: Exception) {
-                            Log.e("OfflineTileManager", "Error onTaskComplete: ${e.message}")
-                        }
-                    }
-
-                    override fun onTaskFailed(errors: Int) {
-                        try {
-                            _downloadState.value = TileDownloadProgress(
-                                regionId = region.id,
-                                isDownloading = false,
-                                progress = 0f,
-                                errorMessage = "Download selesai dengan $errors catatan."
-                            )
-                            Log.e("OfflineTileManager", "Download region '${region.name}' gagal: $errors errors")
-                        } catch (e: Exception) {
-                            Log.e("OfflineTileManager", "Error onTaskFailed: ${e.message}")
-                        }
-                    }
-
-                    override fun updateProgress(progress: Int, current: Int, total: Int, percent: Int) {
-                        try {
-                            _downloadState.value = _downloadState.value.copy(
-                                progress = percent / 100f,
-                                currentCount = current,
-                                totalCount = total
-                            )
-                        } catch (e: Exception) {
-                            Log.e("OfflineTileManager", "Error updateProgress: ${e.message}")
-                        }
-                    }
-
-                    override fun downloadStarted() {
-                        Log.d("OfflineTileManager", "Download started untuk ${region.name}")
-                    }
-
-                    override fun setPossibleTilesInArea(total: Int) {
-                        try {
-                            _downloadState.value = _downloadState.value.copy(totalCount = total)
-                        } catch (e: Exception) {
-                            Log.e("OfflineTileManager", "Error setPossibleTilesInArea: ${e.message}")
-                        }
+                // 1. Dapatkan daftar tile indices yang menutupi wilayah tersebut
+                val tileIndices: List<Long> = withContext(Dispatchers.Default) {
+                    try {
+                        CacheManager.getTilesCoverage(region.boundingBox, region.minZoom, region.maxZoom)
+                    } catch (e: Exception) {
+                        Log.e("OfflineTileManager", "Gagal kalkulasi tile area: ${e.message}")
+                        emptyList()
                     }
                 }
-            )
-        } catch (t: Throwable) {
-            Log.e("OfflineTileManager", "Gagal inisialisasi download cache: ${t.message}", t)
-            _downloadState.value = TileDownloadProgress(
-                regionId = region.id,
-                isDownloading = false,
-                errorMessage = "Gagal memulai unduhan: ${t.message}"
-            )
+
+                if (tileIndices.isEmpty()) {
+                    _downloadState.value = TileDownloadProgress(
+                        regionId = region.id,
+                        isDownloading = false,
+                        errorMessage = "Tidak ada tile untuk wilayah ini"
+                    )
+                    return@launch
+                }
+
+                val totalTiles = tileIndices.size
+                _downloadState.value = _downloadState.value.copy(totalCount = totalTiles)
+
+                val userAgent = Configuration.getInstance().userAgentValue
+                    ?: context.packageName
+                    ?: "GasCount-WorkoutApp/1.0"
+                val expirationTime = System.currentTimeMillis() + 30L * 24 * 3600 * 1000 // 30 hari
+
+                var completedCount = 0
+                val missingIndices = ArrayList<Long>(totalTiles)
+
+                // 2. Cek apakah ada tile yang sudah tersimpan di cache lokal
+                for (tileIndex in tileIndices) {
+                    if (sqlTileWriter.exists(TileSourceFactory.MAPNIK, tileIndex)) {
+                        completedCount++
+                    } else {
+                        missingIndices.add(tileIndex)
+                    }
+                }
+
+                val initialProg = if (totalTiles > 0) completedCount.toFloat() / totalTiles else 0f
+                _downloadState.value = _downloadState.value.copy(
+                    currentCount = completedCount,
+                    progress = initialProg
+                )
+
+                // Jika seluruh tile sudah ter-cache
+                if (missingIndices.isEmpty()) {
+                    _downloadState.value = TileDownloadProgress(
+                        regionId = region.id,
+                        isDownloading = false,
+                        progress = 1.0f,
+                        currentCount = totalTiles,
+                        totalCount = totalTiles
+                    )
+                    Log.i("OfflineTileManager", "Wilayah '${region.name}' sudah 100% tersimpan di cache!")
+                    return@launch
+                }
+
+                // 3. Unduh tile yang belum ada secara concurrent (2 koneksi bersamaan)
+                val semaphore = Semaphore(2)
+                coroutineScope {
+                    missingIndices.map { tileIndex ->
+                        async {
+                            semaphore.withPermit {
+                                if (!isActive) return@withPermit
+                                var conn: HttpURLConnection? = null
+                                try {
+                                    val urlStr = TileSourceFactory.MAPNIK.getTileURLString(tileIndex)
+                                    val url = URL(urlStr)
+                                    conn = (url.openConnection() as HttpURLConnection).apply {
+                                        setRequestProperty("User-Agent", userAgent)
+                                        connectTimeout = 8000
+                                        readTimeout = 8000
+                                        instanceFollowRedirects = true
+                                    }
+                                    conn.connect()
+                                    if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                                        conn.inputStream.use { input ->
+                                            synchronized(sqlTileWriter) {
+                                                sqlTileWriter.saveFile(
+                                                    TileSourceFactory.MAPNIK,
+                                                    tileIndex,
+                                                    input,
+                                                    expirationTime
+                                                )
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w("OfflineTileManager", "Gagal unduh tile $tileIndex: ${e.message}")
+                                } finally {
+                                    try {
+                                        conn?.disconnect()
+                                    } catch (_: Exception) {}
+
+                                    synchronized(this@OfflineTileManager) {
+                                        completedCount++
+                                        val prog = completedCount.toFloat() / totalTiles
+                                        // Update state bertahap agar UI Compose smooth
+                                        if (completedCount % 4 == 0 || completedCount == totalTiles) {
+                                            _downloadState.value = _downloadState.value.copy(
+                                                currentCount = completedCount,
+                                                progress = prog
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                }
+
+                _downloadState.value = TileDownloadProgress(
+                    regionId = region.id,
+                    isDownloading = false,
+                    progress = 1.0f,
+                    currentCount = totalTiles,
+                    totalCount = totalTiles
+                )
+                Log.i("OfflineTileManager", "Unduhan wilayah '${region.name}' sukses ($totalTiles tiles)")
+            } catch (ce: CancellationException) {
+                Log.i("OfflineTileManager", "Unduhan wilayah '${region.name}' dibatalkan")
+                _downloadState.value = TileDownloadProgress(isDownloading = false)
+            } catch (t: Throwable) {
+                Log.e("OfflineTileManager", "Error unduh tile: ${t.message}", t)
+                _downloadState.value = TileDownloadProgress(
+                    regionId = region.id,
+                    isDownloading = false,
+                    errorMessage = "Gagal mengunduh: ${t.localizedMessage ?: "Koneksi bermasalah"}"
+                )
+            }
         }
     }
 
