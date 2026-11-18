@@ -27,6 +27,8 @@ import com.google.gson.reflect.TypeToken
 data class HomeUiState(
     val userNickname: String = "",
     val routines: List<WorkoutRoutine> = emptyList(),
+    val popularRoutines: List<WorkoutRoutine> = emptyList(),
+    val expressRoutines: List<WorkoutRoutine> = emptyList(),
     val favoriteRoutines: List<WorkoutRoutine> = emptyList(),
     val latestPerformedRoutine: WorkoutRoutine? = null,
     val todayScheduledRoutine: WorkoutRoutine? = null,
@@ -240,6 +242,13 @@ class HomeViewModel @Inject constructor(
     }.combine(weeklyTargetMinutes) { state, targetMin ->
         state.copy(
             weeklyTargetMinutes = targetMin
+        )
+    }.combine(allRoutinesFlow) { state, allRoutines ->
+        val popular = allRoutines.sortedByDescending { it.isFavorite }.take(8)
+        val express = allRoutines.filter { it.totalDurationSec in 1..900 }.take(8).ifEmpty { allRoutines.take(8) }
+        state.copy(
+            popularRoutines = popular,
+            expressRoutines = express
         )
     }.stateIn(
         scope = viewModelScope,

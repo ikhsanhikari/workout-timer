@@ -117,6 +117,10 @@ fun HomeScreen(
     val hasActiveFilters = uiState.selectedDurationFilter != DurationFilter.ALL ||
         uiState.selectedSort != SortOption.CREATED_AT
 
+    val isSearchingOrFiltering = uiState.searchQuery.isNotBlank() ||
+        uiState.selectedCategory != null ||
+        hasActiveFilters
+
     val dailyChallengeItems = remember(
         uiState.todayScheduledRoutine,
         uiState.favoriteRoutines,
@@ -210,34 +214,26 @@ fun HomeScreen(
             }
 
             // ── GPS Run / Walk Tracker Shortcut ──────────────────────────────
-            item(key = "home_gps_run_shortcut") {
-                AnimatedVisibility(
-                    visible = uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
+            if (!isSearchingOrFiltering) {
+                item(key = "home_gps_run_shortcut") {
                     GpsRunBannerCard(
                         onClick = onNavigateToRun,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                     )
                 }
-            }
 
-            // ── Spotlight / Daily Challenge Banner ───────────────────────────
-            item(key = "home_daily_challenge") {
-                AnimatedVisibility(
-                    visible = uiState.searchQuery.isBlank() && uiState.selectedCategory == null && !hasActiveFilters && challengeRoutines.isNotEmpty(),
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
-                    DailyChallengeSection(
-                        routines = challengeRoutines,
-                        challengeSource = challengeSource,
-                        onStartWorkout = onNavigateToStartWorkout,
-                        onViewDetail = onNavigateToRoutineDetail,
-                        onFavoriteClick = { routineId -> viewModel.toggleFavorite(routineId) },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
+                // ── Spotlight / Daily Challenge Banner ───────────────────────────
+                if (challengeRoutines.isNotEmpty()) {
+                    item(key = "home_daily_challenge") {
+                        DailyChallengeSection(
+                            routines = challengeRoutines,
+                            challengeSource = challengeSource,
+                            onStartWorkout = onNavigateToStartWorkout,
+                            onViewDetail = onNavigateToRoutineDetail,
+                            onFavoriteClick = { routineId -> viewModel.toggleFavorite(routineId) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
 
@@ -252,123 +248,157 @@ fun HomeScreen(
                 )
             }
 
-            // ── Category Pills (Single Dedicated Row) ────────────────────────
-            item(key = "home_category_row") {
-                CategoryRow(
-                    categories = uiState.categories,
-                    selectedCategory = uiState.selectedCategory,
-                    onCategoryClick = viewModel::onCategorySelected,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-
-            // ── Active Filter Tags (Dismissible) ────────────────────────────
-            if (hasActiveFilters) {
-                item(key = "home_active_filters") {
-                    ActiveFilterRow(
-                        selectedDuration = uiState.selectedDurationFilter,
-                        selectedSort = uiState.selectedSort,
-                        onResetDuration = { viewModel.onDurationFilterSelected(DurationFilter.ALL) },
-                        onResetSort = { viewModel.onSortSelected(SortOption.CREATED_AT) },
-                        onResetAll = {
-                            viewModel.onDurationFilterSelected(DurationFilter.ALL)
-                            viewModel.onSortSelected(SortOption.CREATED_AT)
-                        },
+            // ── KONDISI 1: SEARCH & FILTER MODE (Saat Pengguna Mencari / Memfilter) ──
+            if (isSearchingOrFiltering) {
+                // Category Pills (Single Dedicated Row)
+                item(key = "home_category_row") {
+                    CategoryRow(
+                        categories = uiState.categories,
+                        selectedCategory = uiState.selectedCategory,
+                        onCategoryClick = viewModel::onCategorySelected,
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
-            }
 
-            // ── Section Label (Koleksi Rutinitas | + Buat Baru) ─────────────
-            item(key = "home_routines_header") {
-                val isSearchingOrFiltering = uiState.searchQuery.isNotBlank() || uiState.selectedCategory != null || hasActiveFilters
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isSearchingOrFiltering) Icons.Default.Tune else Icons.Outlined.GridView,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(19.dp)
-                        )
-                        Text(
-                            text = if (isSearchingOrFiltering)
-                                "Hasil Pencarian (${uiState.routines.size})"
-                            else
-                                "Koleksi Rutinitas (${uiState.routines.size})",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 17.sp
-                            ),
-                            color = Color.White
+                // Active Filter Tags (Dismissible)
+                if (hasActiveFilters) {
+                    item(key = "home_active_filters") {
+                        ActiveFilterRow(
+                            selectedDuration = uiState.selectedDurationFilter,
+                            selectedSort = uiState.selectedSort,
+                            onResetDuration = { viewModel.onDurationFilterSelected(DurationFilter.ALL) },
+                            onResetSort = { viewModel.onSortSelected(SortOption.CREATED_AT) },
+                            onResetAll = {
+                                viewModel.onDurationFilterSelected(DurationFilter.ALL)
+                                viewModel.onSortSelected(SortOption.CREATED_AT)
+                            },
+                            modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
+                }
 
-                    if (!isSearchingOrFiltering) {
-                        Surface(
-                            onClick = onNavigateToBuilder,
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.White.copy(alpha = 0.08f),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                // Section Label Hasil Pencarian
+                item(key = "home_routines_header") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = "Buat Baru",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp
-                                    ),
-                                    color = Color.White
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(19.dp)
+                            )
+                            Text(
+                                text = "Hasil Pencarian (${uiState.routines.size})",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 17.sp
+                                ),
+                                color = Color.White
+                            )
+                        }
+
+                        // Tombol Reset Filter Cepat
+                        TextButton(
+                            onClick = {
+                                viewModel.onSearchQueryChanged("")
+                                viewModel.onCategorySelected(null)
+                                viewModel.onDurationFilterSelected(DurationFilter.ALL)
+                                viewModel.onSortSelected(SortOption.CREATED_AT)
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Reset Filter",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp
+                                ),
+                                color = Color(0xFFA78BFA)
+                            )
                         }
                     }
                 }
-            }
 
-            // ── Workout Cards ────────────────────────────────────────────────
-            if (uiState.isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
+                // Daftar Vertikal Hasil Filter
+                if (uiState.isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                    }
+                } else if (uiState.routines.isEmpty()) {
+                    item {
+                        EmptyState(
+                            onCreateNew = onNavigateToBuilder,
+                            onRestoreStandard = viewModel::restoreStandardRoutines
+                        )
+                    }
+                } else {
+                    items(uiState.routines, key = { it.id }) { routine ->
+                        WorkoutCard(
+                            routine = routine,
+                            onCardClick = { onNavigateToRoutineDetail(routine.id) },
+                            onStartClick = { onNavigateToStartWorkout(routine.id) },
+                            onFavoriteClick = { viewModel.toggleFavorite(routine.id) },
+                            modifier = Modifier.animateItem()
+                        )
                     }
                 }
-            } else if (uiState.routines.isEmpty()) {
-                item {
-                    EmptyState(
-                        onCreateNew = onNavigateToBuilder,
-                        onRestoreStandard = viewModel::restoreStandardRoutines
+            } else {
+                // ── KONDISI 2: DASHBOARD MODE (Terkurasi, Rapi, & Elegan) ──
+
+                // 1. Hub Kategori Latihan (Bento Grid 2x2)
+                item(key = "home_bento_categories") {
+                    BentoCategoryGrid(
+                        onSelectCategory = { cat -> viewModel.onCategorySelected(cat) },
+                        onSelectExpress = { viewModel.onDurationFilterSelected(DurationFilter.SHORT) }
                     )
                 }
-            } else {
-                items(uiState.routines, key = { it.id }) { routine ->
-                    WorkoutCard(
-                        routine = routine,
-                        onCardClick = { onNavigateToRoutineDetail(routine.id) },
-                        onStartClick = { onNavigateToStartWorkout(routine.id) },
-                        onFavoriteClick = { viewModel.toggleFavorite(routine.id) },
-                        modifier = Modifier.animateItem()
+
+                // 2. Carousel: Pilihan Populer & Terfavorit
+                if (uiState.popularRoutines.isNotEmpty()) {
+                    item(key = "home_popular_carousel") {
+                        CuratedCarouselSection(
+                            title = "Pilihan Populer",
+                            actionLabel = "Lihat Semua",
+                            onActionClick = onNavigateToWorkoutPlan,
+                            routines = uiState.popularRoutines,
+                            onCardClick = onNavigateToRoutineDetail,
+                            onStartClick = onNavigateToStartWorkout
+                        )
+                    }
+                }
+
+                // 3. Carousel: Latihan Singkat & Cepat (< 15 Menit)
+                if (uiState.expressRoutines.isNotEmpty()) {
+                    item(key = "home_express_carousel") {
+                        CuratedCarouselSection(
+                            title = "Latihan Cepat & Tanpa Alat",
+                            actionLabel = "Lihat Semua",
+                            onActionClick = onNavigateToWorkoutPlan,
+                            routines = uiState.expressRoutines,
+                            onCardClick = onNavigateToRoutineDetail,
+                            onStartClick = onNavigateToStartWorkout
+                        )
+                    }
+                }
+
+                // 4. Banner Akses Seluruh Katalog di Tab Latihan
+                item(key = "home_explore_catalog_banner") {
+                    ExploreAllCatalogCard(
+                        onExploreClick = onNavigateToWorkoutPlan
                     )
                 }
             }
@@ -3076,6 +3106,499 @@ fun GpsRunBannerCard(
                 tint = Color.White,
                 modifier = Modifier.size(16.dp)
             )
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Hub Kategori Visual: Bento Grid (2x2)
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun BentoCategoryGrid(
+    onSelectCategory: (String) -> Unit,
+    onSelectExpress: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Kategori Latihan",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                ),
+                color = Color.White
+            )
+        }
+
+        // Row 1: Kekuatan & HIIT
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            BentoCategoryCard(
+                modifier = Modifier.weight(1f),
+                title = "Kekuatan",
+                subtitle = "Dada, Kaki, Otot",
+                icon = Icons.Outlined.FitnessCenter,
+                gradientColors = listOf(Color(0xFF8B5CF6).copy(alpha = 0.35f), Color(0xFF6D28D9).copy(alpha = 0.08f)),
+                borderColor = Color(0xFF8B5CF6).copy(alpha = 0.35f),
+                iconTint = Color(0xFFA78BFA),
+                onClick = { onSelectCategory("Strength") }
+            )
+            BentoCategoryCard(
+                modifier = Modifier.weight(1f),
+                title = "HIIT & Kardio",
+                subtitle = "Bakar Lemak",
+                icon = Icons.Outlined.Bolt,
+                gradientColors = listOf(Color(0xFFEC4899).copy(alpha = 0.35f), Color(0xFFBE185D).copy(alpha = 0.08f)),
+                borderColor = Color(0xFFEC4899).copy(alpha = 0.35f),
+                iconTint = Color(0xFFF472B6),
+                onClick = { onSelectCategory("HIIT") }
+            )
+        }
+
+        // Row 2: Mobilitas & Latihan Cepat
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            BentoCategoryCard(
+                modifier = Modifier.weight(1f),
+                title = "Mobilitas & Core",
+                subtitle = "Kelenturan & Perut",
+                icon = Icons.Outlined.SelfImprovement,
+                gradientColors = listOf(Color(0xFF10B981).copy(alpha = 0.35f), Color(0xFF047857).copy(alpha = 0.08f)),
+                borderColor = Color(0xFF10B981).copy(alpha = 0.35f),
+                iconTint = Color(0xFF34D399),
+                onClick = { onSelectCategory("Mobility") }
+            )
+            BentoCategoryCard(
+                modifier = Modifier.weight(1f),
+                title = "Latihan Cepat",
+                subtitle = "Ekspres < 15 Menit",
+                icon = Icons.Outlined.Timer,
+                gradientColors = listOf(Color(0xFF3B82F6).copy(alpha = 0.35f), Color(0xFF1D4ED8).copy(alpha = 0.08f)),
+                borderColor = Color(0xFF3B82F6).copy(alpha = 0.35f),
+                iconTint = Color(0xFF60A5FA),
+                onClick = onSelectExpress
+            )
+        }
+    }
+}
+
+@Composable
+private fun BentoCategoryCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    gradientColors: List<Color>,
+    borderColor: Color,
+    iconTint: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier
+            .height(98.dp)
+            .clip(RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF13151D),
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.radialGradient(gradientColors, radius = 220f))
+                .padding(13.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.08f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.35f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp
+                        ),
+                        color = Color.White,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 10.5.sp
+                        ),
+                        color = Color.White.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Carousel Horisontal Kurasi (Pilihan Populer / Latihan Cepat)
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CuratedCarouselSection(
+    title: String,
+    actionLabel: String = "Lihat Semua",
+    onActionClick: () -> Unit,
+    routines: List<WorkoutRoutine>,
+    onCardClick: (Long) -> Unit,
+    onStartClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (routines.isEmpty()) return
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                ),
+                color = Color.White
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onActionClick)
+                    .padding(horizontal = 6.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = actionLabel,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(routines, key = { "curated_${title}_${it.id}" }) { routine ->
+                CuratedWorkoutCard(
+                    routine = routine,
+                    onClick = { onCardClick(routine.id) },
+                    onStartClick = { onStartClick(routine.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CuratedWorkoutCard(
+    routine: WorkoutRoutine,
+    onClick: () -> Unit,
+    onStartClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val bannerRes = getCategoryBannerRes(routine.category)
+    val durationMin = (routine.totalDurationSec / 60).coerceAtLeast(1)
+
+    Card(
+        modifier = modifier
+            .width(175.dp)
+            .height(210.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF13151D)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Upper: Hero Image dengan badge kategori & durasi
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(115.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = bannerRes),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Dark gradient overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.15f),
+                                    Color(0xFF13151D).copy(alpha = 0.95f)
+                                )
+                            )
+                        )
+                )
+
+                // Category pill di kiri atas
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.Black.copy(alpha = 0.65f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Text(
+                        text = routine.category,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+
+                // Duration pill di kanan atas
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.White.copy(alpha = 0.92f),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Text(
+                            text = "${durationMin}m",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+
+            // Lower: Info & Tombol Mulai
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = routine.name,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        lineHeight = 17.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${routine.totalExercises} gerakan",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.sp
+                        ),
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onStartClick()
+                        },
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Mulai Latihan",
+                            tint = Color.Black,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Banner Footer: Jelajahi Semua 40+ Rutinitas di Tab Latihan
+// ────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ExploreAllCatalogCard(
+    onExploreClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onExploreClick,
+        shape = RoundedCornerShape(22.dp),
+        color = Color(0xFF13151D),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF8B5CF6).copy(alpha = 0.15f),
+                            Color(0xFF3B82F6).copy(alpha = 0.08f)
+                        )
+                    )
+                )
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF8B5CF6).copy(alpha = 0.25f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.GridView,
+                        contentDescription = null,
+                        tint = Color(0xFFA78BFA),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = "Jelajahi Semua 40+ Rutinitas",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp
+                        ),
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Buka katalog lengkap dan program mingguan di tab Latihan",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 11.5.sp
+                        ),
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
