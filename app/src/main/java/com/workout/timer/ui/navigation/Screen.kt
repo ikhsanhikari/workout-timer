@@ -8,6 +8,12 @@ package com.workout.timer.ui.navigation
  */
 sealed class Screen(val route: String) {
 
+    /** Splash / Intro Screen (Hook & Brand Identity) */
+    data object Splash : Screen("splash")
+
+    /** Onboarding Flow (Interactive 3-Phase Setup & Curation) */
+    data object Onboarding : Screen("onboarding")
+
     /** Home Dashboard (F-02) */
     data object Home : Screen("home")
 
@@ -29,6 +35,12 @@ sealed class Screen(val route: String) {
         fun createRoute(routineId: Long) = "detail/$routineId"
     }
 
+    /** Jadwal & Program Latihan Mingguan Hybrid (Latihan Tab) */
+    data object WorkoutPlan : Screen("plan")
+
+    /** Riwayat Latihan (History Screen) */
+    data object WorkoutHistory : Screen("history")
+
     /** Kamus Gerakan (ExerciseTemplate list) */
     data object ExerciseDictionary : Screen("dictionary")
 
@@ -37,4 +49,20 @@ sealed class Screen(val route: String) {
 
     /** Settings / Preferensi pengguna */
     data object Settings : Screen("settings")
+
+    /** Pelacakan Lari / Jalan — Dashboard */
+    data object RunDashboard : Screen("run")
+
+    /** Pelacakan Lari / Jalan — Sesi Live Tracking */
+    data object ActiveRun : Screen("run/active/{sessionId}") {
+        fun createRoute(sessionId: Long = 0L) = "run/active/$sessionId"
+    }
+
+    /** Pelacakan Lari / Jalan — Ringkasan Pasca Lari */
+    data object RunSummary : Screen("run/summary/{sessionId}") {
+        fun createRoute(sessionId: Long) = "run/summary/$sessionId"
+    }
+
+    /** Pelacakan Lari / Jalan — Riwayat Sesi */
+    data object RunHistory : Screen("run/history")
 }

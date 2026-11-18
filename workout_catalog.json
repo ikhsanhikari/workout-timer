@@ -1,261 +1,17 @@
 {
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "lastUpdated": "2026-10-30T20:00:00Z",
   "templates": [
     {
-      "name": "Jumping Jacks",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Wall Sit",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Push Up",
-      "defaultDuration": 30
-    },
-    {
       "name": "Abdominal Crunch",
       "defaultDuration": 30
-    },
-    {
-      "name": "Step-Up onto Chair",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Bodyweight Squat",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Triceps Dip",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Plank Hold",
-      "defaultDuration": 45
-    },
-    {
-      "name": "High Knees",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Alternating Lunges",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Push-Up and Rotation",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Side Plank",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Burpees",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Mountain Climbers",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Jump Squats",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Bicycle Crunches",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Russian Twist",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Leg Raise",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Plank Shoulder Taps",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Hollow Body Hold",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Skater Jumps",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Glute Bridge",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Cat-Cow Stretch",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Downward Dog to Cobra",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Child's Pose",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Deep Breathing",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Istirahat",
-      "defaultDuration": 15
-    },
-    {
-      "name": "Diamond Push Up",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Pike Push Up",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Flutter Kicks",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Wide Arm Push Up",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Calf Raises",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Single-Leg Glute Bridge",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Jump Lunge",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Bird-Dog Hold",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Side Bridge / Side Plank",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Modified Curl-Up",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Shadow Boxing Combo",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Duck and Weave",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Jump Rope Hops",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Sprint All-Out",
-      "defaultDuration": 20
-    },
-    {
-      "name": "Pemulihan Ringan",
-      "defaultDuration": 60
-    },
-    {
-      "name": "Chin Tucks & Neck Rolls",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Shoulder Rolls & Squeeze",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Chest Opener Stretch",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Thoracic Spine Twist",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Seated Spinal Twist",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Standing Quad Stretch",
-      "defaultDuration": 45
-    },
-    {
-      "name": "Plank to Push-Up",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Sprint VO2 Max",
-      "defaultDuration": 240
     },
     {
       "name": "Active Recovery Jog",
       "defaultDuration": 180
     },
     {
-      "name": "Jumping Jacks Ringan",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Push Up Ringan",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Squat Jump",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Crunches",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Lunges",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Plank",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Swimmer",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Squats",
-      "defaultDuration": 30
-    },
-    {
-      "name": "High Rows",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Standing Crunch",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Side Plank (Kiri)",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Side Plank (Kanan)",
-      "defaultDuration": 30
-    },
-    {
-      "name": "Shoulder Taps",
+      "name": "Alternating Lunges",
       "defaultDuration": 30
     },
     {
@@ -263,7 +19,47 @@
       "defaultDuration": 30
     },
     {
-      "name": "Scissors",
+      "name": "Bicycle Crunches",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Bird-Dog",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Bird-Dog Hold",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Bodyweight Squat",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Burpee Tuck Jumps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Burpees",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Calf Raises",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Cat-Cow Stretch",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Chest Opener Stretch",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Child's Pose",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Chin Tucks & Neck Rolls",
       "defaultDuration": 30
     },
     {
@@ -271,7 +67,231 @@
       "defaultDuration": 30
     },
     {
+      "name": "Crunches",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Curtsy Lunges",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Deep Breathing",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Diamond Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Downward Dog to Cobra",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Duck and Weave",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Flutter Kicks",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Glute Bridge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "High Knees",
+      "defaultDuration": 30
+    },
+    {
+      "name": "High Rows",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Hollow Body Hold",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Istirahat",
+      "defaultDuration": 15
+    },
+    {
+      "name": "Jump Lunge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jump Rope Hops",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jump Squats",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jumping Jacks",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Jumping Jacks Ringan",
+      "defaultDuration": 30
+    },
+    {
       "name": "Knees Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Leg Raise",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Lunge with Twist",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Lunges",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Modified Curl-Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Mountain Climbers",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Pemulihan Ringan",
+      "defaultDuration": 60
+    },
+    {
+      "name": "Pike Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank Hold",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Plank Shoulder Taps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Plank to Push-Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push Up",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push Up Ringan",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Push-Up and Rotation",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Russian Twist",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Scissors",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Seated Spinal Twist",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Shadow Boxing Combo",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Shoulder Rolls & Squeeze",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Shoulder Taps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Bridge / Side Plank",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Side Plank",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Plank (Kanan)",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Side Plank (Kiri)",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Single-Leg Glute Bridge",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Skater Jumps",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Sprint All-Out",
+      "defaultDuration": 20
+    },
+    {
+      "name": "Sprint In Place",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Sprint VO2 Max",
+      "defaultDuration": 240
+    },
+    {
+      "name": "Squat Jump",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Squats",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Standing Crunch",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Standing Quad Stretch",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Step-Up onto Chair",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Swimmer",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Thoracic Spine Twist",
+      "defaultDuration": 45
+    },
+    {
+      "name": "Triceps Dip",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Wall Sit",
+      "defaultDuration": 30
+    },
+    {
+      "name": "Wide Arm Push Up",
       "defaultDuration": 30
     }
   ],
@@ -1751,5 +1771,6 @@
         }
       ]
     }
-  ]
+  ],
+  "totalTemplates": 73
 }

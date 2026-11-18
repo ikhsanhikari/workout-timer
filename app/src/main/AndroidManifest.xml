@@ -21,6 +21,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- HEALTH: untuk timer workout/fitness (Android 14+ wajib deklarasikan ini) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <!-- LOCATION: untuk pelacakan GPS lari/jalan (Android 14+ wajib) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
+    <!-- Location Permissions for GPS Running Tracker -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <!-- WakeLock (Keep Screen On) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -31,8 +38,18 @@
     <!-- Post Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Battery Optimization Exemption (Doze Mode Protection) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <!-- Audio Focus -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Exact Alarm permissions (Android 12+ and Android 13+) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Boot Completed (untuk menjadwalkan ulang alarm pengingat harian) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".WorkoutApp"
@@ -65,6 +82,23 @@
             android:name=".service.WorkoutTimerService"
             android:foregroundServiceType="health"
             android:exported="false" />
+
+        <!-- Run / Walk GPS Tracking Foreground Service -->
+        <service
+            android:name=".service.RunTrackingService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <!-- Receiver Pengingat Latihan Harian (Mendukung Reboot & Update Play Store) -->
+        <receiver
+            android:name=".receiver.WorkoutReminderReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="com.workout.timer.ACTION_DAILY_REMINDER" />
+            </intent-filter>
+        </receiver>
 
         <!-- FileProvider untuk perekaman video kamera dan pembagian file media aman -->
         <provider

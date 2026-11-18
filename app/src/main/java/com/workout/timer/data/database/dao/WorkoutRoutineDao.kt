@@ -100,7 +100,37 @@ interface WorkoutRoutineDao {
     """)
     fun observeWeeklySessionCount(weekStartMs: Long): Flow<Int>
 
+    // ─── WORKOUT HISTORY ────────────────────────────────────────────────────
+
+    /** Ambil semua rutinitas yang pernah diselesaikan, urutkan dari yang terbaru. */
+    @Query("SELECT * FROM workout_routines WHERE lastPerformedAt IS NOT NULL ORDER BY lastPerformedAt DESC")
+    fun observePerformedRoutines(): Flow<List<WorkoutRoutine>>
+
+    /** Ambil semua rutinitas dengan prioritas yang sudah pernah dilakukan. */
+    @Query("SELECT * FROM workout_routines ORDER BY CASE WHEN lastPerformedAt IS NOT NULL THEN 0 ELSE 1 END, lastPerformedAt DESC, createdAt DESC")
+    fun observeAllRoutinesForHistory(): Flow<List<WorkoutRoutine>>
+
+    /** Hitung total durasi seluruh sesi latihan yang pernah diselesaikan (dalam detik). */
+    @Query("SELECT COALESCE(SUM(totalDurationSec), 0) FROM workout_routines WHERE lastPerformedAt IS NOT NULL")
+    fun observeAllTimeTotalSeconds(): Flow<Int>
+
+    /** Hitung total jumlah sesi latihan yang pernah diselesaikan. */
+    @Query("SELECT COUNT(*) FROM workout_routines WHERE lastPerformedAt IS NOT NULL")
+    fun observeAllTimeSessionCount(): Flow<Int>
+
+    /** Reset catatan riwayat untuk rutinitas tertentu. */
+    @Query("UPDATE workout_routines SET lastPerformedAt = NULL WHERE id = :id")
+    suspend fun clearRoutineHistory(id: Long)
+
+    /** Reset seluruh catatan riwayat latihan. */
+    @Query("UPDATE workout_routines SET lastPerformedAt = NULL")
+    suspend fun clearAllHistory()
+
     // ─── TOGGLE FAVORITE ────────────────────────────────────────────────────
+
+    /** Ambil semua rutinitas yang ditandai sebagai favorit oleh pengguna. */
+    @Query("SELECT * FROM workout_routines WHERE isFavorite = 1 ORDER BY createdAt DESC")
+    fun observeFavoriteRoutines(): Flow<List<WorkoutRoutine>>
 
     @Query("UPDATE workout_routines SET isFavorite = NOT isFavorite WHERE id = :id")
     suspend fun toggleFavorite(id: Long)

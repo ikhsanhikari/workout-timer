@@ -1,20 +1,33 @@
 package com.workout.timer.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.workout.timer.MainActivity
+import com.workout.timer.PendingNotificationNav
 import com.workout.timer.ui.screen.home.HomeScreen
 import com.workout.timer.ui.screen.builder.WorkoutBuilderScreen
 import com.workout.timer.ui.screen.player.WorkoutPlayerScreen
 import com.workout.timer.ui.screen.detail.RoutineDetailScreen
+import com.workout.timer.ui.screen.history.WorkoutHistoryScreen
+import com.workout.timer.ui.screen.splash.SplashScreen
+import com.workout.timer.ui.screen.onboarding.OnboardingScreen
+import com.workout.timer.ui.screen.settings.SettingsScreen
+import com.workout.timer.ui.screen.plan.WorkoutPlanScreen
+import com.workout.timer.ui.screen.run.RunDashboardScreen
+import com.workout.timer.ui.screen.run.ActiveRunScreen
+import com.workout.timer.ui.screen.run.RunSummaryScreen
+import com.workout.timer.ui.screen.run.RunHistoryScreen
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * NavGraph utama aplikasi.
  *
- * Start destination: [Screen.Home]
+ * Start destination: [Screen.Splash]
  *
  * Navigasi antar layar menggunakan lambda callback untuk
  * memisahkan logika navigasi dari Composable (unidirectional).
@@ -23,11 +36,88 @@ import com.workout.timer.ui.screen.detail.RoutineDetailScreen
  * dari backStackEntry.arguments secara otomatis oleh Hilt Navigation.
  */
 @Composable
-fun WorkoutNavGraph(navController: NavHostController) {
+fun WorkoutNavGraph(
+    navController: NavHostController,
+    pendingNavFlow: StateFlow<PendingNotificationNav?>? = null,
+    onClearPendingNav: () -> Unit = {}
+) {
+    // Tangani navigasi dinamis dari notifikasi saat aplikasi sedang berjalan (warm start)
+    LaunchedEffect(pendingNavFlow) {
+        pendingNavFlow?.collect { nav ->
+            if (nav != null) {
+                val currentRoute = navController.currentBackStackEntry?.destination?.route
+                if (currentRoute != Screen.Splash.route && currentRoute != Screen.Onboarding.route) {
+                    when {
+                        nav.startRoutineId != null -> {
+                            navController.navigate(Screen.WorkoutPlayer.createRoute(nav.startRoutineId)) {
+                                launchSingleTop = true
+                            }
+                        }
+                        nav.viewRoutineId != null -> {
+                            navController.navigate(Screen.RoutineDetail.createRoute(nav.viewRoutineId)) {
+                                launchSingleTop = true
+                            }
+                        }
+                        nav.targetTab == MainActivity.TAB_PLAN -> {
+                            navController.navigate(Screen.WorkoutPlan.route) {
+                                popUpTo(Screen.Home.route)
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                    onClearPendingNav()
+                }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Splash.route
     ) {
+        // ── Splash Screen (Hook & Brand Identity) ───────────────────────────
+        composable(Screen.Splash.route) {
+            SplashScreen(
+                onSplashFinished = { isOnboardingDone ->
+                    if (isOnboardingDone) {
+                        val nav = pendingNavFlow?.value
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                        if (nav != null) {
+                            when {
+                                nav.startRoutineId != null -> {
+                                    navController.navigate(Screen.WorkoutPlayer.createRoute(nav.startRoutineId))
+                                }
+                                nav.viewRoutineId != null -> {
+                                    navController.navigate(Screen.RoutineDetail.createRoute(nav.viewRoutineId))
+                                }
+                                nav.targetTab == MainActivity.TAB_PLAN -> {
+                                    navController.navigate(Screen.WorkoutPlan.route)
+                                }
+                            }
+                            onClearPendingNav()
+                        }
+                    } else {
+                        navController.navigate(Screen.Onboarding.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
+
+        // ── Onboarding Flow (Interactive 3-Phase Setup & Curation) ───────────
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onOnboardingFinished = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // ── Home Dashboard ──────────────────────────────────────────────────
         composable(Screen.Home.route) {
             HomeScreen(
@@ -39,6 +129,61 @@ fun WorkoutNavGraph(navController: NavHostController) {
                 },
                 onNavigateToStartWorkout = { routineId ->
                     navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToWorkoutPlan = {
+                    navController.navigate(Screen.WorkoutPlan.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.WorkoutHistory.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToRun = {
+                    navController.navigate(Screen.RunDashboard.route)
+                }
+            )
+        }
+
+        // ── Hybrid Weekly Workout Plan (Latihan Tab) ────────────────────────
+        composable(Screen.WorkoutPlan.route) {
+            WorkoutPlanScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToBuilder = {
+                    navController.navigate(Screen.WorkoutBuilderCreate.route)
+                },
+                onNavigateToRoutineDetail = { routineId ->
+                    navController.navigate(Screen.RoutineDetail.createRoute(routineId))
+                },
+                onNavigateToStartWorkout = { routineId ->
+                    navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.WorkoutHistory.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -93,6 +238,12 @@ fun WorkoutNavGraph(navController: NavHostController) {
                 },
                 onNavigateToPlayer = {
                     navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToNewRoutine = { newId ->
+                    navController.navigate(Screen.RoutineDetail.createRoute(newId))
+                },
+                onNavigateToEditRoutine = { newId ->
+                    navController.navigate(Screen.WorkoutBuilderEdit.createRoute(newId))
                 }
             )
         }
@@ -108,6 +259,157 @@ fun WorkoutNavGraph(navController: NavHostController) {
             WorkoutPlayerScreen(
                 routineId = routineId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // ── Workout History (Progress Tab) ──────────────────────────────────
+        composable(route = Screen.WorkoutHistory.route) {
+            WorkoutHistoryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToRoutineDetail = { routineId ->
+                    navController.navigate(Screen.RoutineDetail.createRoute(routineId))
+                },
+                onNavigateToStartWorkout = { routineId ->
+                    navController.navigate(Screen.WorkoutPlayer.createRoute(routineId))
+                },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToWorkoutPlan = {
+                    navController.navigate(Screen.WorkoutPlan.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        // ── Centralized Settings Screen (Profil Tab) ─────────────────────────
+        composable(route = Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToWorkoutPlan = {
+                    navController.navigate(Screen.WorkoutPlan.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.WorkoutHistory.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        // ── Pelacakan Lari / Jalan (GPS Offline) ─────────────────────────────
+        composable(route = Screen.RunDashboard.route) {
+            RunDashboardScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToWorkoutPlan = {
+                    navController.navigate(Screen.WorkoutPlan.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToProgress = {
+                    navController.navigate(Screen.WorkoutHistory.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Home.route)
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToActiveRun = { sessionId ->
+                    navController.navigate(Screen.ActiveRun.createRoute(sessionId))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.RunHistory.route)
+                },
+                onNavigateToSummary = { sessionId ->
+                    navController.navigate(Screen.RunSummary.createRoute(sessionId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.ActiveRun.route,
+            arguments = listOf(
+                navArgument("sessionId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
+            ActiveRunScreen(
+                sessionId = sessionId,
+                onNavigateBack = { navController.popBackStack() },
+                onFinishRun = { completedId ->
+                    navController.navigate(Screen.RunSummary.createRoute(completedId)) {
+                        popUpTo(Screen.RunDashboard.route)
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.RunSummary.route,
+            arguments = listOf(
+                navArgument("sessionId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getLong("sessionId") ?: 0L
+            RunSummaryScreen(
+                sessionId = sessionId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateDone = {
+                    val popped = navController.popBackStack(Screen.RunDashboard.route, inclusive = false)
+                    if (!popped) {
+                        navController.navigate(Screen.RunDashboard.route) {
+                            popUpTo(Screen.Home.route)
+                            launchSingleTop = true
+                        }
+                    }
+                }
+            )
+        }
+
+        composable(route = Screen.RunHistory.route) {
+            RunHistoryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSummary = { sessionId ->
+                    navController.navigate(Screen.RunSummary.createRoute(sessionId))
+                }
             )
         }
     }

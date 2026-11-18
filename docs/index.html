@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kebijakan Privasi - GasCount</title>
+    <meta name="description" content="Kebijakan Privasi resmi aplikasi GasCount: Interval & Circuit Workout Timer.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0c0e14;
+            --surface-color: #151821;
+            --surface-border: rgba(255, 255, 255, 0.08);
+            --primary: #ffffff;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #38bdf8;
+            --badge-bg: rgba(56, 189, 248, 0.12);
+            --badge-border: rgba(56, 189, 248, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 40px 20px 80px 20px;
+        }
+
+        .container {
+            max-width: 840px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--surface-border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #1f2430 0%, #0d1017 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.7px;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        .effective-date {
+            font-size: 14px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: var(--badge-bg);
+            border: 1px solid var(--badge-border);
+            color: var(--accent);
+        }
+
+        .summary-card {
+            background: var(--surface-color);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 36px;
+        }
+
+        .summary-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-card p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        section {
+            margin-bottom: 36px;
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 14px;
+            letter-spacing: -0.3px;
+        }
+
+        p {
+            margin-bottom: 14px;
+            font-size: 15px;
+            color: #d1d5db;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 16px;
+        }
+
+        li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 10px;
+            font-size: 15px;
+            color: #d1d5db;
+        }
+
+        li::before {
+            content: "•";
+            position: absolute;
+            left: 8px;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 18px 0;
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        th {
+            background: #1a1e2a;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--surface-border);
+        }
+
+        td {
+            padding: 12px 16px;
+            color: #d1d5db;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: top;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .contact-box {
+            background: #131722;
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 16px;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px solid var(--surface-border);
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .lang-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: 1px solid var(--surface-border);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .lang-btn.active {
+            background: #ffffff;
+            color: #0c0e14;
+            border-color: #ffffff;
+        }
+
+        .lang-content {
+            display: none;
+        }
+
+        .lang-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand">
+                <div class="brand-icon">GC</div>
+                <div class="brand-name">GasCount</div>
+            </div>
+            <h1>Kebijakan Privasi / Privacy Policy</h1>
+            <div class="effective-date">
+                <span>Berlaku sejak: 8 November 2026</span>
+                <span class="badge">Offline First • Zero Tracking</span>
+            </div>
+        </header>
+
+        <div class="lang-switch">
+            <button class="lang-btn active" onclick="switchLang('id')">Bahasa Indonesia</button>
+            <button class="lang-btn" onclick="switchLang('en')">English</button>
+        </div>
+
+        <!-- BAHASA INDONESIA -->
+        <div id="lang-id" class="lang-content active">
+            <div class="summary-card">
+                <h3>🛡️ Ringkasan Utama Privasi</h3>
+                <p>
+                    Aplikasi <strong>GasCount</strong> dikembangkan dengan prinsip <em>Offline-First</em>. Kami <strong>tidak pernah</strong> mengumpulkan, melacak, membagikan, atau menjual data pribadi Anda kepada pihak manapun. Seluruh riwayat latihan, pengaturan timer, dan data aktivitas Anda tersimpan 100% aman di dalam memori penyimpanan lokal perangkat Anda.
+                </p>
+            </div>
+
+            <section>
+                <h2>1. Informasi yang Kami Kumpulkan</h2>
+                <p>
+                    Kami <strong>tidak mengumpulkan data identitas pribadi apa pun</strong> (seperti nama, email, nomor telepon, lokasi GPS, maupun data biometrik). Aplikasi tidak memerlukan registrasi akun atau pembuatan profil daring.
+                </p>
+                <p>
+                    Semua data berikut hanya diproses dan disimpan secara lokal pada perangkat Anda:
+                </p>
+                <ul>
+                    <li><strong>Data Latihan:</strong> Nama rutinitas, interval waktu (work/rest), set, repetisi, dan riwayat sesi latihan yang selesai.</li>
+                    <li><strong>Preferensi Pengguna:</strong> Pengaturan suara/suara pelatih (audio coach), getaran haptic, volume musik, dan waktu pengingat harian.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>2. Izin Perangkat (Android Permissions) dan Tujuannya</h2>
+                <p>
+                    GasCount hanya meminta izin yang mutlak diperlukan untuk menjalankan fungsionalitas timer latihan dan pengingat:
+                </p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Izin Android</th>
+                                <th>Tujuan & Kegunaan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>POST_NOTIFICATIONS</code></td>
+                                <td>Menampilkan notifikasi hitung mundur timer yang sedang aktif dan mengirim pengingat jadwal latihan yang Anda atur.</td>
+                            </tr>
+                            <tr>
+                                <td><code>FOREGROUND_SERVICE_HEALTH</code></td>
+                                <td>Menjaga stopwatch dan timer interval tetap berdetik dengan presisi serta memutar panduan suara (audio coach) saat layar ponsel mati atau aplikasi di latar belakang.</td>
+                            </tr>
+                            <tr>
+                                <td><code>SCHEDULE_EXACT_ALARM</code> & <code>USE_EXACT_ALARM</code></td>
+                                <td>Memastikan alarm pengingat latihan harian berbunyi tepat pada jam dan menit yang Anda tentukan, bahkan ketika perangkat berada dalam mode hemat daya (Doze Mode).</td>
+                            </tr>
+                            <tr>
+                                <td><code>RECEIVE_BOOT_COMPLETED</code></td>
+                                <td>Menjadwalkan ulang pengingat latihan Anda secara otomatis setelah perangkat ponsel dinyalakan ulang (restart).</td>
+                            </tr>
+                            <tr>
+                                <td><code>VIBRATE</code> & <code>MODIFY_AUDIO_SETTINGS</code></td>
+                                <td>Memberikan umpan balik getaran haptik dan mengatur ducking audio saat instruksi coach dibacakan.</td>
+                            </tr>
+                            <tr>
+                                <td><code>CAMERA</code> / <code>READ_MEDIA_*</code> <em>(Opsional)</em></td>
+                                <td>Hanya digunakan jika Anda secara sukarela memilih untuk merekam atau menambahkan video demonstrasi gerakan latihan sendiri ke dalam katalog lokal. Kami tidak pernah mengunggah video/foto Anda ke server mana pun.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <h2>3. Layanan Pihak Ketiga & Analitik</h2>
+                <p>
+                    GasCount <strong>tidak menggunakan</strong> layanan pelacak analitik pihak ketiga (seperti Firebase Analytics, Facebook SDK, Google Analytics), dan <strong>tidak memuat jaringan iklan (AdMob, dsb)</strong>. Tidak ada lalu lintas data pengguna yang dikirim ke server luar.
+                </p>
+            </section>
+
+            <section>
+                <h2>4. Penyimpanan & Penghapusan Data</h2>
+                <p>
+                    Karena seluruh data disimpan secara eksklusif di dalam basis data lokal perangkat ponsel Anda:
+                </p>
+                <ul>
+                    <li>Anda memiliki kendali penuh untuk menghapus data kapan saja melalui menu pengaturan aplikasi atau melalui <em>Settings &gt; Apps &gt; GasCount &gt; Clear Data</em> pada ponsel Anda.</li>
+                    <li>Menghapus (uninstall) aplikasi GasCount akan secara otomatis menghapus seluruh data dan riwayat latihan dari perangkat Anda.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>5. Privasi Anak-Anak</h2>
+                <p>
+                    Aplikasi ini aman digunakan oleh semua kelompok usia dan tidak dirancang untuk mengumpulkan informasi dari anak-anak di bawah umur 13 tahun.
+                </p>
+            </section>
+
+            <section>
+                <h2>6. Perubahan Kebijakan Privasi</h2>
+                <p>
+                    Jika kami melakukan pembaruan pada kebijakan privasi ini di masa mendatang, pembaruan akan langsung dipublikasikan pada halaman ini dengan tanggal berlaku yang diperbarui.
+                </p>
+            </section>
+
+            <section>
+                <h2>7. Kontak Pengembang</h2>
+                <p>
+                    Jika Anda memiliki pertanyaan mengenai kebijakan privasi atau aplikasi GasCount, Anda dapat menghubungi kami melalui:
+                </p>
+                <div class="contact-box">
+                    <p><strong>Pengembang:</strong> Ikhsan (GasCount Developer)</p>
+                    <p><strong>Email Kontak:</strong> ikhsan.hikari@gmail.com</p>
+                    <p><strong>Repositori Kode:</strong> https://github.com/ikhsanhikari/workout-timer</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- ENGLISH VERSION -->
+        <div id="lang-en" class="lang-content">
+            <div class="summary-card">
+                <h3>🛡️ Privacy Summary</h3>
+                <p>
+                    <strong>GasCount</strong> is built on an <em>Offline-First</em> architecture. We <strong>do not</strong> collect, track, share, or sell any personal data to third parties. All your workout records, routines, and app preferences remain 100% stored on your local device.
+                </p>
+            </div>
+
+            <section>
+                <h2>1. Information We Collect</h2>
+                <p>
+                    We <strong>do not collect any personally identifiable information (PII)</strong>, such as names, email addresses, phone numbers, GPS locations, or biometric data. The app requires no online account creation.
+                </p>
+                <p>
+                    All data is strictly processed and retained locally:
+                </p>
+                <ul>
+                    <li><strong>Workout Data:</strong> Routine titles, interval parameters (work/rest), sets, reps, and completed session analytics.</li>
+                    <li><strong>User Preferences:</strong> Audio coach settings, haptic pulse preferences, music volume levels, and daily reminder alarms.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>2. Device Permissions and Usage</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Permission</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>POST_NOTIFICATIONS</code></td>
+                                <td>Displays ongoing countdown timer controls and scheduled workout reminder notifications.</td>
+                            </tr>
+                            <tr>
+                                <td><code>FOREGROUND_SERVICE_HEALTH</code></td>
+                                <td>Maintains active workout interval timers and audio coach playback when the screen is locked or backgrounded.</td>
+                            </tr>
+                            <tr>
+                                <td><code>SCHEDULE_EXACT_ALARM</code> & <code>USE_EXACT_ALARM</code></td>
+                                <td>Ensures daily workout reminder alarms trigger at the exact user-scheduled time, even during system Doze mode.</td>
+                            </tr>
+                            <tr>
+                                <td><code>RECEIVE_BOOT_COMPLETED</code></td>
+                                <td>Automatically reschedules user workout reminders after the device reboots.</td>
+                            </tr>
+                            <tr>
+                                <td><code>VIBRATE</code> & <code>MODIFY_AUDIO_SETTINGS</code></td>
+                                <td>Provides haptic interval pulses and manages audio focus/ducking during voice coach prompts.</td>
+                            </tr>
+                            <tr>
+                                <td><code>CAMERA</code> / <code>READ_MEDIA_*</code> <em>(Optional)</em></td>
+                                <td>Used solely if the user voluntarily records or attaches custom exercise demonstration videos to local routines. Media is never uploaded to external servers.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <h2>3. Third-Party Services and Analytics</h2>
+                <p>
+                    GasCount does not integrate third-party analytics trackers (e.g., Firebase Analytics, Google Analytics) and contains zero third-party advertising frameworks. No user network requests are transmitted to outside servers.
+                </p>
+            </section>
+
+            <section>
+                <h2>4. Data Retention and Deletion</h2>
+                <p>
+                    Because all information resides locally on your smartphone:
+                </p>
+                <ul>
+                    <li>You maintain total ownership and can wipe your data at any time via in-app settings or your device's <em>Settings &gt; Apps &gt; GasCount &gt; Clear Storage</em>.</li>
+                    <li>Uninstalling GasCount immediately and permanently removes all stored workout logs and preferences from the device.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>5. Children's Privacy</h2>
+                <p>
+                    GasCount does not knowingly solicit or collect personal information from children under 13.
+                </p>
+            </section>
+
+            <section>
+                <h2>6. Developer Contact</h2>
+                <div class="contact-box">
+                    <p><strong>Developer:</strong> Ikhsan (GasCount Developer)</p>
+                    <p><strong>Contact Email:</strong> ikhsan.hikari@gmail.com</p>
+                    <p><strong>Repository:</strong> https://github.com/ikhsanhikari/workout-timer</p>
+                </div>
+            </section>
+        </div>
+
+        <footer>
+            &copy; 2026 GasCount • Offline First Workout Timer. All rights reserved.
+        </footer>
+    </div>
+
+    <script>
+        function switchLang(lang) {
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.lang-content').forEach(content => content.classList.remove('active'));
+
+            if (lang === 'id') {
+                document.querySelectorAll('.lang-btn')[0].classList.add('active');
+                document.getElementById('lang-id').classList.add('active');
+            } else {
+                document.querySelectorAll('.lang-btn')[1].classList.add('active');
+                document.getElementById('lang-en').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -7,6 +7,7 @@ import com.google.gson.Gson
 import com.workout.timer.data.database.WorkoutDatabase
 import com.workout.timer.data.model.ExerciseTemplate
 import com.workout.timer.data.model.IntervalType
+import com.workout.timer.data.model.MediaType
 import com.workout.timer.data.model.WorkoutBlock
 import com.workout.timer.data.model.WorkoutExercise
 import com.workout.timer.data.model.WorkoutRoutine
@@ -37,6 +38,18 @@ object CatalogImporter {
     }
 
     /**
+     * Mem-parse string JSON ke [ExerciseLibraryDto].
+     */
+    fun parseExerciseLibraryJson(jsonString: String): ExerciseLibraryDto? {
+        return try {
+            gson.fromJson(jsonString, ExerciseLibraryDto::class.java)
+        } catch (e: Exception) {
+            Log.e(TAG, "Gagal mem-parse JSON Master Kamus Gerakan: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
      * Membaca file JSON dari assets dan mengimpornya ke database.
      */
     suspend fun importFromAsset(
@@ -49,13 +62,45 @@ object CatalogImporter {
             val jsonString = context.assets.open(assetName).bufferedReader().use { it.readText() }
             val catalog = parseCatalogJson(jsonString)
             if (catalog != null) {
-                importCatalog(database, catalog, onlyIfMissing)
+                val userPrefs = com.workout.timer.data.preferences.UserPreferencesRepository(context)
+                val currentVer = userPrefs.getCatalogVersion()
+                val isNewVersion = catalog.catalogVersion > currentVer
+                val effectiveOnlyIfMissing = if (isNewVersion) false else onlyIfMissing
+                val count = importCatalog(database, catalog, effectiveOnlyIfMissing)
+                if (isNewVersion) {
+                    userPrefs.saveCatalogVersion(catalog.catalogVersion)
+                    Log.i(TAG, "Auto-upgraded catalog from v$currentVer to v${catalog.catalogVersion} ($count routines updated)")
+                }
+                count
             } else {
                 Log.w(TAG, "Katalog aset '$assetName' kosong atau gagal diparse.")
                 0
             }
         } catch (e: Exception) {
             Log.e(TAG, "Gagal membaca katalog dari aset '$assetName': ${e.message}", e)
+            0
+        }
+    }
+
+    /**
+     * Membaca file exercise_library.json dari assets dan mengimpor ke database.
+     */
+    suspend fun importExerciseLibraryFromAsset(
+        context: Context,
+        database: WorkoutDatabase,
+        assetName: String = "exercise_library.json"
+    ): Int = withContext(Dispatchers.IO) {
+        try {
+            val jsonString = context.assets.open(assetName).bufferedReader().use { it.readText() }
+            val library = parseExerciseLibraryJson(jsonString)
+            if (library != null) {
+                importExerciseLibrary(database, library)
+            } else {
+                Log.w(TAG, "Exercise Library aset '$assetName' kosong atau gagal diparse.")
+                0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Gagal membaca exercise library dari aset '$assetName': ${e.message}", e)
             0
         }
     }
@@ -189,4 +234,70 @@ object CatalogImporter {
         Log.d(TAG, "Berhasil memproses $processedCount rutinitas dari katalog (Versi ${catalog.catalogVersion}).")
         processedCount
     }
+
+    /**
+     * Mengimpor atau memperkaya data Master Kamus Gerakan ([ExerciseLibraryDto]) ke Room Database.
+     * Tidak menghapus file media atau counter penggunaan pengguna.
+     */
+    suspend fun importExerciseLibrary(
+        database: WorkoutDatabase,
+        library: ExerciseLibraryDto
+    ): Int = withContext(Dispatchers.IO) {
+        var processedCount = 0
+
+        database.withTransaction {
+            val templateDao = database.exerciseTemplateDao()
+
+            for (item in library.exercises) {
+                val existing = templateDao.getByName(item.name)
+                // Pertahankan media kustom rekaman user sendiri, namun perbarui jika masih berupa aset bawaan
+                val isUserCustomMedia = existing?.mediaUri != null && !existing.mediaUri.startsWith("file:///android_asset/")
+                val rawTarget = if (isUserCustomMedia) existing.mediaUri else if (!item.gifUrl.isNullOrBlank()) item.gifUrl else existing?.mediaUri
+                val targetMediaUri = if (isUserCustomMedia) rawTarget else AssetVideoResolver.resolveVideo(item.name, rawTarget)
+                val targetMediaType = if (isUserCustomMedia) {
+                    existing?.mediaType ?: MediaType.NONE
+                } else {
+                    AssetVideoResolver.getEffectiveMediaType(targetMediaUri, MediaType.NONE)
+                }
+
+                if (existing != null) {
+                    templateDao.update(
+                        existing.copy(
+                            category = item.category ?: existing.category,
+                            targetMuscle = item.targetMuscle ?: existing.targetMuscle,
+                            primaryMuscle = item.primaryMuscle ?: existing.primaryMuscle,
+                            equipment = item.equipment ?: existing.equipment,
+                            difficulty = item.difficulty ?: existing.difficulty,
+                            defaultDuration = if (existing.defaultDuration <= 0) item.defaultDuration else existing.defaultDuration,
+                            coachTip = item.coachTip ?: existing.coachTip,
+                            benefits = item.benefits ?: existing.benefits,
+                            mediaUri = targetMediaUri,
+                            mediaType = targetMediaType
+                        )
+                    )
+                } else {
+                    templateDao.insert(
+                        ExerciseTemplate(
+                            name = item.name,
+                            category = item.category,
+                            targetMuscle = item.targetMuscle,
+                            primaryMuscle = item.primaryMuscle,
+                            equipment = item.equipment,
+                            difficulty = item.difficulty,
+                            defaultDuration = item.defaultDuration,
+                            coachTip = item.coachTip,
+                            benefits = item.benefits,
+                            mediaUri = targetMediaUri,
+                            mediaType = targetMediaType
+                        )
+                    )
+                }
+                processedCount++
+            }
+        }
+
+        Log.d(TAG, "Berhasil memperbarui $processedCount gerakan dari Master Exercise Library (Versi ${library.libraryVersion}).")
+        processedCount
+    }
 }
+

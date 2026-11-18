@@ -14,41 +14,41 @@ import androidx.compose.ui.graphics.Color
  * 3. Tidak ada elemen UI berwarna putih solid yang menyilaukan.
  */
 private val WorkoutDarkColorScheme = darkColorScheme(
-    primary = AccentWork,             // Volt Neon Green
+    primary = Color.White,             // Pure White untuk estetika minimalis elegan
     onPrimary = Color.Black,
-    primaryContainer = Color(0xFF1E3300),
-    onPrimaryContainer = AccentWork,
+    primaryContainer = GlassSurfaceElevated,
+    onPrimaryContainer = Color.White,
 
-    secondary = AccentRest,           // Electric Cyan
+    secondary = Color.White.copy(alpha = 0.85f),
     onSecondary = Color.Black,
-    secondaryContainer = Color(0xFF003331),
-    onSecondaryContainer = AccentRest,
+    secondaryContainer = GlassSurfaceMedium,
+    onSecondaryContainer = Color.White,
 
-    tertiary = AccentWarmup,          // Amber Yellow
-    onTertiary = Color.Black,
-    tertiaryContainer = Color(0xFF332900),
-    onTertiaryContainer = AccentWarmup,
+    tertiary = AccentWarmupSubtle,
+    onTertiary = Color.White,
+    tertiaryContainer = GlassSurfaceSubtle,
+    onTertiaryContainer = Color.White,
 
-    error = AccentHighIntensity,      // Neon Crimson
-    onError = Color.Black,
-    errorContainer = Color(0xFF330008),
-    onErrorContainer = AccentHighIntensity,
+    error = ColorDanger,
+    onError = Color.White,
+    errorContainer = ColorDanger.copy(alpha = 0.15f),
+    onErrorContainer = ColorDanger,
 
     background = BackgroundPrimary,   // #000000 Pure Black
     onBackground = TextPrimary,
 
-    surface = SurfaceCard,            // #1C1C1E Dark Charcoal
+    surface = SurfaceCard,            // Frosted Dark Charcoal
     onSurface = TextPrimary,
-    surfaceVariant = SurfaceElevated, // #2C2C2E
+    surfaceVariant = SurfaceElevated,
     onSurfaceVariant = TextSecondary,
-    surfaceTint = AccentWork,
+    surfaceTint = Color.White,
 
-    outline = TextTertiary,
-    outlineVariant = SurfaceElevated,
+    outline = GlassBorderSubtle,
+    outlineVariant = GlassSurfaceSubtle,
 
     inverseSurface = TextPrimary,
     inverseOnSurface = BackgroundPrimary,
-    inversePrimary = Color(0xFF3A5C00),
+    inversePrimary = Color.White.copy(alpha = 0.75f),
 
     scrim = Color(0xCC000000)
 )

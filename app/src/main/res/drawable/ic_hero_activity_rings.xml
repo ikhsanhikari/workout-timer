@@ -3,50 +3,60 @@
     android:height="96dp"
     android:viewportWidth="96"
     android:viewportHeight="96">
-    <!-- Outer Track (Minutes) -->
+    <!-- Center circular backing disc -->
     <path
-        android:strokeColor="#22A4FF00"
+        android:fillColor="#15171C"
+        android:pathData="M48,6 A42,42 0 1,1 47.9,6" />
+
+    <!-- Outer Track (Menit Latihan) -->
+    <path
+        android:strokeColor="#1FFFFFFF"
         android:strokeWidth="7"
         android:fillColor="#00000000"
         android:pathData="M48,10 A38,38 0 1,1 47.9,10" />
-    <!-- Outer Active Arc (75% completed) -->
+    <!-- Outer Active Arc - Athletic Ember (#FF6B35) -->
     <path
-        android:strokeColor="#A4FF00"
+        android:strokeColor="#FF6B35"
         android:strokeWidth="7"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M48,10 A38,38 0 1,1 15,64" />
 
-    <!-- Middle Track (Sessions) -->
+    <!-- Middle Track (Sesi Selesai) -->
     <path
-        android:strokeColor="#2200F5EA"
-        android:strokeWidth="7"
+        android:strokeColor="#17FFFFFF"
+        android:strokeWidth="6.5"
         android:fillColor="#00000000"
         android:pathData="M48,20 A28,28 0 1,1 47.9,20" />
-    <!-- Middle Active Arc (60% completed) -->
+    <!-- Middle Active Arc - Warm Amber (#FFA726) -->
     <path
-        android:strokeColor="#00F5EA"
-        android:strokeWidth="7"
+        android:strokeColor="#FFA726"
+        android:strokeWidth="6.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M48,20 A28,28 0 1,1 24,62" />
 
-    <!-- Inner Track (Intensity) -->
+    <!-- Inner Track (Konsistensi / Slate) -->
     <path
-        android:strokeColor="#22FF5252"
-        android:strokeWidth="7"
+        android:strokeColor="#10FFFFFF"
+        android:strokeWidth="6"
         android:fillColor="#00000000"
         android:pathData="M48,30 A18,18 0 1,1 47.9,30" />
-    <!-- Inner Active Arc (85% completed) -->
+    <!-- Inner Active Arc - Tactical Slate (#5C6B73) -->
     <path
-        android:strokeColor="#FF5252"
-        android:strokeWidth="7"
+        android:strokeColor="#5C6B73"
+        android:strokeWidth="6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M48,30 A18,18 0 1,1 33,38" />
 
+    <!-- Center Icon Badge Backdrop -->
+    <path
+        android:fillColor="#24FF6B35"
+        android:pathData="M48,38 A10,10 0 1,1 47.9,38" />
+
     <!-- Center Athletic Lightning Spark -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M49,41 L43,49 L47,49 L45,55 L53,47 L49,47 Z" />
+        android:fillColor="#FF8C42"
+        android:pathData="M49,42 L44,49 L47.5,49 L46,54 L52,47.5 L48.5,47.5 Z" />
 </vector>

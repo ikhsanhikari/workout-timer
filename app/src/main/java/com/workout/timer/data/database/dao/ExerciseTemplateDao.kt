@@ -35,10 +35,13 @@ interface ExerciseTemplateDao {
     @Query("""
         SELECT * FROM exercise_templates
         WHERE name LIKE '%' || :query || '%'
+           OR (category IS NOT NULL AND category LIKE '%' || :query || '%')
+           OR (targetMuscle IS NOT NULL AND targetMuscle LIKE '%' || :query || '%')
+           OR (primaryMuscle IS NOT NULL AND primaryMuscle LIKE '%' || :query || '%')
         ORDER BY usageCount DESC, lastUsedAt DESC
         LIMIT :limit
     """)
-    fun searchByName(query: String, limit: Int = 10): Flow<List<ExerciseTemplate>>
+    fun searchByName(query: String, limit: Int = 20): Flow<List<ExerciseTemplate>>
 
     @Query("SELECT * FROM exercise_templates ORDER BY usageCount DESC, lastUsedAt DESC")
     fun observeAll(): Flow<List<ExerciseTemplate>>
